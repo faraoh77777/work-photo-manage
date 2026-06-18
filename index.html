@@ -1,1142 +1,490 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SHAHEEN 현장 작업일보 사진 관리</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>작업 사진</title>
 <style>
-  :root {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --surface2: #22263a;
-    --border: #2e3250;
-    --accent: #4f8ef7;
-    --accent2: #7c5cfc;
-    --danger: #e05252;
-    --success: #3ecf8e;
-    --text: #e8eaf6;
-    --text2: #8892b0;
-    --text3: #4a5580;
-    --radius: 10px;
-    --shadow: 0 4px 24px rgba(0,0,0,0.45);
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
-
-  /* Header */
-  header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 0 20px;
-    display: flex; align-items: center; justify-content: space-between;
-    height: 60px; position: sticky; top: 0; z-index: 100;
-    box-shadow: var(--shadow);
-  }
-  .logo { font-size: 1.2rem; font-weight: 700; letter-spacing: 1px; }
-  .logo span { color: var(--accent); }
-  .header-actions { display: flex; gap: 10px; }
-
-  /* Buttons */
-  .btn {
-    padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer;
-    font-size: 0.88rem; font-weight: 600; transition: all 0.18s; display: inline-flex;
-    align-items: center; gap: 6px; white-space: nowrap;
-  }
-  .btn-primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { background: #3a7ae0; }
-  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-  .btn-secondary:hover { background: var(--border); }
-  .btn-danger { background: var(--danger); color: #fff; }
-  .btn-danger:hover { background: #c03a3a; }
-  .btn-success { background: var(--success); color: #0a2e1e; }
-  .btn-success:hover { background: #2db87a; }
-  .btn-sm { padding: 5px 11px; font-size: 0.8rem; border-radius: 6px; }
-  .btn-icon { padding: 7px 10px; }
-
-  /* Layout */
-  .app { display: flex; height: calc(100vh - 60px); }
-
-  /* Sidebar */
-  .sidebar {
-    width: 260px; min-width: 260px; background: var(--surface);
-    border-right: 1px solid var(--border); overflow-y: auto;
-    display: flex; flex-direction: column; transition: transform 0.25s;
-  }
-  .sidebar-section { padding: 18px 16px 10px; }
-  .sidebar-title {
-    font-size: 0.72rem; font-weight: 700; color: var(--text3);
-    letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 10px;
-  }
-  .filter-group { margin-bottom: 14px; }
-  .filter-label { font-size: 0.8rem; color: var(--text2); margin-bottom: 6px; display: block; }
-  .filter-select, .filter-input {
-    width: 100%; padding: 8px 10px; background: var(--surface2);
-    border: 1px solid var(--border); border-radius: 7px; color: var(--text);
-    font-size: 0.85rem; outline: none;
-  }
-  .filter-select:focus, .filter-input:focus { border-color: var(--accent); }
-  option { background: var(--surface2); }
-  .filter-btn-row { display: flex; gap: 8px; margin-top: 4px; }
-  .filter-btn-row .btn { flex: 1; justify-content: center; }
-
-  /* Main content */
-  .main { flex: 1; overflow-y: auto; padding: 20px; }
-
-  /* Stats bar */
-  .stats-bar {
-    display: flex; gap: 14px; margin-bottom: 20px; flex-wrap: wrap;
-  }
-  .stat-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 12px 18px; flex: 1; min-width: 120px;
-  }
-  .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
-  .stat-label { font-size: 0.75rem; color: var(--text2); margin-top: 2px; }
-
-  /* Gallery */
-  .gallery-header {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 14px; flex-wrap: wrap; gap: 10px;
-  }
-  .gallery-title { font-size: 1rem; font-weight: 600; }
-  .gallery-controls { display: flex; gap: 8px; align-items: center; }
-  .view-toggle { display: flex; gap: 2px; }
-  .view-btn {
-    background: var(--surface2); border: 1px solid var(--border);
-    color: var(--text2); padding: 6px 10px; border-radius: 6px; cursor: pointer;
-    font-size: 0.85rem; transition: all 0.15s;
-  }
-  .view-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-
-  .gallery-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 14px;
-  }
-  .gallery-grid.list-view {
-    grid-template-columns: 1fr;
-  }
-
-  .photo-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); overflow: hidden; cursor: pointer;
-    transition: transform 0.15s, box-shadow 0.15s; position: relative;
-  }
-  .photo-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
-  .photo-card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
-  .photo-thumb {
-    width: 100%; aspect-ratio: 4/3; object-fit: cover;
-    display: block; background: var(--surface2);
-  }
-  .photo-info { padding: 10px; }
-  .photo-date { font-size: 0.78rem; color: var(--accent); font-weight: 600; }
-  .photo-work { font-size: 0.82rem; color: var(--text); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .photo-team {
-    display: inline-block; margin-top: 5px; padding: 2px 8px;
-    background: var(--surface2); border-radius: 20px;
-    font-size: 0.72rem; color: var(--text2); border: 1px solid var(--border);
-  }
-  .photo-check {
-    position: absolute; top: 8px; left: 8px;
-    width: 22px; height: 22px; border-radius: 50%;
-    background: rgba(0,0,0,0.6); border: 2px solid rgba(255,255,255,0.4);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.75rem; color: #fff; transition: all 0.15s;
-  }
-  .photo-card.selected .photo-check {
-    background: var(--accent); border-color: var(--accent);
-  }
-
-  /* List view card */
-  .gallery-grid.list-view .photo-card { display: flex; }
-  .gallery-grid.list-view .photo-thumb { width: 100px; min-width: 100px; aspect-ratio: auto; height: 72px; }
-  .gallery-grid.list-view .photo-info { display: flex; align-items: center; gap: 14px; flex: 1; }
-  .gallery-grid.list-view .photo-date { min-width: 88px; }
-  .gallery-grid.list-view .photo-team { margin-top: 0; }
-
-  /* Empty state */
-  .empty-state {
-    text-align: center; padding: 60px 20px; color: var(--text2);
-  }
-  .empty-icon { font-size: 3rem; margin-bottom: 16px; opacity: 0.4; }
-  .empty-text { font-size: 1rem; margin-bottom: 8px; }
-  .empty-sub { font-size: 0.82rem; color: var(--text3); }
-
-  /* Upload Drop Zone */
-  .drop-zone {
-    border: 2px dashed var(--border); border-radius: var(--radius);
-    padding: 36px 20px; text-align: center; cursor: pointer;
-    transition: all 0.2s; margin-bottom: 20px; background: var(--surface);
-  }
-  .drop-zone:hover, .drop-zone.drag-over {
-    border-color: var(--accent); background: rgba(79,142,247,0.06);
-  }
-  .drop-icon { font-size: 2.2rem; margin-bottom: 10px; }
-  .drop-text { color: var(--text2); font-size: 0.9rem; }
-  .drop-text strong { color: var(--accent); }
-  #file-input { display: none; }
-
-  /* Modal */
-  .modal-overlay {
-    display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,0.75); z-index: 500;
-    align-items: center; justify-content: center; padding: 20px;
-  }
-  .modal-overlay.open { display: flex; }
-  .modal {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 14px; width: 100%; max-width: 520px;
-    max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow);
-  }
-  .modal-header {
-    padding: 18px 20px 14px; border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .modal-title { font-size: 1rem; font-weight: 700; }
-  .modal-close {
-    background: none; border: none; color: var(--text2);
-    font-size: 1.3rem; cursor: pointer; padding: 2px 6px;
-    border-radius: 5px; line-height: 1;
-  }
-  .modal-close:hover { background: var(--surface2); color: var(--text); }
-  .modal-body { padding: 20px; }
-  .modal-footer {
-    padding: 14px 20px; border-top: 1px solid var(--border);
-    display: flex; gap: 10px; justify-content: flex-end;
-  }
-
-  /* Form */
-  .form-group { margin-bottom: 16px; }
-  .form-label { font-size: 0.82rem; color: var(--text2); margin-bottom: 6px; display: block; font-weight: 600; }
-  .form-control {
-    width: 100%; padding: 9px 12px; background: var(--surface2);
-    border: 1px solid var(--border); border-radius: 8px; color: var(--text);
-    font-size: 0.88rem; outline: none; transition: border-color 0.15s;
-  }
-  .form-control:focus { border-color: var(--accent); }
-
-  /* Upload preview list */
-  .upload-preview {
-    display: flex; flex-direction: column; gap: 8px; margin-top: 14px;
-    max-height: 240px; overflow-y: auto;
-  }
-  .preview-item {
-    display: flex; align-items: center; gap: 10px;
-    background: var(--surface2); border-radius: 8px; padding: 8px 10px;
-    border: 1px solid var(--border);
-  }
-  .preview-thumb {
-    width: 48px; height: 36px; object-fit: cover; border-radius: 5px;
-    background: var(--bg);
-  }
-  .preview-name { font-size: 0.8rem; color: var(--text); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .preview-size { font-size: 0.72rem; color: var(--text3); }
-  .preview-remove { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 1rem; padding: 2px 5px; }
-  .preview-remove:hover { color: var(--danger); }
-
-  /* Detail Modal */
-  .detail-img {
-    width: 100%; max-height: 380px; object-fit: contain;
-    border-radius: 8px; background: var(--bg); display: block;
-  }
-  .detail-meta { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
-  .detail-row {
-    display: flex; gap: 10px; font-size: 0.85rem;
-    padding: 8px 12px; background: var(--surface2); border-radius: 7px;
-  }
-  .detail-key { color: var(--text2); min-width: 80px; }
-  .detail-val { color: var(--text); }
-
-  /* Settings */
-  .settings-section { margin-bottom: 24px; }
-  .settings-section-title { font-size: 0.85rem; font-weight: 700; color: var(--text2); margin-bottom: 10px; }
-  .tag-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-  .tag-item {
-    display: flex; align-items: center; gap: 6px;
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: 20px; padding: 4px 12px; font-size: 0.82rem;
-  }
-  .tag-del { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 0.85rem; padding: 0 2px; }
-  .tag-del:hover { color: var(--danger); }
-  .add-tag-row { display: flex; gap: 8px; }
-  .add-tag-row .form-control { flex: 1; }
-
-  /* Bulk action bar */
-  .bulk-bar {
-    display: none; position: fixed; bottom: 20px; left: 50%;
-    transform: translateX(-50%); background: var(--surface);
-    border: 1px solid var(--border); border-radius: 30px; padding: 10px 20px;
-    box-shadow: var(--shadow); gap: 12px; align-items: center; z-index: 200;
-    white-space: nowrap;
-  }
-  .bulk-bar.open { display: flex; }
-  .bulk-count { font-size: 0.88rem; color: var(--text2); }
-
-  /* Toast */
-  .toast-container {
-    position: fixed; bottom: 80px; right: 20px; z-index: 999;
-    display: flex; flex-direction: column; gap: 8px;
-  }
-  .toast {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 8px; padding: 10px 16px; font-size: 0.85rem;
-    box-shadow: var(--shadow); animation: slideIn 0.2s ease;
-    max-width: 280px;
-  }
-  .toast.success { border-left: 3px solid var(--success); }
-  .toast.error { border-left: 3px solid var(--danger); }
-  @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
-
-  /* Mobile sidebar toggle */
-  .sidebar-toggle {
-    display: none; background: none; border: none;
-    color: var(--text); font-size: 1.3rem; cursor: pointer; padding: 6px;
-  }
-  .sidebar-overlay {
-    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-    z-index: 50;
-  }
-
-  /* Progress */
-  .upload-progress { margin-top: 10px; }
-  .progress-bar {
-    height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;
-  }
-  .progress-fill {
-    height: 100%; background: var(--accent); border-radius: 2px;
-    transition: width 0.2s; width: 0%;
-  }
-  .progress-text { font-size: 0.75rem; color: var(--text2); margin-top: 4px; text-align: right; }
-
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
-  /* Responsive */
-  @media (max-width: 768px) {
-    .sidebar {
-      position: fixed; left: 0; top: 60px; bottom: 0; z-index: 60;
-      transform: translateX(-100%);
-    }
-    .sidebar.open { transform: translateX(0); }
-    .sidebar-toggle { display: block; }
-    .sidebar-overlay.open { display: block; }
-    .stats-bar { gap: 8px; }
-    .stat-card { min-width: 100px; padding: 10px 12px; }
-    .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
-    .bulk-bar { bottom: 10px; left: 10px; right: 10px; transform: none; border-radius: 14px; justify-content: center; flex-wrap: wrap; }
-  }
-  @media (max-width: 480px) {
-    .main { padding: 12px; }
-    .header-actions .btn span { display: none; }
-  }
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:100vh;
+  padding:16px;padding-bottom:110px;font-size:16px;}
+.app-header{background:linear-gradient(135deg,#1E3A5F,#2E5F9E);border-radius:16px;
+  padding:18px 20px;margin-bottom:16px;color:#fff;}
+.app-title{font-size:20px;font-weight:800;letter-spacing:1px;margin-bottom:2px;}
+.app-sub{font-size:13px;opacity:0.75;}
+.card{background:#fff;border:1px solid #D1DCE8;border-radius:16px;
+  padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,0.07);}
+.flbl{font-size:13px;font-weight:700;color:#5A7A9A;letter-spacing:0.5px;
+  text-transform:uppercase;margin-bottom:8px;margin-top:12px;}
+.flbl:first-child{margin-top:0;}
+.f{width:100%;background:#F7FAFC;border:1.5px solid #C8D8E8;border-radius:10px;
+  padding:13px 14px;color:#1A2332;font-size:16px;outline:none;font-family:Arial;
+  transition:border-color 0.2s;}
+.f:focus{border-color:#2E5F9E;background:#fff;}
+select.f option{background:#fff;color:#1A2332;}
+textarea.f{resize:none;height:70px;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.cat-bar{height:4px;border-radius:2px;margin-top:8px;transition:background 0.2s;}
+.cam-box{width:100%;aspect-ratio:4/3;background:#EAF0F8;border:2px dashed #A0BBD4;
+  border-radius:14px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;cursor:pointer;position:relative;overflow:hidden;margin-bottom:12px;}
+.cam-placeholder p{font-size:15px;color:#7A9AB8;margin-top:8px;}
+.cam-placeholder .icon{font-size:52px;}
+.corner{position:absolute;width:22px;height:22px;}
+.tl{top:10px;left:10px;border-top:3px solid #2E5F9E;border-left:3px solid #2E5F9E;border-radius:3px 0 0 0;}
+.tr{top:10px;right:10px;border-top:3px solid #2E5F9E;border-right:3px solid #2E5F9E;border-radius:0 3px 0 0;}
+.bl{bottom:10px;left:10px;border-bottom:3px solid #2E5F9E;border-left:3px solid #2E5F9E;border-radius:0 0 0 3px;}
+.br{bottom:10px;right:10px;border-bottom:3px solid #2E5F9E;border-right:3px solid #2E5F9E;border-radius:0 0 3px 0;}
+canvas{width:100%;border-radius:12px;display:block;}
+.sbtn{width:100%;padding:15px;border:none;border-radius:12px;font-size:17px;
+  font-weight:800;cursor:pointer;margin-top:10px;}
+.sbtn-cam{background:linear-gradient(135deg,#2E5F9E,#1E3A5F);color:#fff;}
+.sbtn-save{background:linear-gradient(135deg,#27AE60,#1E8449);color:#fff;}
+.sbtn-save:disabled{background:#BDC3C7;color:#fff;cursor:not-allowed;}
+.hdivider{height:1px;background:#E8EEF4;margin:10px 0;}
+.save-guide{background:#EAF8F0;border:1.5px solid #A9DFBF;border-radius:10px;
+  padding:12px 14px;margin-top:10px;font-size:14px;color:#1E8449;line-height:1.8;display:none;}
+.list-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.list-title{font-size:15px;font-weight:700;color:#1A2332;}
+.list-count{font-size:15px;font-weight:800;color:#2E5F9E;}
+.saved-list{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px;}
+.saved-item{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;
+  border:2px solid #D1DCE8;box-shadow:0 2px 6px rgba(0,0,0,0.1);}
+.saved-item img{width:100%;height:100%;object-fit:cover;}
+.del-btn{position:absolute;top:3px;right:3px;background:rgba(231,76,60,0.9);
+  border:none;border-radius:50%;width:22px;height:22px;color:#fff;font-size:12px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:800;}
+.num-badge{position:absolute;bottom:3px;left:5px;font-size:11px;color:#fff;
+  font-weight:800;text-shadow:0 1px 3px rgba(0,0,0,0.6);}
+.empty-msg{grid-column:span 3;text-align:center;padding:24px;color:#A0BBD4;font-size:15px;}
+.bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:9999;
+  padding:10px 16px 24px;background:linear-gradient(transparent,#F0F4F8 35%);}
+.btn-share{width:100%;padding:15px;border:none;border-radius:14px;font-size:16px;
+  font-weight:800;cursor:pointer;background:#FEE500;color:#1A2332;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  box-shadow:0 4px 12px rgba(230,185,0,0.4);}
+#toast,#toastE{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);
+  padding:12px 22px;border-radius:12px;font-size:15px;font-weight:700;
+  display:none;z-index:9998;white-space:nowrap;color:#fff;
+  box-shadow:0 4px 12px rgba(0,0,0,0.2);}
+#toast{background:#27AE60;}
+#toastE{background:#E74C3C;}
 </style>
 </head>
 <body>
 
-<!-- Header -->
-<header>
-  <div style="display:flex;align-items:center;gap:12px;">
-    <button class="sidebar-toggle" onclick="toggleSidebar()" title="필터 열기">☰</button>
-    <div class="logo"><span>SHAHEEN</span> 작업일보</div>
-  </div>
-  <div class="header-actions">
-    <button class="btn btn-primary" onclick="openUploadModal()">
-      <span>📷</span><span>사진 업로드</span>
-    </button>
-    <button class="btn btn-secondary" onclick="openSettings()">
-      <span>⚙️</span><span>설정</span>
-    </button>
-  </div>
-</header>
-
-<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
-
-<div class="app">
-  <!-- Sidebar Filters -->
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-section">
-      <div class="sidebar-title">필터</div>
-
-      <div class="filter-group">
-        <label class="filter-label">날짜</label>
-        <input type="date" class="filter-input" id="filter-date" onchange="applyFilters()">
-      </div>
-
-      <div class="filter-group">
-        <label class="filter-label">작업내용</label>
-        <select class="filter-select" id="filter-work" onchange="applyFilters()">
-          <option value="">전체</option>
-        </select>
-      </div>
-
-      <div class="filter-group">
-        <label class="filter-label">팀</label>
-        <select class="filter-select" id="filter-team" onchange="applyFilters()">
-          <option value="">전체</option>
-        </select>
-      </div>
-
-      <div class="filter-btn-row">
-        <button class="btn btn-secondary btn-sm" onclick="resetFilters()">초기화</button>
-        <button class="btn btn-success btn-sm" onclick="downloadZip()">📦 ZIP</button>
-      </div>
-    </div>
-  </aside>
-
-  <!-- Main -->
-  <main class="main">
-    <!-- Stats -->
-    <div class="stats-bar">
-      <div class="stat-card">
-        <div class="stat-value" id="stat-total">0</div>
-        <div class="stat-label">전체 사진</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="stat-filtered">0</div>
-        <div class="stat-label">필터 결과</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="stat-dates">0</div>
-        <div class="stat-label">작업 일수</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="stat-selected">0</div>
-        <div class="stat-label">선택됨</div>
-      </div>
-    </div>
-
-    <!-- Gallery Header -->
-    <div class="gallery-header">
-      <div class="gallery-title" id="gallery-title">사진 갤러리</div>
-      <div class="gallery-controls">
-        <div class="view-toggle">
-          <button class="view-btn active" id="grid-btn" onclick="setView('grid')" title="격자 보기">⊞</button>
-          <button class="view-btn" id="list-btn" onclick="setView('list')" title="목록 보기">☰</button>
-        </div>
-        <button class="btn btn-sm btn-secondary" onclick="selectAll()">전체선택</button>
-      </div>
-    </div>
-
-    <!-- Gallery -->
-    <div class="gallery-grid" id="gallery"></div>
-
-    <!-- Empty State -->
-    <div class="empty-state" id="empty-state" style="display:none;">
-      <div class="empty-icon">📂</div>
-      <div class="empty-text">사진이 없습니다</div>
-      <div class="empty-sub">사진을 업로드하거나 필터를 조정해 보세요.</div>
-    </div>
-  </main>
+<div class="app-header">
+  <div class="app-title">&#128247; 작업 사진</div>
+  <div class="app-sub">계장 &amp; 전기 공사</div>
 </div>
 
-<!-- Bulk Action Bar -->
-<div class="bulk-bar" id="bulk-bar">
-  <span class="bulk-count" id="bulk-count">0개 선택됨</span>
-  <button class="btn btn-success btn-sm" onclick="downloadSelectedZip()">📦 ZIP 다운로드</button>
-  <button class="btn btn-danger btn-sm" onclick="deleteSelected()">🗑 삭제</button>
-  <button class="btn btn-secondary btn-sm" onclick="clearSelection()">취소</button>
+<!-- 정보 입력 -->
+<div class="card">
+  <div class="flbl">날짜 / 시간</div>
+  <div class="row2">
+    <input type="date" id="inDate" class="f"/>
+    <input type="time" id="inTime" class="f"/>
+  </div>
+
+  <div class="flbl">NAME (TAG, EQ 등 모든 기기의 번호)</div>
+  <input type="text" id="inTag" class="f" placeholder="예: PT-2101, EQ-001 등 기기 번호"/>
+
+  <div class="flbl">작업 구분</div>
+  <div style="display:flex;gap:10px;margin-bottom:4px;">
+    <label style="flex:1;display:flex;align-items:center;gap:8px;background:#F7FAFC;
+      border:1.5px solid #C8D8E8;border-radius:10px;padding:13px 14px;cursor:pointer;
+      font-size:16px;font-weight:700;color:#2980B9;">
+      <input type="radio" name="workType" id="wtNew" value="신규" checked
+        style="width:18px;height:18px;accent-color:#2980B9;"/>
+      &#127381; 신규
+    </label>
+    <label style="flex:1;display:flex;align-items:center;gap:8px;background:#F7FAFC;
+      border:1.5px solid #C8D8E8;border-radius:10px;padding:13px 14px;cursor:pointer;
+      font-size:16px;font-weight:700;color:#E67E22;">
+      <input type="radio" name="workType" id="wtMod" value="수정"
+        style="width:18px;height:18px;accent-color:#E67E22;"/>
+      &#9999;&#65039; 수정
+    </label>
+  </div>
+
+  <div id="phaseRow" style="display:none;gap:10px;margin-top:8px;">
+    <label style="flex:1;display:flex;align-items:center;gap:8px;background:#F7FAFC;
+      border:1.5px solid #C8D8E8;border-radius:10px;padding:13px 14px;cursor:pointer;
+      font-size:16px;font-weight:700;color:#7F8C8D;">
+      <input type="radio" name="workPhase" id="phBefore" value="작업전" checked
+        style="width:18px;height:18px;accent-color:#7F8C8D;"/>
+      &#128247; 작업전
+    </label>
+    <label style="flex:1;display:flex;align-items:center;gap:8px;background:#F7FAFC;
+      border:1.5px solid #C8D8E8;border-radius:10px;padding:13px 14px;cursor:pointer;
+      font-size:16px;font-weight:700;color:#27AE60;">
+      <input type="radio" name="workPhase" id="phAfter" value="작업후"
+        style="width:18px;height:18px;accent-color:#27AE60;"/>
+      &#9989; 작업후
+    </label>
+  </div>
+
+  <div class="flbl">작업 분류</div>
+  <select id="inCat" class="f">
+    <option value="dcs">DCS Panel</option>
+    <option value="lcp">LCP</option>
+    <option value="jb">Junction Box</option>
+    <option value="fi" selected>Field Instrument</option>
+    <option value="duct">Cable Duct</option>
+    <option value="tray">Cable Tray</option>
+    <option value="conduit">Conduit Pipe</option>
+    <option value="airpipe">Air Pipe</option>
+    <option value="hookup">Hook Up</option>
+    <option value="stanchion">Stanchion</option>
+    <option value="support">Support</option>
+    <option value="conn">Connection</option>
+    <option value="linecheck">Line Check</option>
+    <option value="looptest">Loop Test</option>
+    <option value="calib">Instrument Calibration</option>
+    <option value="steamtube">Steam Tracing Tube</option>
+    <option value="steamins">Steam Tracing Insulation</option>
+    <option value="scaffold">Scaffolding</option>
+    <option value="etc">Others</option>
+  </select>
+  <div class="cat-bar" id="catBar"></div>
+
+  <div class="flbl">작업 구역</div>
+  <select id="inLoc" class="f">
+    <option>SCC</option>
+    <option>U&amp;O</option>
+  </select>
+
+  <div class="flbl">팀 이름</div>
+  <input type="text" id="inLeader" class="f" placeholder="팀 이름 입력"/>
+
+  <div class="flbl">특이사항</div>
+  <textarea id="inNote" class="f" placeholder="특이사항을 입력하세요..."></textarea>
 </div>
 
-<!-- Toast Container -->
-<div class="toast-container" id="toast-container"></div>
-
-<!-- Upload Modal -->
-<div class="modal-overlay" id="upload-modal">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title">📷 사진 업로드</span>
-      <button class="modal-close" onclick="closeModal('upload-modal')">✕</button>
+<!-- 카메라 -->
+<div class="card" id="camCard">
+  <div class="flbl">사진 촬영 (4:3)</div>
+  <div class="cam-box" id="camBox">
+    <div class="cam-placeholder" style="text-align:center;pointer-events:none;">
+      <div class="icon">&#128247;</div>
+      <p>탭하여 사진 촬영 (4:3)</p>
     </div>
-    <div class="modal-body">
-      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
-           ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
-        <div class="drop-icon">🖼️</div>
-        <div class="drop-text">
-          <strong>클릭</strong> 또는 사진을 여기로 드래그하세요<br>
-          <span style="font-size:0.78rem;color:var(--text3);">JPG, PNG, GIF, HEIC 지원 · 다중 선택 가능</span>
-        </div>
-      </div>
-      <input type="file" id="file-input" multiple accept="image/*" onchange="handleFileSelect(event)">
+    <div class="corner tl"></div><div class="corner tr"></div>
+    <div class="corner bl"></div><div class="corner br"></div>
+  </div>
+  <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none"/>
+</div>
 
-      <div class="upload-preview" id="upload-preview"></div>
-
-      <div id="upload-progress-section" style="display:none;">
-        <div class="upload-progress">
-          <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-          <div class="progress-text" id="progress-text">0%</div>
-        </div>
-      </div>
-
-      <div style="margin-top:16px;" id="meta-form">
-        <div class="form-group">
-          <label class="form-label">날짜 *</label>
-          <input type="date" class="form-control" id="upload-date" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label">작업내용 *</label>
-          <select class="form-control" id="upload-work">
-            <option value="">선택하세요</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">팀 *</label>
-          <select class="form-control" id="upload-team">
-            <option value="">선택하세요</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">메모 (선택)</label>
-          <input type="text" class="form-control" id="upload-memo" placeholder="추가 메모...">
-        </div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('upload-modal')">취소</button>
-      <button class="btn btn-primary" onclick="submitUpload()" id="upload-submit-btn">업로드</button>
-    </div>
+<!-- 미리보기 -->
+<div class="card" id="prevCard" style="display:none;">
+  <div class="flbl">미리보기 (4:3)</div>
+  <canvas id="canvas"></canvas>
+  <div class="hdivider"></div>
+  <button class="sbtn sbtn-save" id="saveBtn">&#128190; 저장 후 목록에 추가</button>
+  <div class="save-guide" id="saveGuide">
+    <b>&#9989; 저장 완료!</b><br/>
+    &#128241; 안드로이드: 다운로드 폴더 확인<br/>
+    &#127381; 아이폰: 공유 &#8594; 사진에 저장<br/>
+    &#128197; <span id="savedName" style="color:#1A7A3A;font-size:13px;"></span>
   </div>
 </div>
 
-<!-- Detail Modal -->
-<div class="modal-overlay" id="detail-modal">
-  <div class="modal" style="max-width:640px;">
-    <div class="modal-header">
-      <span class="modal-title">사진 상세</span>
-      <button class="modal-close" onclick="closeModal('detail-modal')">✕</button>
+<!-- 저장된 사진 목록 -->
+<div class="card">
+  <div class="list-header">
+    <div>
+      <span class="list-title">저장된 사진 </span>
+      <span class="list-count" id="photoCount">0</span>
+      <span class="list-title">장</span>
     </div>
-    <div class="modal-body">
-      <img id="detail-img" class="detail-img" src="" alt="사진">
-      <div class="detail-meta" id="detail-meta"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="downloadSingle()">💾 다운로드</button>
-      <button class="btn btn-danger" onclick="deleteSingle()">🗑 삭제</button>
-      <button class="btn btn-secondary" onclick="closeModal('detail-modal')">닫기</button>
-    </div>
+  </div>
+  <div class="saved-list" id="savedList">
+    <div class="empty-msg">촬영된 사진이 없습니다</div>
   </div>
 </div>
 
-<!-- Settings Modal -->
-<div class="modal-overlay" id="settings-modal">
-  <div class="modal" style="max-width:480px;">
-    <div class="modal-header">
-      <span class="modal-title">⚙️ 설정</span>
-      <button class="modal-close" onclick="closeModal('settings-modal')">✕</button>
-    </div>
-    <div class="modal-body">
-      <!-- Teams -->
-      <div class="settings-section">
-        <div class="settings-section-title">팀 관리</div>
-        <div class="tag-list" id="team-tag-list"></div>
-        <div class="add-tag-row">
-          <input type="text" class="form-control" id="new-team-input" placeholder="팀 이름 입력..." maxlength="20">
-          <button class="btn btn-primary btn-sm" onclick="addTeam()">추가</button>
-        </div>
-      </div>
-      <!-- Work types -->
-      <div class="settings-section">
-        <div class="settings-section-title">작업내용 관리</div>
-        <div class="tag-list" id="work-tag-list"></div>
-        <div class="add-tag-row">
-          <input type="text" class="form-control" id="new-work-input" placeholder="작업내용 입력..." maxlength="30">
-          <button class="btn btn-primary btn-sm" onclick="addWorkType()">추가</button>
-        </div>
-      </div>
-      <!-- Danger Zone -->
-      <div class="settings-section">
-        <div class="settings-section-title" style="color:var(--danger);">위험 구역</div>
-        <button class="btn btn-danger btn-sm" onclick="clearAllData()">모든 데이터 삭제</button>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-primary" onclick="saveSettings()">저장</button>
-    </div>
-  </div>
+<!-- 하단 고정 버튼 -->
+<div class="bottom-bar">
+  <button class="btn-share" id="shareBtn" onclick="sharePhotos()">
+    &#128172; 카카오톡으로 전송
+  </button>
 </div>
+
+<div id="toast"></div>
+<div id="toastE"></div>
 
 <script>
-// ===================== IndexedDB =====================
-const DB_NAME = 'shaheen_photo_db';
-const DB_VER = 1;
-let db;
+var CC={
+  dcs:"#E67E22",lcp:"#E74C3C",jb:"#F39C12",fi:"#2980B9",duct:"#16A085",
+  tray:"#8E44AD",conduit:"#C0392B",airpipe:"#27AE60",hookup:"#2E86AB",
+  stanchion:"#5D6D7E",support:"#A569BD",conn:"#E74C3C",linecheck:"#1ABC9C",
+  looptest:"#3498DB",calib:"#D35400",steamtube:"#C0392B",steamins:"#922B21",
+  scaffold:"#7F8C8D",etc:"#95A5A6"
+};
 
-function openDB() {
-  return new Promise((res, rej) => {
-    const req = indexedDB.open(DB_NAME, DB_VER);
-    req.onupgradeneeded = e => {
-      const d = e.target.result;
-      if (!d.objectStoreNames.contains('photos')) {
-        const store = d.createObjectStore('photos', { keyPath: 'id', autoIncrement: true });
-        store.createIndex('date', 'date');
-        store.createIndex('work', 'work');
-        store.createIndex('team', 'team');
-      }
-      if (!d.objectStoreNames.contains('settings')) {
-        d.createObjectStore('settings', { keyPath: 'key' });
-      }
-    };
-    req.onsuccess = e => { db = e.target.result; res(db); };
-    req.onerror = e => rej(e);
+var loadedImg=null, savedPhotos=[];
+
+var now=new Date();
+document.getElementById("inDate").value=now.toISOString().slice(0,10);
+document.getElementById("inTime").value=now.toTimeString().slice(0,5);
+updCat();
+togglePhaseRow();
+
+document.getElementById("camBox").addEventListener("click",function(){document.getElementById("fileInput").click();});
+document.getElementById("fileInput").addEventListener("change",loadImg);
+document.getElementById("saveBtn").addEventListener("click",savePhoto);
+document.getElementById("inCat").addEventListener("change",updCat);
+document.querySelectorAll('input[name="workType"]').forEach(function(r){
+  r.addEventListener("change",function(){
+    togglePhaseRow();
+    if(loadedImg)renderCanvas();
   });
-}
-
-function dbTx(storeName, mode = 'readonly') {
-  return db.transaction(storeName, mode).objectStore(storeName);
-}
-
-function dbGet(store, key) {
-  return new Promise((res, rej) => {
-    const r = dbTx(store).get(key);
-    r.onsuccess = () => res(r.result);
-    r.onerror = rej;
-  });
-}
-
-function dbPut(store, value) {
-  return new Promise((res, rej) => {
-    const r = dbTx(store, 'readwrite').put(value);
-    r.onsuccess = () => res(r.result);
-    r.onerror = rej;
-  });
-}
-
-function dbAdd(store, value) {
-  return new Promise((res, rej) => {
-    const r = dbTx(store, 'readwrite').add(value);
-    r.onsuccess = () => res(r.result);
-    r.onerror = rej;
-  });
-}
-
-function dbDelete(store, key) {
-  return new Promise((res, rej) => {
-    const r = dbTx(store, 'readwrite').delete(key);
-    r.onsuccess = () => res();
-    r.onerror = rej;
-  });
-}
-
-function dbGetAll(store) {
-  return new Promise((res, rej) => {
-    const r = dbTx(store).getAll();
-    r.onsuccess = () => res(r.result);
-    r.onerror = rej;
-  });
-}
-
-function dbClear(store) {
-  return new Promise((res, rej) => {
-    const r = dbTx(store, 'readwrite').clear();
-    r.onsuccess = () => res();
-    r.onerror = rej;
-  });
-}
-
-// ===================== State =====================
-const DEFAULT_WORKS = [
-  '배관설치','케이블포설','케이블결선','트레이설치','덕트설치','접지공사',
-  '전선관설치','판넬설치','판넬결선','Loop Check','Instrument설치',
-  'Junction Box설치','압력계설치','온도계설치','유량계설치','제어밸브설치',
-  '안전밸브설치','Pneumatic Test','기타'
-];
-const DEFAULT_TEAMS = ['A팀','B팀','C팀','D팀'];
-
-let settings = { teams: [...DEFAULT_TEAMS], works: [...DEFAULT_WORKS] };
-let allPhotos = [];
-let filteredPhotos = [];
-let selectedIds = new Set();
-let currentDetailId = null;
-let pendingFiles = [];
-let currentView = 'grid';
-
-// ===================== Init =====================
-async function init() {
-  await openDB();
-  const s = await dbGet('settings', 'main');
-  if (s) settings = s.value;
-  allPhotos = await dbGetAll('photos');
-  filteredPhotos = [...allPhotos];
-  populateFilterDropdowns();
-  renderGallery();
-  updateStats();
-  // Set today's date as default
-  document.getElementById('upload-date').value = new Date().toISOString().split('T')[0];
-}
-
-// ===================== Settings =====================
-async function saveSettingsData() {
-  await dbPut('settings', { key: 'main', value: settings });
-}
-
-function openSettings() {
-  renderSettingsTags();
-  openModal('settings-modal');
-}
-
-function renderSettingsTags() {
-  const teamList = document.getElementById('team-tag-list');
-  const workList = document.getElementById('work-tag-list');
-  teamList.innerHTML = settings.teams.map((t,i) => `
-    <div class="tag-item">${t}<button class="tag-del" onclick="removeTeam(${i})">✕</button></div>
-  `).join('');
-  workList.innerHTML = settings.works.map((w,i) => `
-    <div class="tag-item">${w}<button class="tag-del" onclick="removeWork(${i})">✕</button></div>
-  `).join('');
-}
-
-function addTeam() {
-  const inp = document.getElementById('new-team-input');
-  const val = inp.value.trim();
-  if (!val) return;
-  if (settings.teams.includes(val)) { toast('이미 존재하는 팀입니다.', 'error'); return; }
-  settings.teams.push(val);
-  inp.value = '';
-  renderSettingsTags();
-}
-
-function removeTeam(i) {
-  settings.teams.splice(i, 1);
-  renderSettingsTags();
-}
-
-function addWorkType() {
-  const inp = document.getElementById('new-work-input');
-  const val = inp.value.trim();
-  if (!val) return;
-  if (settings.works.includes(val)) { toast('이미 존재하는 작업내용입니다.', 'error'); return; }
-  settings.works.push(val);
-  inp.value = '';
-  renderSettingsTags();
-}
-
-function removeWork(i) {
-  settings.works.splice(i, 1);
-  renderSettingsTags();
-}
-
-async function saveSettings() {
-  await saveSettingsData();
-  populateFilterDropdowns();
-  closeModal('settings-modal');
-  toast('설정이 저장되었습니다.', 'success');
-}
-
-async function clearAllData() {
-  if (!confirm('모든 사진과 데이터를 삭제합니다. 계속하시겠습니까?')) return;
-  await dbClear('photos');
-  allPhotos = [];
-  filteredPhotos = [];
-  selectedIds.clear();
-  renderGallery();
-  updateStats();
-  toast('모든 데이터가 삭제되었습니다.', 'success');
-  closeModal('settings-modal');
-}
-
-// ===================== Dropdowns =====================
-function populateFilterDropdowns() {
-  const workSel = document.getElementById('filter-work');
-  const teamSel = document.getElementById('filter-team');
-  const uploadWork = document.getElementById('upload-work');
-  const uploadTeam = document.getElementById('upload-team');
-
-  const wCur = workSel.value, tCur = teamSel.value;
-
-  workSel.innerHTML = '<option value="">전체</option>' + settings.works.map(w => `<option value="${w}">${w}</option>`).join('');
-  teamSel.innerHTML = '<option value="">전체</option>' + settings.teams.map(t => `<option value="${t}">${t}</option>`).join('');
-  uploadWork.innerHTML = '<option value="">선택하세요</option>' + settings.works.map(w => `<option value="${w}">${w}</option>`).join('');
-  uploadTeam.innerHTML = '<option value="">선택하세요</option>' + settings.teams.map(t => `<option value="${t}">${t}</option>`).join('');
-
-  workSel.value = wCur;
-  teamSel.value = tCur;
-}
-
-// ===================== Filters =====================
-function applyFilters() {
-  const date = document.getElementById('filter-date').value;
-  const work = document.getElementById('filter-work').value;
-  const team = document.getElementById('filter-team').value;
-
-  filteredPhotos = allPhotos.filter(p => {
-    if (date && p.date !== date) return false;
-    if (work && p.work !== work) return false;
-    if (team && p.team !== team) return false;
-    return true;
-  });
-
-  renderGallery();
-  updateStats();
-  closeSidebarOnMobile();
-}
-
-function resetFilters() {
-  document.getElementById('filter-date').value = '';
-  document.getElementById('filter-work').value = '';
-  document.getElementById('filter-team').value = '';
-  filteredPhotos = [...allPhotos];
-  renderGallery();
-  updateStats();
-}
-
-// ===================== Gallery =====================
-function setView(v) {
-  currentView = v;
-  const grid = document.getElementById('gallery');
-  const gb = document.getElementById('grid-btn');
-  const lb = document.getElementById('list-btn');
-  if (v === 'list') {
-    grid.classList.add('list-view');
-    lb.classList.add('active'); gb.classList.remove('active');
-  } else {
-    grid.classList.remove('list-view');
-    gb.classList.add('active'); lb.classList.remove('active');
-  }
-}
-
-function renderGallery() {
-  const gallery = document.getElementById('gallery');
-  const empty = document.getElementById('empty-state');
-
-  if (filteredPhotos.length === 0) {
-    gallery.innerHTML = '';
-    empty.style.display = 'block';
-    return;
-  }
-  empty.style.display = 'none';
-
-  // Sort by date desc
-  const sorted = [...filteredPhotos].sort((a,b) => b.date.localeCompare(a.date));
-
-  gallery.innerHTML = sorted.map(p => {
-    const sel = selectedIds.has(p.id);
-    return `
-    <div class="photo-card ${sel ? 'selected' : ''}" id="card-${p.id}" onclick="handleCardClick(event, ${p.id})">
-      <div class="photo-check">${sel ? '✓' : ''}</div>
-      <img class="photo-thumb" src="${p.dataUrl}" alt="${p.work}" loading="lazy">
-      <div class="photo-info">
-        <div class="photo-date">${formatDate(p.date)}</div>
-        <div class="photo-work">${p.work}</div>
-        <span class="photo-team">${p.team}</span>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function handleCardClick(e, id) {
-  if (e.target.classList.contains('photo-check') || selectedIds.size > 0) {
-    toggleSelect(id);
-  } else {
-    openDetail(id);
-  }
-}
-
-function toggleSelect(id) {
-  if (selectedIds.has(id)) selectedIds.delete(id);
-  else selectedIds.add(id);
-  updateSelection();
-  renderGallery();
-}
-
-function selectAll() {
-  if (selectedIds.size === filteredPhotos.length) {
-    selectedIds.clear();
-  } else {
-    filteredPhotos.forEach(p => selectedIds.add(p.id));
-  }
-  updateSelection();
-  renderGallery();
-}
-
-function clearSelection() {
-  selectedIds.clear();
-  updateSelection();
-  renderGallery();
-}
-
-function updateSelection() {
-  const count = selectedIds.size;
-  document.getElementById('stat-selected').textContent = count;
-  document.getElementById('bulk-count').textContent = `${count}개 선택됨`;
-  const bar = document.getElementById('bulk-bar');
-  if (count > 0) bar.classList.add('open');
-  else bar.classList.remove('open');
-}
-
-function updateStats() {
-  document.getElementById('stat-total').textContent = allPhotos.length;
-  document.getElementById('stat-filtered').textContent = filteredPhotos.length;
-  const dates = new Set(allPhotos.map(p => p.date));
-  document.getElementById('stat-dates').textContent = dates.size;
-}
-
-function formatDate(d) {
-  if (!d) return '';
-  const [y,m,day] = d.split('-');
-  return `${y}.${m}.${day}`;
-}
-
-// ===================== Upload =====================
-function openUploadModal() {
-  pendingFiles = [];
-  document.getElementById('upload-preview').innerHTML = '';
-  document.getElementById('file-input').value = '';
-  document.getElementById('upload-progress-section').style.display = 'none';
-  document.getElementById('upload-date').value = new Date().toISOString().split('T')[0];
-  document.getElementById('upload-work').value = '';
-  document.getElementById('upload-team').value = '';
-  document.getElementById('upload-memo').value = '';
-  populateFilterDropdowns();
-  openModal('upload-modal');
-}
-
-function handleDragOver(e) {
-  e.preventDefault();
-  document.getElementById('drop-zone').classList.add('drag-over');
-}
-
-function handleDragLeave(e) {
-  document.getElementById('drop-zone').classList.remove('drag-over');
-}
-
-function handleDrop(e) {
-  e.preventDefault();
-  document.getElementById('drop-zone').classList.remove('drag-over');
-  const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-  addPendingFiles(files);
-}
-
-function handleFileSelect(e) {
-  const files = Array.from(e.target.files);
-  addPendingFiles(files);
-}
-
-function addPendingFiles(files) {
-  files.forEach(f => {
-    if (!pendingFiles.find(p => p.name === f.name && p.size === f.size)) {
-      pendingFiles.push(f);
-    }
-  });
-  renderUploadPreview();
-}
-
-function renderUploadPreview() {
-  const container = document.getElementById('upload-preview');
-  container.innerHTML = pendingFiles.map((f, i) => `
-    <div class="preview-item" id="preview-${i}">
-      <img class="preview-thumb" id="prev-img-${i}" src="" alt="">
-      <div style="flex:1;min-width:0;">
-        <div class="preview-name">${f.name}</div>
-        <div class="preview-size">${formatBytes(f.size)}</div>
-      </div>
-      <button class="preview-remove" onclick="removePending(${i})">✕</button>
-    </div>
-  `).join('');
-
-  pendingFiles.forEach((f, i) => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const img = document.getElementById(`prev-img-${i}`);
-      if (img) img.src = e.target.result;
-    };
-    reader.readAsDataURL(f);
-  });
-}
-
-function removePending(i) {
-  pendingFiles.splice(i, 1);
-  renderUploadPreview();
-}
-
-function formatBytes(b) {
-  if (b < 1024) return b + ' B';
-  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
-  return (b/1048576).toFixed(1) + ' MB';
-}
-
-async function submitUpload() {
-  const date = document.getElementById('upload-date').value;
-  const work = document.getElementById('upload-work').value;
-  const team = document.getElementById('upload-team').value;
-  const memo = document.getElementById('upload-memo').value.trim();
-
-  if (!date) { toast('날짜를 선택하세요.', 'error'); return; }
-  if (!work) { toast('작업내용을 선택하세요.', 'error'); return; }
-  if (!team) { toast('팀을 선택하세요.', 'error'); return; }
-  if (pendingFiles.length === 0) { toast('사진을 선택하세요.', 'error'); return; }
-
-  const btn = document.getElementById('upload-submit-btn');
-  btn.disabled = true;
-  btn.textContent = '업로드 중...';
-
-  const progressSection = document.getElementById('upload-progress-section');
-  progressSection.style.display = 'block';
-
-  let done = 0;
-  for (const file of pendingFiles) {
-    const dataUrl = await readFileAsDataURL(file);
-    await dbAdd('photos', {
-      date, work, team, memo,
-      filename: file.name,
-      size: file.size,
-      dataUrl,
-      createdAt: Date.now()
+});
+document.querySelectorAll('input[name="workPhase"]').forEach(function(r){
+  r.addEventListener("change",function(){if(loadedImg)renderCanvas();});
+});
+["inDate","inTime","inTag","inCat","inLoc","inLeader","inNote"].forEach(function(id){
+  ["input","change"].forEach(function(ev){
+    document.getElementById(id).addEventListener(ev,function(){
+      if(loadedImg)renderCanvas();
+      if(id==="inCat")updCat();
     });
-    done++;
-    const pct = Math.round(done / pendingFiles.length * 100);
-    document.getElementById('progress-fill').style.width = pct + '%';
-    document.getElementById('progress-text').textContent = `${done}/${pendingFiles.length} (${pct}%)`;
-  }
-
-  allPhotos = await dbGetAll('photos');
-  applyFilters();
-  updateStats();
-  closeModal('upload-modal');
-  toast(`${done}장의 사진이 업로드되었습니다.`, 'success');
-  btn.disabled = false;
-  btn.textContent = '업로드';
-}
-
-function readFileAsDataURL(file) {
-  return new Promise((res, rej) => {
-    const reader = new FileReader();
-    reader.onload = e => res(e.target.result);
-    reader.onerror = rej;
-    reader.readAsDataURL(file);
-  });
-}
-
-// ===================== Detail =====================
-function openDetail(id) {
-  const photo = allPhotos.find(p => p.id === id);
-  if (!photo) return;
-  currentDetailId = id;
-  document.getElementById('detail-img').src = photo.dataUrl;
-  document.getElementById('detail-meta').innerHTML = `
-    <div class="detail-row"><span class="detail-key">날짜</span><span class="detail-val">${formatDate(photo.date)}</span></div>
-    <div class="detail-row"><span class="detail-key">작업내용</span><span class="detail-val">${photo.work}</span></div>
-    <div class="detail-row"><span class="detail-key">팀</span><span class="detail-val">${photo.team}</span></div>
-    ${photo.memo ? `<div class="detail-row"><span class="detail-key">메모</span><span class="detail-val">${photo.memo}</span></div>` : ''}
-    <div class="detail-row"><span class="detail-key">파일명</span><span class="detail-val">${photo.filename}</span></div>
-    <div class="detail-row"><span class="detail-key">크기</span><span class="detail-val">${formatBytes(photo.size)}</span></div>
-  `;
-  openModal('detail-modal');
-}
-
-async function deleteSingle() {
-  if (!confirm('이 사진을 삭제하시겠습니까?')) return;
-  await dbDelete('photos', currentDetailId);
-  allPhotos = allPhotos.filter(p => p.id !== currentDetailId);
-  filteredPhotos = filteredPhotos.filter(p => p.id !== currentDetailId);
-  selectedIds.delete(currentDetailId);
-  renderGallery();
-  updateStats();
-  updateSelection();
-  closeModal('detail-modal');
-  toast('사진이 삭제되었습니다.', 'success');
-}
-
-function downloadSingle() {
-  const photo = allPhotos.find(p => p.id === currentDetailId);
-  if (!photo) return;
-  const a = document.createElement('a');
-  a.href = photo.dataUrl;
-  a.download = photo.filename;
-  a.click();
-}
-
-// ===================== Bulk Delete =====================
-async function deleteSelected() {
-  const ids = [...selectedIds];
-  if (ids.length === 0) return;
-  if (!confirm(`선택한 ${ids.length}장의 사진을 삭제하시겠습니까?`)) return;
-  for (const id of ids) await dbDelete('photos', id);
-  allPhotos = allPhotos.filter(p => !ids.includes(p.id));
-  filteredPhotos = filteredPhotos.filter(p => !ids.includes(p.id));
-  selectedIds.clear();
-  renderGallery();
-  updateStats();
-  updateSelection();
-  toast(`${ids.length}장이 삭제되었습니다.`, 'success');
-}
-
-// ===================== ZIP Download =====================
-async function downloadZip() {
-  if (filteredPhotos.length === 0) { toast('다운로드할 사진이 없습니다.', 'error'); return; }
-  await generateZip(filteredPhotos, '현장사진_필터');
-}
-
-async function downloadSelectedZip() {
-  const photos = allPhotos.filter(p => selectedIds.has(p.id));
-  if (photos.length === 0) { toast('선택된 사진이 없습니다.', 'error'); return; }
-  await generateZip(photos, '현장사진_선택');
-}
-
-async function generateZip(photos, prefix) {
-  toast('ZIP 파일 생성 중...', 'success');
-  const zip = new JSZip();
-  photos.forEach((p, i) => {
-    const ext = p.filename.split('.').pop() || 'jpg';
-    const fname = `${p.date}_${p.team}_${p.work}_${String(i+1).padStart(3,'0')}.${ext}`;
-    const base64 = p.dataUrl.split(',')[1];
-    zip.file(fname, base64, { base64: true });
-  });
-  const blob = await zip.generateAsync({ type: 'blob' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${prefix}_${new Date().toISOString().split('T')[0]}.zip`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-// ===================== Modal =====================
-function openModal(id) {
-  document.getElementById(id).classList.add('open');
-}
-function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
-}
-// Close on overlay click
-document.querySelectorAll('.modal-overlay').forEach(el => {
-  el.addEventListener('click', e => {
-    if (e.target === el) el.classList.remove('open');
   });
 });
 
-// ===================== Sidebar =====================
-function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('open');
-  document.getElementById('sidebar-overlay').classList.toggle('open');
+function updCat(){
+  var v=document.getElementById("inCat").value;
+  document.getElementById("catBar").style.background=CC[v]||"#7F8C8D";
 }
-function closeSidebarOnMobile() {
-  if (window.innerWidth <= 768) {
-    document.getElementById('sidebar').classList.remove('open');
-    document.getElementById('sidebar-overlay').classList.remove('open');
+
+function togglePhaseRow(){
+  var isMod=document.getElementById("wtMod").checked;
+  document.getElementById("phaseRow").style.display=isMod?"flex":"none";
+}
+
+function getWorkLabel(){
+  var wt=document.querySelector('input[name="workType"]:checked').value;
+  if(wt==="수정"){
+    var phaseEl=document.querySelector('input[name="workPhase"]:checked');
+    var phase=phaseEl?phaseEl.value:"작업전";
+    return wt+"-"+phase;
+  }
+  return wt;
+}
+
+function crop43(img){
+  var sW=img.width,sH=img.height,r=4/3,cW,cH,ox=0,oy=0;
+  if(sW/sH>r){cH=sH;cW=Math.round(sH*r);ox=Math.round((sW-cW)/2);}
+  else{cW=sW;cH=Math.round(sW/r);oy=Math.round((sH-cH)/2);}
+  var c=document.createElement("canvas");
+  c.width=cW;c.height=cH;c._w=cW;c._h=cH;
+  c.getContext("2d").drawImage(img,ox,oy,cW,cH,0,0,cW,cH);
+  return c;
+}
+
+function loadImg(e){
+  var file=e.target.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var img=new Image();
+    img.onload=function(){
+      loadedImg=crop43(img);
+      document.getElementById("camBox").innerHTML=
+        '<img src="'+loadedImg.toDataURL()+'" style="width:100%;height:100%;object-fit:cover;border-radius:12px;"/>'
+        +'<div class="corner tl"></div><div class="corner tr"></div>'
+        +'<div class="corner bl"></div><div class="corner br"></div>';
+      document.getElementById("saveGuide").style.display="none";
+      renderCanvas();
+      document.getElementById("prevCard").style.display="block";
+      document.getElementById("prevCard").scrollIntoView({behavior:"smooth"});
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value="";
+}
+
+function renderCanvas(){
+  if(!loadedImg)return;
+  var cv=document.getElementById("canvas");
+  var W=loadedImg._w,H=loadedImg._h;
+  cv.width=W;cv.height=H;
+  var ctx=cv.getContext("2d");
+  ctx.drawImage(loadedImg,0,0);
+
+  var date=document.getElementById("inDate").value;
+  var time=document.getElementById("inTime").value;
+  var tag=document.getElementById("inTag").value.trim();
+  var catEl=document.getElementById("inCat");
+  var cat=catEl.options[catEl.selectedIndex].text;
+  var loc=document.getElementById("inLoc").value;
+  var leader=document.getElementById("inLeader").value.trim();
+  var note=document.getElementById("inNote").value.trim()||"-";
+  var wt=getWorkLabel();
+
+  var fs=Math.max(12,Math.round(W*0.018));
+  var lh=Math.round(fs*1.4);
+  var padX=Math.round(W*0.025);
+  var padY=Math.round(fs*0.3);
+  var bgStyle="rgba(0,0,0,0.82)";
+  var borderH=Math.max(2,Math.round(W*0.003));
+
+  ctx.textBaseline="top";
+  ctx.font="bold "+fs+"px Arial,sans-serif";
+
+  /* 상단 바 */
+  var topBoxH=lh+padY*2;
+  ctx.fillStyle=bgStyle;
+  ctx.fillRect(0,0,W,topBoxH);
+  ctx.fillStyle="#FFFFFF";
+  ctx.fillRect(0,topBoxH-borderH,W,borderH);
+  ctx.fillStyle="#FFFFFF";
+  var topLeftTxt="["+wt+"] "+cat;
+  var dateStr=date+"  "+time;
+  var tfs=fs;
+  while(ctx.measureText(topLeftTxt).width+ctx.measureText(dateStr).width+padX*3>W&&tfs>10){
+    tfs--;ctx.font="bold "+tfs+"px Arial,sans-serif";
+  }
+  ctx.fillText(topLeftTxt,padX,padY);
+  var dateW=ctx.measureText(dateStr).width;
+  ctx.fillText(dateStr,W-padX-dateW,padY);
+
+  /* 하단 바 2행 */
+  var botBoxH=lh*2+padY*2;
+  var botBoxY=H-botBoxH;
+  ctx.fillStyle=bgStyle;
+  ctx.fillRect(0,botBoxY,W,botBoxH);
+  ctx.fillStyle="#FFFFFF";
+  ctx.fillRect(0,botBoxY,W,borderH);
+  ctx.fillRect(W/2,botBoxY+borderH,borderH,botBoxH-borderH);
+
+  ctx.fillStyle="#FFFFFF";
+  /* 행1 좌: NAME (작업구분) */
+  var tagTxt=(tag||"-")+"  ("+wt+")";
+  var dfs=fs;
+  ctx.font="bold "+dfs+"px Arial,sans-serif";
+  while(ctx.measureText(tagTxt).width>W/2-padX*2&&dfs>12){dfs--;ctx.font="bold "+dfs+"px Arial,sans-serif";}
+  ctx.fillText(tagTxt,padX,botBoxY+padY);
+  /* 행1 우: AREA */
+  ctx.font="bold "+fs+"px Arial,sans-serif";
+  var areaW=ctx.measureText(loc).width;
+  var afs=fs;
+  while(areaW>W/2-padX*2&&afs>12){afs--;ctx.font="bold "+afs+"px Arial,sans-serif";areaW=ctx.measureText(loc).width;}
+  ctx.fillText(loc,W/2+padX,botBoxY+padY);
+  /* 행2 좌: 특이사항 */
+  ctx.font="bold "+fs+"px Arial,sans-serif";
+  var nfs=fs;
+  while(ctx.measureText(note).width>W/2-padX*2&&nfs>12){nfs--;ctx.font="bold "+nfs+"px Arial,sans-serif";}
+  ctx.fillText(note,padX,botBoxY+padY+lh);
+  /* 행2 우: 팀이름 */
+  ctx.font="bold "+fs+"px Arial,sans-serif";
+  var ldr=leader||"-";
+  var lfs=fs;
+  while(ctx.measureText(ldr).width>W/2-padX*2&&lfs>12){lfs--;ctx.font="bold "+lfs+"px Arial,sans-serif";}
+  ctx.fillText(ldr,W/2+padX,botBoxY+padY+lh);
+}
+
+function savePhoto(){
+  if(!loadedImg)return;
+  var btn=document.getElementById("saveBtn");
+  btn.disabled=true;btn.textContent="저장 중...";
+
+  var cv=document.getElementById("canvas");
+  var date=document.getElementById("inDate").value.replace(/-/g,"");
+  var time=document.getElementById("inTime").value.replace(":","");
+  var tag=(document.getElementById("inTag").value.trim().replace(/\s/g,"_"))||"photo";
+  var wt=getWorkLabel();
+  var fname="WORK_"+wt+"_"+date+"_"+time+"_"+tag+"_"+(savedPhotos.length+1)+".jpg";
+  var dataUrl=cv.toDataURL("image/jpeg",0.92);
+
+  var byteStr=atob(dataUrl.split(",")[1]);
+  var ab=new ArrayBuffer(byteStr.length);
+  var ia=new Uint8Array(ab);
+  for(var i=0;i<byteStr.length;i++)ia[i]=byteStr.charCodeAt(i);
+  var blob=new Blob([ab],{type:"image/jpeg"});
+  savedPhotos.push({dataUrl:dataUrl,filename:fname,blob:blob});
+
+  var a=document.createElement("a");
+  a.href=dataUrl;a.download=fname;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+
+  updateList();
+  document.getElementById("savedName").textContent=fname;
+  document.getElementById("saveGuide").style.display="block";
+  showT("저장 완료! 총 "+savedPhotos.length+"장");
+
+  btn.disabled=false;
+  btn.innerHTML="&#128190; 저장 후 목록에 추가";
+  setTimeout(function(){resetCam();},1000);
+}
+
+function updateList(){
+  var cnt=savedPhotos.length;
+  document.getElementById("photoCount").textContent=cnt;
+  var list=document.getElementById("savedList");
+  if(cnt===0){list.innerHTML='<div class="empty-msg">촬영된 사진이 없습니다</div>';return;}
+  var html="";
+  savedPhotos.forEach(function(p,i){
+    html+='<div class="saved-item">'
+      +'<img src="'+p.dataUrl+'"/>'
+      +'<button class="del-btn" onclick="removePhoto('+i+')">&#10005;</button>'
+      +'<span class="num-badge">'+(i+1)+'</span>'
+      +'</div>';
+  });
+  list.innerHTML=html;
+}
+
+window.removePhoto=function(idx){savedPhotos.splice(idx,1);updateList();};
+
+function sharePhotos(){
+  if(!savedPhotos.length){showTE("공유할 사진이 없습니다.");return;}
+  var date=document.getElementById("inDate").value;
+  var loc=document.getElementById("inLoc").value;
+  var leader=document.getElementById("inLeader").value.trim()||"-";
+  var tag=document.getElementById("inTag").value.trim()||"-";
+  var cat=document.getElementById("inCat").options[document.getElementById("inCat").selectedIndex].text;
+  var note=document.getElementById("inNote").value.trim()||"-";
+  var wt=getWorkLabel();
+  var txt="[작업사진] "+wt+" / "+cat
+    +"\nNAME: "+tag+"\n날짜: "+date
+    +"\n구역: "+loc+"\n팀: "+leader
+    +"\n특이사항: "+note
+    +"\n총 "+savedPhotos.length+"장";
+
+  if(!navigator.share){showTE("Chrome 또는 Safari로 접속해주세요.");return;}
+
+  var files=savedPhotos.map(function(p){return new File([p.blob],p.filename,{type:"image/jpeg"});});
+  var shareData={files:files,title:"[작업사진] "+savedPhotos.length+"장",text:txt};
+
+  if(navigator.canShare&&navigator.canShare(shareData)){
+    navigator.share(shareData)
+      .then(function(){showT("전송 완료! ("+savedPhotos.length+"장)");})
+      .catch(function(e){if(e.name!=="AbortError")showTE("전송 실패: "+e.message);});
+  } else {
+    navigator.share({title:"[작업사진]",text:txt})
+      .then(function(){showT("공유 완료!");}).catch(function(){});
   }
 }
 
-// ===================== Toast =====================
-function toast(msg, type = 'success') {
-  const container = document.getElementById('toast-container');
-  const el = document.createElement('div');
-  el.className = `toast ${type}`;
-  el.textContent = msg;
-  container.appendChild(el);
-  setTimeout(() => el.remove(), 3000);
+function resetCam(){
+  loadedImg=null;
+  document.getElementById("fileInput").value="";
+  document.getElementById("camBox").innerHTML=
+    '<div class="cam-placeholder" style="text-align:center;pointer-events:none;">'
+    +'<div class="icon">&#128247;</div>'
+    +'<p>탭하여 사진 촬영 (4:3)</p>'
+    +'<p style="font-size:14px;color:#2E5F9E;margin-top:6px;font-weight:700;">저장된 사진: '+savedPhotos.length+'장</p>'
+    +'</div>'
+    +'<div class="corner tl"></div><div class="corner tr"></div>'
+    +'<div class="corner bl"></div><div class="corner br"></div>';
+  document.getElementById("prevCard").style.display="none";
+  document.getElementById("saveGuide").style.display="none";
+  document.getElementById("inTime").value=new Date().toTimeString().slice(0,5);
+  document.getElementById("camCard").scrollIntoView({behavior:"smooth"});
 }
 
-// ===================== Keyboard =====================
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
-  }
-});
-
-// ===================== Start =====================
-init();
+function showT(m){var t=document.getElementById("toast");t.textContent=m;t.style.display="block";setTimeout(function(){t.style.display="none";},3000);}
+function showTE(m){var t=document.getElementById("toastE");t.textContent=m;t.style.display="block";setTimeout(function(){t.style.display="none";},4000);}
 </script>
 </body>
 </html>
