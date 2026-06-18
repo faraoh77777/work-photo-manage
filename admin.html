@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
-<title>WORK Photo</title>
+<title>작업 사진</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:100vh;
@@ -44,12 +44,9 @@ canvas{width:100%;border-radius:12px;display:block;}
 .hdivider{height:1px;background:#E8EEF4;margin:10px 0;}
 .save-guide{background:#EAF8F0;border:1.5px solid #A9DFBF;border-radius:10px;
   padding:12px 14px;margin-top:10px;font-size:14px;color:#1E8449;line-height:1.8;display:none;}
-.save-guide b{color:#1A7A3A;}
 .list-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
 .list-title{font-size:15px;font-weight:700;color:#1A2332;}
 .list-count{font-size:15px;font-weight:800;color:#2E5F9E;}
-.clear-btn{background:none;border:1.5px solid #E74C3C;border-radius:8px;
-  color:#E74C3C;font-size:13px;padding:5px 12px;cursor:pointer;font-weight:700;}
 .saved-list{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px;}
 .saved-item{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;
   border:2px solid #D1DCE8;box-shadow:0 2px 6px rgba(0,0,0,0.1);}
@@ -61,19 +58,12 @@ canvas{width:100%;border-radius:12px;display:block;}
   font-weight:800;text-shadow:0 1px 3px rgba(0,0,0,0.6);}
 .empty-msg{grid-column:span 3;text-align:center;padding:24px;color:#A0BBD4;font-size:15px;}
 .bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:9999;
-  padding:12px 16px 24px;background:linear-gradient(transparent,#F0F4F8 35%);}
-.btn-share{width:100%;padding:16px;border:none;border-radius:14px;font-size:17px;
-  font-weight:800;cursor:pointer;background:linear-gradient(135deg,#F6C90E,#E0B800);
-  color:#1A2332;display:flex;align-items:center;justify-content:center;gap:8px;
-  box-shadow:0 4px 12px rgba(230,185,0,0.4);}
-.btn-share:disabled{background:#D5DDE5;color:#8A9BAC;cursor:not-allowed;box-shadow:none;}
-.bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:9999;
   padding:10px 16px 24px;background:linear-gradient(transparent,#F0F4F8 35%);}
 .btn-share{width:100%;padding:15px;border:none;border-radius:14px;font-size:16px;
   font-weight:800;cursor:pointer;background:#FEE500;color:#1A2332;
   display:flex;align-items:center;justify-content:center;gap:8px;
   box-shadow:0 4px 12px rgba(230,185,0,0.4);}
-.btn-share:disabled{background:#D5DDE5;color:#8A9BAC;cursor:not-allowed;box-shadow:none;}left:50%;transform:translateX(-50%);
+#toast,#toastE{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);
   padding:12px 22px;border-radius:12px;font-size:15px;font-weight:700;
   display:none;z-index:9998;white-space:nowrap;color:#fff;
   box-shadow:0 4px 12px rgba(0,0,0,0.2);}
@@ -96,8 +86,8 @@ canvas{width:100%;border-radius:12px;display:block;}
     <input type="time" id="inTime" class="f"/>
   </div>
 
-  <div class="flbl">TAG 번호</div>
-  <input type="text" id="inTag" class="f" placeholder="예: PT-2101, FT-2305"/>
+  <div class="flbl">NAME (TAG, EQ 등 모든 기기의 번호)</div>
+  <input type="text" id="inTag" class="f" placeholder="예: PT-2101, EQ-001 등 기기 번호"/>
 
   <div class="flbl">작업 구분</div>
   <div style="display:flex;gap:10px;margin-bottom:4px;">
@@ -114,6 +104,23 @@ canvas{width:100%;border-radius:12px;display:block;}
       <input type="radio" name="workType" id="wtMod" value="수정"
         style="width:18px;height:18px;accent-color:#E67E22;"/>
       &#9999;&#65039; 수정
+    </label>
+  </div>
+
+  <div id="phaseRow" style="display:none;gap:10px;margin-top:8px;">
+    <label style="flex:1;display:flex;align-items:center;gap:8px;background:#F7FAFC;
+      border:1.5px solid #C8D8E8;border-radius:10px;padding:13px 14px;cursor:pointer;
+      font-size:16px;font-weight:700;color:#7F8C8D;">
+      <input type="radio" name="workPhase" id="phBefore" value="작업전" checked
+        style="width:18px;height:18px;accent-color:#7F8C8D;"/>
+      &#128247; 작업전
+    </label>
+    <label style="flex:1;display:flex;align-items:center;gap:8px;background:#F7FAFC;
+      border:1.5px solid #C8D8E8;border-radius:10px;padding:13px 14px;cursor:pointer;
+      font-size:16px;font-weight:700;color:#27AE60;">
+      <input type="radio" name="workPhase" id="phAfter" value="작업후"
+        style="width:18px;height:18px;accent-color:#27AE60;"/>
+      &#9989; 작업후
     </label>
   </div>
 
@@ -143,18 +150,8 @@ canvas{width:100%;border-radius:12px;display:block;}
 
   <div class="flbl">작업 구역</div>
   <select id="inLoc" class="f">
-    <option>Unit-2120 / Area-A</option>
-    <option>Unit-2120 / Area-B</option>
-    <option>Unit-2120 / Area-C</option>
-    <option>Unit-2120 / Cable Tray</option>
-    <option>Unit-2120 / Control Room</option>
-    <option>Unit-2130 / Area-A</option>
-    <option>Unit-2130 / Area-B</option>
-    <option>Unit-2130 / Main Gate</option>
-    <option>Unit-2130 / Control Room</option>
-    <option>CCR / Remote Rack Room</option>
-    <option>U&amp;O / Main Building</option>
-    <option>SHAHEEN Site (기타)</option>
+    <option>SCC</option>
+    <option>U&amp;O</option>
   </select>
 
   <div class="flbl">팀 이름</div>
@@ -176,7 +173,6 @@ canvas{width:100%;border-radius:12px;display:block;}
     <div class="corner bl"></div><div class="corner br"></div>
   </div>
   <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none"/>
-
 </div>
 
 <!-- 미리보기 -->
@@ -194,7 +190,7 @@ canvas{width:100%;border-radius:12px;display:block;}
 </div>
 
 <!-- 저장된 사진 목록 -->
-<div class="card" id="listCard">
+<div class="card">
   <div class="list-header">
     <div>
       <span class="list-title">저장된 사진 </span>
@@ -202,25 +198,20 @@ canvas{width:100%;border-radius:12px;display:block;}
       <span class="list-title">장</span>
     </div>
   </div>
-  <div class="select-guide" id="selectGuide" style="display:none;">
-    사진을 탭하여 선택 후 전송하세요
-  </div>
   <div class="saved-list" id="savedList">
     <div class="empty-msg">촬영된 사진이 없습니다</div>
   </div>
 </div>
 
-
-
-<div id="toast"></div>
-<div id="toastE"></div>
-
-<!-- 하단 고정 카카오 전송 버튼 -->
+<!-- 하단 고정 버튼 -->
 <div class="bottom-bar">
   <button class="btn-share" id="shareBtn" onclick="sharePhotos()">
     &#128172; 카카오톡으로 전송
   </button>
 </div>
+
+<div id="toast"></div>
+<div id="toastE"></div>
 
 <script>
 var CC={
@@ -237,14 +228,19 @@ var now=new Date();
 document.getElementById("inDate").value=now.toISOString().slice(0,10);
 document.getElementById("inTime").value=now.toTimeString().slice(0,5);
 updCat();
+togglePhaseRow();
 
 document.getElementById("camBox").addEventListener("click",function(){document.getElementById("fileInput").click();});
-
 document.getElementById("fileInput").addEventListener("change",loadImg);
 document.getElementById("saveBtn").addEventListener("click",savePhoto);
-
 document.getElementById("inCat").addEventListener("change",updCat);
 document.querySelectorAll('input[name="workType"]').forEach(function(r){
+  r.addEventListener("change",function(){
+    togglePhaseRow();
+    if(loadedImg)renderCanvas();
+  });
+});
+document.querySelectorAll('input[name="workPhase"]').forEach(function(r){
   r.addEventListener("change",function(){if(loadedImg)renderCanvas();});
 });
 ["inDate","inTime","inTag","inCat","inLoc","inLeader","inNote"].forEach(function(id){
@@ -259,6 +255,21 @@ document.querySelectorAll('input[name="workType"]').forEach(function(r){
 function updCat(){
   var v=document.getElementById("inCat").value;
   document.getElementById("catBar").style.background=CC[v]||"#7F8C8D";
+}
+
+function togglePhaseRow(){
+  var isMod=document.getElementById("wtMod").checked;
+  document.getElementById("phaseRow").style.display=isMod?"flex":"none";
+}
+
+function getWorkLabel(){
+  var wt=document.querySelector('input[name="workType"]:checked').value;
+  if(wt==="수정"){
+    var phaseEl=document.querySelector('input[name="workPhase"]:checked');
+    var phase=phaseEl?phaseEl.value:"작업전";
+    return wt+"-"+phase;
+  }
+  return wt;
 }
 
 function crop43(img){
@@ -308,34 +319,69 @@ function renderCanvas(){
   var cat=catEl.options[catEl.selectedIndex].text;
   var loc=document.getElementById("inLoc").value;
   var leader=document.getElementById("inLeader").value.trim();
-  var wt=document.querySelector('input[name="workType"]:checked').value;
+  var note=document.getElementById("inNote").value.trim()||"-";
+  var wt=getWorkLabel();
 
-  var fs=Math.max(28,Math.round(W*0.042));
-  var lh=Math.round(fs*1.5);
-  var padX=Math.round(W*0.06);
+  var fs=Math.max(12,Math.round(W*0.018));
+  var lh=Math.round(fs*1.4);
+  var padX=Math.round(W*0.025);
   var padY=Math.round(fs*0.3);
+  var bgStyle="rgba(0,0,0,0.82)";
+  var borderH=Math.max(2,Math.round(W*0.003));
 
   ctx.textBaseline="top";
   ctx.font="bold "+fs+"px Arial,sans-serif";
-  ctx.fillStyle="#FFD600";
-  ctx.fillText("["+wt+"] "+cat,padX,padY);
 
-  var botRows=[[date+"  "+time,tag||"-"],[loc,leader||"-"]];
-  var botBoxH=botRows.length*lh;
-  var botBoxY=H-botBoxH-padY;
-  var colW=(W-padX*2)/2;
+  /* 상단 바 */
+  var topBoxH=lh+padY*2;
+  ctx.fillStyle=bgStyle;
+  ctx.fillRect(0,0,W,topBoxH);
+  ctx.fillStyle="#FFFFFF";
+  ctx.fillRect(0,topBoxH-borderH,W,borderH);
+  ctx.fillStyle="#FFFFFF";
+  var topLeftTxt="["+wt+"] "+cat;
+  var dateStr=date+"  "+time;
+  var tfs=fs;
+  while(ctx.measureText(topLeftTxt).width+ctx.measureText(dateStr).width+padX*3>W&&tfs>10){
+    tfs--;ctx.font="bold "+tfs+"px Arial,sans-serif";
+  }
+  ctx.fillText(topLeftTxt,padX,padY);
+  var dateW=ctx.measureText(dateStr).width;
+  ctx.fillText(dateStr,W-padX-dateW,padY);
 
-  botRows.forEach(function(cols,row){
-    var y=botBoxY+row*lh;
-    cols.forEach(function(txt,col){
-      ctx.fillStyle=(row===0&&col===0)?"#FFD600":"#FFFFFF";
-      var x=padX+col*colW;
-      var dfs=fs;
-      ctx.font="bold "+dfs+"px Arial,sans-serif";
-      while(ctx.measureText(txt).width>colW-8&&dfs>14){dfs--;ctx.font="bold "+dfs+"px Arial,sans-serif";}
-      ctx.fillText(txt,x,y);
-    });
-  });
+  /* 하단 바 2행 */
+  var botBoxH=lh*2+padY*2;
+  var botBoxY=H-botBoxH;
+  ctx.fillStyle=bgStyle;
+  ctx.fillRect(0,botBoxY,W,botBoxH);
+  ctx.fillStyle="#FFFFFF";
+  ctx.fillRect(0,botBoxY,W,borderH);
+  ctx.fillRect(W/2,botBoxY+borderH,borderH,botBoxH-borderH);
+
+  ctx.fillStyle="#FFFFFF";
+  /* 행1 좌: NAME (작업구분) */
+  var tagTxt=(tag||"-")+"  ("+wt+")";
+  var dfs=fs;
+  ctx.font="bold "+dfs+"px Arial,sans-serif";
+  while(ctx.measureText(tagTxt).width>W/2-padX*2&&dfs>12){dfs--;ctx.font="bold "+dfs+"px Arial,sans-serif";}
+  ctx.fillText(tagTxt,padX,botBoxY+padY);
+  /* 행1 우: AREA */
+  ctx.font="bold "+fs+"px Arial,sans-serif";
+  var areaW=ctx.measureText(loc).width;
+  var afs=fs;
+  while(areaW>W/2-padX*2&&afs>12){afs--;ctx.font="bold "+afs+"px Arial,sans-serif";areaW=ctx.measureText(loc).width;}
+  ctx.fillText(loc,W/2+padX,botBoxY+padY);
+  /* 행2 좌: 특이사항 */
+  ctx.font="bold "+fs+"px Arial,sans-serif";
+  var nfs=fs;
+  while(ctx.measureText(note).width>W/2-padX*2&&nfs>12){nfs--;ctx.font="bold "+nfs+"px Arial,sans-serif";}
+  ctx.fillText(note,padX,botBoxY+padY+lh);
+  /* 행2 우: 팀이름 */
+  ctx.font="bold "+fs+"px Arial,sans-serif";
+  var ldr=leader||"-";
+  var lfs=fs;
+  while(ctx.measureText(ldr).width>W/2-padX*2&&lfs>12){lfs--;ctx.font="bold "+lfs+"px Arial,sans-serif";}
+  ctx.fillText(ldr,W/2+padX,botBoxY+padY+lh);
 }
 
 function savePhoto(){
@@ -347,9 +393,8 @@ function savePhoto(){
   var date=document.getElementById("inDate").value.replace(/-/g,"");
   var time=document.getElementById("inTime").value.replace(":","");
   var tag=(document.getElementById("inTag").value.trim().replace(/\s/g,"_"))||"photo";
-  var wt=document.querySelector('input[name="workType"]:checked').value;
-  var idx=savedPhotos.length+1;
-  var fname="WORK_"+wt+"_"+date+"_"+time+"_"+tag+"_"+idx+".jpg";
+  var wt=getWorkLabel();
+  var fname="WORK_"+wt+"_"+date+"_"+time+"_"+tag+"_"+(savedPhotos.length+1)+".jpg";
   var dataUrl=cv.toDataURL("image/jpeg",0.92);
 
   var byteStr=atob(dataUrl.split(",")[1]);
@@ -357,13 +402,10 @@ function savePhoto(){
   var ia=new Uint8Array(ab);
   for(var i=0;i<byteStr.length;i++)ia[i]=byteStr.charCodeAt(i);
   var blob=new Blob([ab],{type:"image/jpeg"});
-
   savedPhotos.push({dataUrl:dataUrl,filename:fname,blob:blob});
 
-  /* 개별 파일로 즉시 다운로드 */
   var a=document.createElement("a");
-  a.href=dataUrl;
-  a.download=fname;
+  a.href=dataUrl;a.download=fname;
   document.body.appendChild(a);a.click();document.body.removeChild(a);
 
   updateList();
@@ -379,7 +421,6 @@ function savePhoto(){
 function updateList(){
   var cnt=savedPhotos.length;
   document.getElementById("photoCount").textContent=cnt;
-  document.getElementById("selectGuide").style.display="none";
   var list=document.getElementById("savedList");
   if(cnt===0){list.innerHTML='<div class="empty-msg">촬영된 사진이 없습니다</div>';return;}
   var html="";
@@ -393,12 +434,37 @@ function updateList(){
   list.innerHTML=html;
 }
 
-window.removePhoto=function(idx){
-  savedPhotos.splice(idx,1);
-  updateList();
-};
+window.removePhoto=function(idx){savedPhotos.splice(idx,1);updateList();};
 
+function sharePhotos(){
+  if(!savedPhotos.length){showTE("공유할 사진이 없습니다.");return;}
+  var date=document.getElementById("inDate").value;
+  var loc=document.getElementById("inLoc").value;
+  var leader=document.getElementById("inLeader").value.trim()||"-";
+  var tag=document.getElementById("inTag").value.trim()||"-";
+  var cat=document.getElementById("inCat").options[document.getElementById("inCat").selectedIndex].text;
+  var note=document.getElementById("inNote").value.trim()||"-";
+  var wt=getWorkLabel();
+  var txt="[작업사진] "+wt+" / "+cat
+    +"\nNAME: "+tag+"\n날짜: "+date
+    +"\n구역: "+loc+"\n팀: "+leader
+    +"\n특이사항: "+note
+    +"\n총 "+savedPhotos.length+"장";
 
+  if(!navigator.share){showTE("Chrome 또는 Safari로 접속해주세요.");return;}
+
+  var files=savedPhotos.map(function(p){return new File([p.blob],p.filename,{type:"image/jpeg"});});
+  var shareData={files:files,title:"[작업사진] "+savedPhotos.length+"장",text:txt};
+
+  if(navigator.canShare&&navigator.canShare(shareData)){
+    navigator.share(shareData)
+      .then(function(){showT("전송 완료! ("+savedPhotos.length+"장)");})
+      .catch(function(e){if(e.name!=="AbortError")showTE("전송 실패: "+e.message);});
+  } else {
+    navigator.share({title:"[작업사진]",text:txt})
+      .then(function(){showT("공유 완료!");}).catch(function(){});
+  }
+}
 
 function resetCam(){
   loadedImg=null;
@@ -415,44 +481,6 @@ function resetCam(){
   document.getElementById("saveGuide").style.display="none";
   document.getElementById("inTime").value=new Date().toTimeString().slice(0,5);
   document.getElementById("camCard").scrollIntoView({behavior:"smooth"});
-}
-
-function sharePhotos(){
-  if(!savedPhotos.length){showTE("공유할 사진이 없습니다.");return;}
-
-  var date  =document.getElementById("inDate").value;
-  var loc   =document.getElementById("inLoc").value;
-  var leader=document.getElementById("inLeader").value.trim()||"-";
-  var tag   =document.getElementById("inTag").value.trim()||"-";
-  var cat   =document.getElementById("inCat").options[document.getElementById("inCat").selectedIndex].text;
-  var note  =document.getElementById("inNote").value.trim()||"-";
-  var wt    =document.querySelector('input[name="workType"]:checked').value;
-  var txt   ="[작업사진] "+wt+" / "+cat
-    +"\nTAG: "+tag+"\n날짜: "+date
-    +"\n구역: "+loc+"\n팀: "+leader
-    +"\n특이사항: "+note
-    +"\n총 "+savedPhotos.length+"장";
-
-  if(!navigator.share){
-    showTE("Chrome 또는 Safari로 접속해주세요.");
-    return;
-  }
-
-  var files=savedPhotos.map(function(p){
-    return new File([p.blob],p.filename,{type:"image/jpeg"});
-  });
-  var shareData={files:files,title:"[작업사진] "+savedPhotos.length+"장",text:txt};
-
-  if(navigator.canShare&&navigator.canShare(shareData)){
-    navigator.share(shareData)
-      .then(function(){showT("전송 완료! ("+savedPhotos.length+"장)");})
-      .catch(function(e){
-        if(e.name!=="AbortError") showTE("전송 실패: "+e.message);
-      });
-  } else {
-    navigator.share({title:"[작업사진]",text:txt})
-      .then(function(){showT("공유 완료!");}).catch(function(){});
-  }
 }
 
 function showT(m){var t=document.getElementById("toast");t.textContent=m;t.style.display="block";setTimeout(function(){t.style.display="none";},3000);}
