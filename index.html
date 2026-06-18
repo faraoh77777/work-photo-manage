@@ -384,17 +384,43 @@ function renderCanvas(){
   ctx.fillText(ldr,W/2+padX,botBoxY+padY+lh);
 }
 
+function sanitizeForFilename(str){
+  if(!str)return "";
+  return String(str)
+    .trim()
+    .replace(/[\\\/:*?"<>|]/g,"")   // 파일명에 쓸 수 없는 특수문자 제거
+    .replace(/\s+/g,"_")            // 공백은 언더스코어로
+    .slice(0,30);                   // 항목별 길이 제한(전체 파일명 과다 길이 방지)
+}
+
+function buildFileName(idx){
+  var date=document.getElementById("inDate").value.replace(/-/g,"");
+  var time=document.getElementById("inTime").value.replace(":","");
+  var tag=sanitizeForFilename(document.getElementById("inTag").value)||"NONAME";
+  var catEl=document.getElementById("inCat");
+  var cat=sanitizeForFilename(catEl.options[catEl.selectedIndex].text)||"기타";
+  var loc=sanitizeForFilename(document.getElementById("inLoc").value)||"구역없음";
+  var leader=sanitizeForFilename(document.getElementById("inLeader").value)||"팀없음";
+  var note=sanitizeForFilename(document.getElementById("inNote").value)||"특이사항없음";
+  var wt=sanitizeForFilename(getWorkLabel());
+
+  var parts=["WORK",date,time,wt,cat,tag,loc,leader,note,idx];
+  var fname=parts.join("_")+".jpg";
+
+  // 윈도우 등에서 파일명 전체 길이 제한(확장자 포함 약 200자)을 넘지 않도록 보정
+  if(fname.length>200){
+    fname=fname.slice(0,196)+".jpg";
+  }
+  return fname;
+}
+
 function savePhoto(){
   if(!loadedImg)return;
   var btn=document.getElementById("saveBtn");
   btn.disabled=true;btn.textContent="저장 중...";
 
   var cv=document.getElementById("canvas");
-  var date=document.getElementById("inDate").value.replace(/-/g,"");
-  var time=document.getElementById("inTime").value.replace(":","");
-  var tag=(document.getElementById("inTag").value.trim().replace(/\s/g,"_"))||"photo";
-  var wt=getWorkLabel();
-  var fname="WORK_"+wt+"_"+date+"_"+time+"_"+tag+"_"+(savedPhotos.length+1)+".jpg";
+  var fname=buildFileName(savedPhotos.length+1);
   var dataUrl=cv.toDataURL("image/jpeg",0.92);
 
   var byteStr=atob(dataUrl.split(",")[1]);
