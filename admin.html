@@ -423,12 +423,23 @@ function savePhoto(){
   var fname=buildFileName(savedPhotos.length+1);
   var dataUrl=cv.toDataURL("image/jpeg",0.92);
 
+  var info={
+    date:document.getElementById("inDate").value,
+    time:document.getElementById("inTime").value,
+    tag:document.getElementById("inTag").value.trim()||"-",
+    cat:document.getElementById("inCat").options[document.getElementById("inCat").selectedIndex].text,
+    loc:document.getElementById("inLoc").value,
+    leader:document.getElementById("inLeader").value.trim()||"-",
+    note:document.getElementById("inNote").value.trim()||"-",
+    wt:getWorkLabel()
+  };
+
   var byteStr=atob(dataUrl.split(",")[1]);
   var ab=new ArrayBuffer(byteStr.length);
   var ia=new Uint8Array(ab);
   for(var i=0;i<byteStr.length;i++)ia[i]=byteStr.charCodeAt(i);
   var blob=new Blob([ab],{type:"image/jpeg"});
-  savedPhotos.push({dataUrl:dataUrl,filename:fname,blob:blob});
+  savedPhotos.push({dataUrl:dataUrl,filename:fname,blob:blob,info:info});
 
   var a=document.createElement("a");
   a.href=dataUrl;a.download=fname;
@@ -464,18 +475,16 @@ window.removePhoto=function(idx){savedPhotos.splice(idx,1);updateList();};
 
 function sharePhotos(){
   if(!savedPhotos.length){showTE("공유할 사진이 없습니다.");return;}
-  var date=document.getElementById("inDate").value;
-  var loc=document.getElementById("inLoc").value;
-  var leader=document.getElementById("inLeader").value.trim()||"-";
-  var tag=document.getElementById("inTag").value.trim()||"-";
-  var cat=document.getElementById("inCat").options[document.getElementById("inCat").selectedIndex].text;
-  var note=document.getElementById("inNote").value.trim()||"-";
-  var wt=getWorkLabel();
-  var txt="[작업사진] "+wt+" / "+cat
-    +"\nNAME: "+tag+"\n날짜: "+date
-    +"\n구역: "+loc+"\n팀: "+leader
-    +"\n특이사항: "+note
-    +"\n총 "+savedPhotos.length+"장";
+
+  var txt="[작업사진] 총 "+savedPhotos.length+"장\n";
+  savedPhotos.forEach(function(p,i){
+    var info=p.info;
+    txt+="\n"+(i+1)+". ["+info.wt+"] "+info.cat
+      +"\n   NAME: "+info.tag
+      +" / 날짜: "+info.date+" "+info.time
+      +"\n   구역: "+info.loc+" / 팀: "+info.leader
+      +"\n   특이사항: "+info.note+"\n";
+  });
 
   if(!navigator.share){showTE("Chrome 또는 Safari로 접속해주세요.");return;}
 
