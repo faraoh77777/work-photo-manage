@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <title>작업 사진</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/piexifjs/2.0.0-beta.8/piexif.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:100vh;
@@ -185,6 +186,7 @@ canvas{width:100%;border-radius:12px;display:block;}
     <b>&#9989; 저장 완료!</b><br/>
     &#128241; 안드로이드: 다운로드 폴더 확인<br/>
     &#127381; 아이폰: 공유 &#8594; 사진에 저장<br/>
+    &#128202; 파일 속성(자세히)에 작업 정보가 함께 저장됩니다<br/>
     &#128197; <span id="savedName" style="color:#1A7A3A;font-size:13px;"></span>
   </div>
 </div>
@@ -222,7 +224,7 @@ var CC={
   scaffold:"#7F8C8D",etc:"#95A5A6"
 };
 
-var loadedImg=null, savedPhotos=[], lockedInfo=null;
+var loadedImg=null, savedPhotos=[];
 
 var now=new Date();
 document.getElementById("inDate").value=now.toISOString().slice(0,10);
@@ -235,9 +237,22 @@ document.getElementById("fileInput").addEventListener("change",loadImg);
 document.getElementById("saveBtn").addEventListener("click",savePhoto);
 document.getElementById("inCat").addEventListener("change",updCat);
 document.querySelectorAll('input[name="workType"]').forEach(function(r){
-  r.addEventListener("change",function(){togglePhaseRow();});
+  r.addEventListener("change",function(){
+    togglePhaseRow();
+    if(loadedImg)renderCanvas();
+  });
 });
-document.getElementById("inCat").addEventListener("change",updCat);
+document.querySelectorAll('input[name="workPhase"]').forEach(function(r){
+  r.addEventListener("change",function(){if(loadedImg)renderCanvas();});
+});
+["inDate","inTime","inTag","inCat","inLoc","inLeader","inNote"].forEach(function(id){
+  ["input","change"].forEach(function(ev){
+    document.getElementById(id).addEventListener(ev,function(){
+      if(loadedImg)renderCanvas();
+      if(id==="inCat")updCat();
+    });
+  });
+});
 
 function updCat(){
   var v=document.getElementById("inCat").value;
@@ -259,6 +274,97 @@ function getWorkLabel(){
   return wt;
 }
 
+function sanitizeForFilename(str){
+  if(!str)return "";
+  return String(str)
+    .trim()
+    .replace(/[\\\/:*?"<>|]/g,"")
+    .replace(/\s+/g,"_")
+    .slice(0,30);
+}
+
+function buildFileName(idx){
+  var date=document.getElementById("inDate").value.replace(/-/g,"");
+  var time=document.getElementById("inTime").value.replace(":","");
+  var tag=sanitizeForFilename(document.getElementById("inTag").value)||"NONAME";
+  var catEl=document.getElementById("inCat");
+  var cat=sanitizeForFilename(catEl.options[catEl.selectedIndex].text)||"기타";
+  var loc=sanitizeForFilename(document.getElementById("inLoc").value)||"구역없음";
+  var leader=sanitizeForFilename(document.getElementById("inLeader").value)||"팀없음";
+  var note=sanitizeForFilename(document.getElementById("inNote").value)||"특이사항없음";
+  var wt=sanitizeForFilename(getWorkLabel());
+
+  var parts=["WORK",date,time,wt,cat,tag,loc,leader,note,idx];
+  var fname=parts.join("_")+".jpg";
+
+  if(fname.length>200){
+    fname=fname.slice(0,196)+".jpg";
+  }
+  return fname;
+}
+
+/* ===== EXIF 메타데이터 삽입 (파일 속성/세부정보에 작업정보 기록) ===== */
+function buildInfoText(info){
+  return "["+info.wt+"] "+info.cat
+    +"  NAME:"+info.tag
+    +"  날짜:"+info.date+" "+info.time
+    +"  구역:"+info.loc
+    +"  팀:"+info.leader
+    +"  특이사항:"+info.note;
+}
+
+function strToXPBytes(str){
+  var bytes=[];
+  str=String(str||"");
+  for(var i=0;i<str.length;i++){
+    var code=str.charCodeAt(i);
+    bytes.push(code & 0xff);
+    bytes.push((code>>8)&0xff);
+  }
+  bytes.push(0,0);
+  return bytes;
+}
+
+function strToUserCommentBinary(str){
+  var prefix="UNICODE\u0000";
+  var bin="";
+  str=String(str||"");
+  for(var i=0;i<str.length;i++){
+    var code=str.charCodeAt(i);
+    bin+=String.fromCharCode(code & 0xff)+String.fromCharCode((code>>8)&0xff);
+  }
+  return prefix+bin;
+}
+
+function embedExif(dataUrl, info){
+  try{
+    if(typeof piexif==="undefined")return dataUrl;
+    var fullText=buildInfoText(info);
+
+    var zeroth={};
+    zeroth[piexif.ImageIFD.XPTitle]=strToXPBytes(info.tag);
+    zeroth[piexif.ImageIFD.XPSubject]=strToXPBytes(info.cat);
+    zeroth[piexif.ImageIFD.XPComment]=strToXPBytes(fullText);
+    zeroth[piexif.ImageIFD.XPKeywords]=strToXPBytes([info.wt,info.loc,info.leader].join(";"));
+    zeroth[piexif.ImageIFD.XPAuthor]=strToXPBytes(info.leader);
+
+    var exifIfd={};
+    exifIfd[piexif.ExifIFD.UserComment]=strToUserCommentBinary(fullText);
+    var dDate=(info.date||"").replace(/-/g,":");
+    var dTime=(info.time||"00:00");
+    if(dTime.length===5)dTime+=":00";
+    if(dDate)exifIfd[piexif.ExifIFD.DateTimeOriginal]=dDate+" "+dTime;
+
+    var exifObj={"0th":zeroth,"Exif":exifIfd};
+    var exifBytes=piexif.dump(exifObj);
+    return piexif.insert(exifBytes, dataUrl);
+  }catch(e){
+    console.error("EXIF 삽입 실패:",e);
+    return dataUrl;
+  }
+}
+/* ================================================================ */
+
 function crop43(img){
   var sW=img.width,sH=img.height,r=4/3,cW,cH,ox=0,oy=0;
   if(sW/sH>r){cH=sH;cW=Math.round(sH*r);ox=Math.round((sW-cW)/2);}
@@ -276,17 +382,6 @@ function loadImg(e){
     var img=new Image();
     img.onload=function(){
       loadedImg=crop43(img);
-      var catEl=document.getElementById("inCat");
-      lockedInfo={
-        date:document.getElementById("inDate").value,
-        time:document.getElementById("inTime").value,
-        tag:document.getElementById("inTag").value.trim(),
-        cat:catEl.options[catEl.selectedIndex].text,
-        loc:document.getElementById("inLoc").value,
-        leader:document.getElementById("inLeader").value.trim(),
-        note:document.getElementById("inNote").value.trim()||"-",
-        wt:getWorkLabel()
-      };
       document.getElementById("camBox").innerHTML=
         '<img src="'+loadedImg.toDataURL()+'" style="width:100%;height:100%;object-fit:cover;border-radius:12px;"/>'
         +'<div class="corner tl"></div><div class="corner tr"></div>'
@@ -303,21 +398,22 @@ function loadImg(e){
 }
 
 function renderCanvas(){
-  if(!loadedImg||!lockedInfo)return;
+  if(!loadedImg)return;
   var cv=document.getElementById("canvas");
   var W=loadedImg._w,H=loadedImg._h;
   cv.width=W;cv.height=H;
   var ctx=cv.getContext("2d");
   ctx.drawImage(loadedImg,0,0);
 
-  var date=lockedInfo.date;
-  var time=lockedInfo.time;
-  var tag=lockedInfo.tag;
-  var cat=lockedInfo.cat;
-  var loc=lockedInfo.loc;
-  var leader=lockedInfo.leader;
-  var note=lockedInfo.note;
-  var wt=lockedInfo.wt;
+  var date=document.getElementById("inDate").value;
+  var time=document.getElementById("inTime").value;
+  var tag=document.getElementById("inTag").value.trim();
+  var catEl=document.getElementById("inCat");
+  var cat=catEl.options[catEl.selectedIndex].text;
+  var loc=document.getElementById("inLoc").value;
+  var leader=document.getElementById("inLeader").value.trim();
+  var note=document.getElementById("inNote").value.trim()||"-";
+  var wt=getWorkLabel();
 
   var fs=Math.max(12,Math.round(W*0.018));
   var lh=Math.round(fs*1.4);
@@ -381,55 +477,27 @@ function renderCanvas(){
   ctx.fillText(ldr,W/2+padX,botBoxY+padY+lh);
 }
 
-function sanitizeForFilename(str){
-  if(!str)return "";
-  return String(str)
-    .trim()
-    .replace(/[\\\/:*?"<>|]/g,"")   // 파일명에 쓸 수 없는 특수문자 제거
-    .replace(/\s+/g,"_")            // 공백은 언더스코어로
-    .slice(0,30);                   // 항목별 길이 제한(전체 파일명 과다 길이 방지)
-}
-
-function buildFileName(idx){
-  var date=(lockedInfo.date||"").replace(/-/g,"");
-  var time=(lockedInfo.time||"").replace(":","");
-  var tag=sanitizeForFilename(lockedInfo.tag)||"NONAME";
-  var cat=sanitizeForFilename(lockedInfo.cat)||"기타";
-  var loc=sanitizeForFilename(lockedInfo.loc)||"구역없음";
-  var leader=sanitizeForFilename(lockedInfo.leader)||"팀없음";
-  var note=sanitizeForFilename(lockedInfo.note)||"특이사항없음";
-  var wt=sanitizeForFilename(lockedInfo.wt);
-
-  var parts=["WORK",date,time,wt,cat,tag,loc,leader,note,idx];
-  var fname=parts.join("_")+".jpg";
-
-  // 윈도우 등에서 파일명 전체 길이 제한(확장자 포함 약 200자)을 넘지 않도록 보정
-  if(fname.length>200){
-    fname=fname.slice(0,196)+".jpg";
-  }
-  return fname;
-}
-
 function savePhoto(){
   if(!loadedImg)return;
-  renderCanvas();
   var btn=document.getElementById("saveBtn");
   btn.disabled=true;btn.textContent="저장 중...";
 
   var cv=document.getElementById("canvas");
   var fname=buildFileName(savedPhotos.length+1);
-  var dataUrl=cv.toDataURL("image/jpeg",0.92);
 
   var info={
-    date:lockedInfo.date,
-    time:lockedInfo.time,
-    tag:lockedInfo.tag||"-",
-    cat:lockedInfo.cat,
-    loc:lockedInfo.loc,
-    leader:lockedInfo.leader||"-",
-    note:lockedInfo.note,
-    wt:lockedInfo.wt
+    date:document.getElementById("inDate").value,
+    time:document.getElementById("inTime").value,
+    tag:document.getElementById("inTag").value.trim()||"-",
+    cat:document.getElementById("inCat").options[document.getElementById("inCat").selectedIndex].text,
+    loc:document.getElementById("inLoc").value,
+    leader:document.getElementById("inLeader").value.trim()||"-",
+    note:document.getElementById("inNote").value.trim()||"-",
+    wt:getWorkLabel()
   };
+
+  var rawDataUrl=cv.toDataURL("image/jpeg",0.92);
+  var dataUrl=embedExif(rawDataUrl, info);
 
   var byteStr=atob(dataUrl.split(",")[1]);
   var ab=new ArrayBuffer(byteStr.length);
@@ -483,49 +551,23 @@ function sharePhotos(){
       +"\n   특이사항: "+info.note+"\n";
   });
 
+  if(!navigator.share){showTE("Chrome 또는 Safari로 접속해주세요.");return;}
+
   var files=savedPhotos.map(function(p){return new File([p.blob],p.filename,{type:"image/jpeg"});});
-
-  function fallbackDownload(){
-    savedPhotos.forEach(function(p){
-      var a=document.createElement("a");
-      a.href=p.dataUrl;a.download=p.filename;
-      document.body.appendChild(a);a.click();document.body.removeChild(a);
-    });
-    showT("사진 "+savedPhotos.length+"장 저장됨 → 카카오톡에서 직접 전송하세요");
-  }
-
-  if(!navigator.share){fallbackDownload();return;}
-
   var shareData={files:files,title:"[작업사진] "+savedPhotos.length+"장",text:txt};
 
   if(navigator.canShare&&navigator.canShare(shareData)){
     navigator.share(shareData)
       .then(function(){showT("전송 완료! ("+savedPhotos.length+"장)");})
-      .catch(function(e){
-        if(e.name==="AbortError")return;
-        fallbackDownload();
-      });
+      .catch(function(e){if(e.name!=="AbortError")showTE("전송 실패: "+e.message);});
   } else {
-    shareOneByOne(0,files,txt);
+    navigator.share({title:"[작업사진]",text:txt})
+      .then(function(){showT("공유 완료!");}).catch(function(){});
   }
 }
 
-function shareOneByOne(idx,files,txt){
-  if(idx>=files.length){showT("전송 완료! ("+files.length+"장)");return;}
-  var isLast=(idx===files.length-1);
-  var shareData=isLast
-    ?{files:[files[idx]],title:"[작업사진] "+(idx+1)+"/"+files.length,text:txt}
-    :{files:[files[idx]],title:"[작업사진] "+(idx+1)+"/"+files.length};
-  navigator.share(shareData)
-    .then(function(){shareOneByOne(idx+1,files,txt);})
-    .catch(function(e){
-      if(e.name==="AbortError")return;
-      showTE("전송 실패: "+e.message);
-    });
-}
-
 function resetCam(){
-  loadedImg=null;lockedInfo=null;
+  loadedImg=null;
   document.getElementById("fileInput").value="";
   document.getElementById("camBox").innerHTML=
     '<div class="cam-placeholder" style="text-align:center;pointer-events:none;">'
