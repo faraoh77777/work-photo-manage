@@ -222,7 +222,7 @@ var CC={
   scaffold:"#7F8C8D",etc:"#95A5A6"
 };
 
-var loadedImg=null, savedPhotos=[];
+var loadedImg=null, savedPhotos=[], lockedInfo=null;
 
 var now=new Date();
 document.getElementById("inDate").value=now.toISOString().slice(0,10);
@@ -235,22 +235,9 @@ document.getElementById("fileInput").addEventListener("change",loadImg);
 document.getElementById("saveBtn").addEventListener("click",savePhoto);
 document.getElementById("inCat").addEventListener("change",updCat);
 document.querySelectorAll('input[name="workType"]').forEach(function(r){
-  r.addEventListener("change",function(){
-    togglePhaseRow();
-    if(loadedImg)renderCanvas();
-  });
+  r.addEventListener("change",function(){togglePhaseRow();});
 });
-document.querySelectorAll('input[name="workPhase"]').forEach(function(r){
-  r.addEventListener("change",function(){if(loadedImg)renderCanvas();});
-});
-["inDate","inTime","inTag","inCat","inLoc","inLeader","inNote"].forEach(function(id){
-  ["input","change"].forEach(function(ev){
-    document.getElementById(id).addEventListener(ev,function(){
-      if(loadedImg)renderCanvas();
-      if(id==="inCat")updCat();
-    });
-  });
-});
+document.getElementById("inCat").addEventListener("change",updCat);
 
 function updCat(){
   var v=document.getElementById("inCat").value;
@@ -289,6 +276,17 @@ function loadImg(e){
     var img=new Image();
     img.onload=function(){
       loadedImg=crop43(img);
+      var catEl=document.getElementById("inCat");
+      lockedInfo={
+        date:document.getElementById("inDate").value,
+        time:document.getElementById("inTime").value,
+        tag:document.getElementById("inTag").value.trim(),
+        cat:catEl.options[catEl.selectedIndex].text,
+        loc:document.getElementById("inLoc").value,
+        leader:document.getElementById("inLeader").value.trim(),
+        note:document.getElementById("inNote").value.trim()||"-",
+        wt:getWorkLabel()
+      };
       document.getElementById("camBox").innerHTML=
         '<img src="'+loadedImg.toDataURL()+'" style="width:100%;height:100%;object-fit:cover;border-radius:12px;"/>'
         +'<div class="corner tl"></div><div class="corner tr"></div>'
@@ -305,22 +303,21 @@ function loadImg(e){
 }
 
 function renderCanvas(){
-  if(!loadedImg)return;
+  if(!loadedImg||!lockedInfo)return;
   var cv=document.getElementById("canvas");
   var W=loadedImg._w,H=loadedImg._h;
   cv.width=W;cv.height=H;
   var ctx=cv.getContext("2d");
   ctx.drawImage(loadedImg,0,0);
 
-  var date=document.getElementById("inDate").value;
-  var time=document.getElementById("inTime").value;
-  var tag=document.getElementById("inTag").value.trim();
-  var catEl=document.getElementById("inCat");
-  var cat=catEl.options[catEl.selectedIndex].text;
-  var loc=document.getElementById("inLoc").value;
-  var leader=document.getElementById("inLeader").value.trim();
-  var note=document.getElementById("inNote").value.trim()||"-";
-  var wt=getWorkLabel();
+  var date=lockedInfo.date;
+  var time=lockedInfo.time;
+  var tag=lockedInfo.tag;
+  var cat=lockedInfo.cat;
+  var loc=lockedInfo.loc;
+  var leader=lockedInfo.leader;
+  var note=lockedInfo.note;
+  var wt=lockedInfo.wt;
 
   var fs=Math.max(12,Math.round(W*0.018));
   var lh=Math.round(fs*1.4);
@@ -394,15 +391,14 @@ function sanitizeForFilename(str){
 }
 
 function buildFileName(idx){
-  var date=document.getElementById("inDate").value.replace(/-/g,"");
-  var time=document.getElementById("inTime").value.replace(":","");
-  var tag=sanitizeForFilename(document.getElementById("inTag").value)||"NONAME";
-  var catEl=document.getElementById("inCat");
-  var cat=sanitizeForFilename(catEl.options[catEl.selectedIndex].text)||"기타";
-  var loc=sanitizeForFilename(document.getElementById("inLoc").value)||"구역없음";
-  var leader=sanitizeForFilename(document.getElementById("inLeader").value)||"팀없음";
-  var note=sanitizeForFilename(document.getElementById("inNote").value)||"특이사항없음";
-  var wt=sanitizeForFilename(getWorkLabel());
+  var date=(lockedInfo.date||"").replace(/-/g,"");
+  var time=(lockedInfo.time||"").replace(":","");
+  var tag=sanitizeForFilename(lockedInfo.tag)||"NONAME";
+  var cat=sanitizeForFilename(lockedInfo.cat)||"기타";
+  var loc=sanitizeForFilename(lockedInfo.loc)||"구역없음";
+  var leader=sanitizeForFilename(lockedInfo.leader)||"팀없음";
+  var note=sanitizeForFilename(lockedInfo.note)||"특이사항없음";
+  var wt=sanitizeForFilename(lockedInfo.wt);
 
   var parts=["WORK",date,time,wt,cat,tag,loc,leader,note,idx];
   var fname=parts.join("_")+".jpg";
@@ -416,6 +412,7 @@ function buildFileName(idx){
 
 function savePhoto(){
   if(!loadedImg)return;
+  renderCanvas();
   var btn=document.getElementById("saveBtn");
   btn.disabled=true;btn.textContent="저장 중...";
 
@@ -424,14 +421,14 @@ function savePhoto(){
   var dataUrl=cv.toDataURL("image/jpeg",0.92);
 
   var info={
-    date:document.getElementById("inDate").value,
-    time:document.getElementById("inTime").value,
-    tag:document.getElementById("inTag").value.trim()||"-",
-    cat:document.getElementById("inCat").options[document.getElementById("inCat").selectedIndex].text,
-    loc:document.getElementById("inLoc").value,
-    leader:document.getElementById("inLeader").value.trim()||"-",
-    note:document.getElementById("inNote").value.trim()||"-",
-    wt:getWorkLabel()
+    date:lockedInfo.date,
+    time:lockedInfo.time,
+    tag:lockedInfo.tag||"-",
+    cat:lockedInfo.cat,
+    loc:lockedInfo.loc,
+    leader:lockedInfo.leader||"-",
+    note:lockedInfo.note,
+    wt:lockedInfo.wt
   };
 
   var byteStr=atob(dataUrl.split(",")[1]);
@@ -486,23 +483,49 @@ function sharePhotos(){
       +"\n   특이사항: "+info.note+"\n";
   });
 
-  if(!navigator.share){showTE("Chrome 또는 Safari로 접속해주세요.");return;}
-
   var files=savedPhotos.map(function(p){return new File([p.blob],p.filename,{type:"image/jpeg"});});
+
+  function fallbackDownload(){
+    savedPhotos.forEach(function(p){
+      var a=document.createElement("a");
+      a.href=p.dataUrl;a.download=p.filename;
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+    });
+    showT("사진 "+savedPhotos.length+"장 저장됨 → 카카오톡에서 직접 전송하세요");
+  }
+
+  if(!navigator.share){fallbackDownload();return;}
+
   var shareData={files:files,title:"[작업사진] "+savedPhotos.length+"장",text:txt};
 
   if(navigator.canShare&&navigator.canShare(shareData)){
     navigator.share(shareData)
       .then(function(){showT("전송 완료! ("+savedPhotos.length+"장)");})
-      .catch(function(e){if(e.name!=="AbortError")showTE("전송 실패: "+e.message);});
+      .catch(function(e){
+        if(e.name==="AbortError")return;
+        fallbackDownload();
+      });
   } else {
-    navigator.share({title:"[작업사진]",text:txt})
-      .then(function(){showT("공유 완료!");}).catch(function(){});
+    shareOneByOne(0,files,txt);
   }
 }
 
+function shareOneByOne(idx,files,txt){
+  if(idx>=files.length){showT("전송 완료! ("+files.length+"장)");return;}
+  var isLast=(idx===files.length-1);
+  var shareData=isLast
+    ?{files:[files[idx]],title:"[작업사진] "+(idx+1)+"/"+files.length,text:txt}
+    :{files:[files[idx]],title:"[작업사진] "+(idx+1)+"/"+files.length};
+  navigator.share(shareData)
+    .then(function(){shareOneByOne(idx+1,files,txt);})
+    .catch(function(e){
+      if(e.name==="AbortError")return;
+      showTE("전송 실패: "+e.message);
+    });
+}
+
 function resetCam(){
-  loadedImg=null;
+  loadedImg=null;lockedInfo=null;
   document.getElementById("fileInput").value="";
   document.getElementById("camBox").innerHTML=
     '<div class="cam-placeholder" style="text-align:center;pointer-events:none;">'
