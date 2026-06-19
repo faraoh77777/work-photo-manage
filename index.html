@@ -75,12 +75,6 @@ canvas{width:100%;border-radius:12px;display:block;}
 
 <!-- 정보 입력 -->
 <div class="card">
-  <div class="flbl">날짜 / 시간</div>
-  <div class="row2">
-    <input type="date" id="inDate" class="f"/>
-    <input type="time" id="inTime" class="f"/>
-  </div>
-
   <div class="flbl">기기번호 (Tag No, EQ No 등 모든 기기번호)</div>
   <input type="text" id="inTag" class="f" placeholder="예: PT-2101, EQ-001 등 기기 번호"/>
 
@@ -205,9 +199,6 @@ var CC={
 
 var loadedImg=null, savedPhotos=[], lockedInfo=null;
 
-var now=new Date();
-document.getElementById("inDate").value=now.toISOString().slice(0,10);
-document.getElementById("inTime").value=now.toTimeString().slice(0,5);
 updCat();
 togglePhaseRow();
 
@@ -253,13 +244,27 @@ function loadImg(e){
   var file=e.target.files[0];if(!file)return;
   var reader=new FileReader();
   reader.onload=function(ev){
+    var autoDate="",autoTime="";
+    try{
+      var exifObj=piexif.load(ev.target.result);
+      var dt=exifObj["Exif"]&&exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal];
+      if(dt&&dt.length>=16){
+        autoDate=dt.slice(0,10).replace(/:/g,"-");
+        autoTime=dt.slice(11,16);
+      }
+    }catch(ex){}
+    if(!autoDate){
+      var now=new Date();
+      autoDate=now.toISOString().slice(0,10);
+      autoTime=now.toTimeString().slice(0,5);
+    }
     var img=new Image();
     img.onload=function(){
       loadedImg=crop43(img);
       var catEl=document.getElementById("inCat");
       lockedInfo={
-        date:document.getElementById("inDate").value,
-        time:document.getElementById("inTime").value,
+        date:autoDate,
+        time:autoTime,
         tag:document.getElementById("inTag").value.trim(),
         cat:catEl.options[catEl.selectedIndex].text,
         loc:document.getElementById("inLoc").value,
@@ -270,7 +275,7 @@ function loadImg(e){
         '<img src="'+loadedImg.toDataURL()+'" style="width:100%;height:100%;object-fit:cover;border-radius:12px;"/>'
         +'<div class="corner tl"></div><div class="corner tr"></div>'
         +'<div class="corner bl"></div><div class="corner br"></div>';
-            renderCanvas();
+      renderCanvas();
       document.getElementById("prevCard").style.display="block";
       document.getElementById("prevCard").scrollIntoView({behavior:"smooth"});
     };
@@ -288,68 +293,55 @@ function renderCanvas(){
   var ctx=cv.getContext("2d");
   ctx.drawImage(loadedImg,0,0);
 
-  var date=lockedInfo.date;
-  var time=lockedInfo.time;
   var tag=lockedInfo.tag;
   var cat=lockedInfo.cat;
   var loc=lockedInfo.loc;
   var note=lockedInfo.note;
   var wt=lockedInfo.wt;
+  var date=lockedInfo.date;
+  var time=lockedInfo.time;
 
-  var fs=Math.max(12,Math.round(W*0.018));
-  var lh=Math.round(fs*1.4);
-  var padX=Math.round(W*0.025);
-  var padY=Math.round(fs*0.3);
-  var bgStyle="rgba(0,0,0,0.82)";
-  var borderH=Math.max(2,Math.round(W*0.003));
+  var label=wt==="신규"?cat:"["+wt+"] "+cat;
+  var lines=[label, tag||"-", loc, date+"  "+time];
+  if(note&&note!=="-") lines.push(note);
 
-  ctx.textBaseline="top";
+  var fs=Math.max(11,Math.round(W*0.02));
+  var padX=Math.round(W*0.018);
+  var padY=Math.round(fs*0.55);
+
+  /* 텍스트 최대 너비 측정 후 폰트 자동 축소 */
   ctx.font="bold "+fs+"px Arial,sans-serif";
-
-  /* 상단 바 */
-  var topBoxH=lh+padY*2;
-  ctx.fillStyle=bgStyle;
-  ctx.fillRect(0,0,W,topBoxH);
-  ctx.fillStyle="#FFFFFF";
-  ctx.fillRect(0,topBoxH-borderH,W,borderH);
-  ctx.fillStyle="#FFFFFF";
-  var topLeftTxt=wt==="신규" ? cat : "["+wt+"] "+cat;
-  var dateStr=date+"  "+time;
-  var tfs=fs;
-  while(ctx.measureText(topLeftTxt).width+ctx.measureText(dateStr).width+padX*3>W&&tfs>10){
-    tfs--;ctx.font="bold "+tfs+"px Arial,sans-serif";
+  var maxTxtW=0;
+  lines.forEach(function(l){maxTxtW=Math.max(maxTxtW,ctx.measureText(l).width);});
+  while(fs>10&&maxTxtW>W*0.6){
+    fs--;
+    ctx.font="bold "+fs+"px Arial,sans-serif";
+    maxTxtW=0;
+    lines.forEach(function(l){maxTxtW=Math.max(maxTxtW,ctx.measureText(l).width);});
   }
-  ctx.fillText(topLeftTxt,padX,padY);
-  var dateW=ctx.measureText(dateStr).width;
-  ctx.fillText(dateStr,W-padX-dateW,padY);
 
-  /* 하단 바 2행 */
-  var botBoxH=lh*2+padY*2;
-  var botBoxY=H-botBoxH;
-  ctx.fillStyle=bgStyle;
-  ctx.fillRect(0,botBoxY,W,botBoxH);
-  ctx.fillStyle="#FFFFFF";
-  ctx.fillRect(0,botBoxY,W,borderH);
-  ctx.fillRect(W/2,botBoxY+borderH,borderH,botBoxH-borderH);
+  var lh=Math.round(fs*1.55);
+  padX=Math.round(W*0.018);
+  padY=Math.round(fs*0.55);
 
-  ctx.fillStyle="#FFFFFF";
-  /* 행1 좌: 기기번호 */
-  var tagTxt=(tag||"-");
-  var dfs=fs;
-  ctx.font="bold "+dfs+"px Arial,sans-serif";
-  while(ctx.measureText(tagTxt).width>W/2-padX*2&&dfs>12){dfs--;ctx.font="bold "+dfs+"px Arial,sans-serif";}
-  ctx.fillText(tagTxt,padX,botBoxY+padY);
-  /* 행1 우: AREA */
+  var boxW=maxTxtW+padX*2;
+  var boxH=lines.length*lh+padY*2;
+  var boxX=W-boxW;
+  var boxY=H-boxH;
+
+  /* 우측 하단 배경 (검정 50%) */
+  ctx.fillStyle="rgba(0,0,0,0.5)";
+  ctx.fillRect(boxX,boxY,boxW,boxH);
+
+  /* 노랑 텍스트, 우측 정렬 */
+  ctx.textBaseline="top";
+  ctx.textAlign="right";
+  ctx.fillStyle="#FFE000";
   ctx.font="bold "+fs+"px Arial,sans-serif";
-  var areaW=ctx.measureText(loc).width;
-  var afs=fs;
-  while(areaW>W/2-padX*2&&afs>12){afs--;ctx.font="bold "+afs+"px Arial,sans-serif";areaW=ctx.measureText(loc).width;}
-  ctx.fillText(loc,W/2+padX,botBoxY+padY);
-  /* 행2: 특이사항 (전체 너비) */
-  ctx.font="bold "+fs+"px Arial,sans-serif";
-  var nfs=fs;
-  while(ctx.measureText(note).width>W-padX*2&&nfs>12){nfs--;ctx.font="bold "+nfs+"px Arial,sans-serif";}
-  ctx.fillText(note,padX,botBoxY+padY+lh);
+  lines.forEach(function(line,i){
+    ctx.fillText(line,W-padX,boxY+padY+i*lh);
+  });
+  ctx.textAlign="left";
 }
 
 function sanitizeForFilename(str){
@@ -507,7 +499,6 @@ function saveAllPhotos(){
   loadedImg=null;lockedInfo=null;
   updateList();
   document.getElementById("prevCard").style.display="none";
-  document.getElementById("inTime").value=new Date().toTimeString().slice(0,5);
   showT(cnt+"장 저장 완료!");
   setTimeout(function(){window.scrollTo({top:0,behavior:"smooth"});},300);
 }
@@ -524,7 +515,6 @@ function resetCam(){
     +'<div class="corner tl"></div><div class="corner tr"></div>'
     +'<div class="corner bl"></div><div class="corner br"></div>';
   document.getElementById("prevCard").style.display="none";
-  document.getElementById("inTime").value=new Date().toTimeString().slice(0,5);
   document.getElementById("camCard").scrollIntoView({behavior:"smooth"});
 }
 
