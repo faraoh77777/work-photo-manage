@@ -86,7 +86,7 @@ canvas{width:100%;border-radius:12px;display:block;}
     <input type="time" id="inTime" class="f"/>
   </div>
 
-  <div class="flbl">NAME (TAG, EQ 등 모든 기기의 번호)</div>
+  <div class="flbl">기기번호 (TAG NO, EQ NO, 모든 기기이름 및 번호)</div>
   <input type="text" id="inTag" class="f" placeholder="예: PT-2101, EQ-001 등 기기 번호"/>
 
   <div class="flbl">작업 구분</div>
@@ -140,6 +140,7 @@ canvas{width:100%;border-radius:12px;display:block;}
     <option value="conn">Connection</option>
     <option value="linecheck">Line Check</option>
     <option value="looptest">Loop Test</option>
+    <option value="leaktest">Leak Test</option>
     <option value="calib">Instrument Calibration</option>
     <option value="steamtube">Steam Tracing Tube</option>
     <option value="steamins">Steam Tracing Insulation</option>
@@ -175,13 +176,7 @@ canvas{width:100%;border-radius:12px;display:block;}
   <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none"/>
 </div>
 
-<!-- 미리보기 -->
-<div class="card" id="prevCard" style="display:none;">
-  <div class="flbl">미리보기 (4:3)</div>
-  <canvas id="canvas"></canvas>
-  <div class="hdivider"></div>
-  <button class="sbtn sbtn-save" id="saveBtn">&#128247; 목록에 추가</button>
-</div>
+<canvas id="canvas" style="display:none;"></canvas>
 
 <!-- 저장된 사진 목록 -->
 <div class="card">
@@ -207,7 +202,7 @@ var CC={
   dcs:"#E67E22",lcp:"#E74C3C",jb:"#F39C12",fi:"#2980B9",duct:"#16A085",
   tray:"#8E44AD",conduit:"#C0392B",airpipe:"#27AE60",hookup:"#2E86AB",
   stanchion:"#5D6D7E",support:"#A569BD",conn:"#E74C3C",linecheck:"#1ABC9C",
-  looptest:"#3498DB",calib:"#D35400",steamtube:"#C0392B",steamins:"#922B21",
+  looptest:"#3498DB",leaktest:"#1A5276",calib:"#D35400",steamtube:"#C0392B",steamins:"#922B21",
   scaffold:"#7F8C8D",etc:"#95A5A6"
 };
 
@@ -221,7 +216,6 @@ togglePhaseRow();
 
 document.getElementById("camBox").addEventListener("click",function(){document.getElementById("fileInput").click();});
 document.getElementById("fileInput").addEventListener("change",loadImg);
-document.getElementById("saveBtn").addEventListener("click",savePhoto);
 document.getElementById("inCat").addEventListener("change",updCat);
 document.querySelectorAll('input[name="workType"]').forEach(function(r){
   r.addEventListener("change",function(){togglePhaseRow();});
@@ -275,13 +269,8 @@ function loadImg(e){
         note:document.getElementById("inNote").value.trim()||"-",
         wt:getWorkLabel()
       };
-      document.getElementById("camBox").innerHTML=
-        '<img src="'+loadedImg.toDataURL()+'" style="width:100%;height:100%;object-fit:cover;border-radius:12px;"/>'
-        +'<div class="corner tl"></div><div class="corner tr"></div>'
-        +'<div class="corner bl"></div><div class="corner br"></div>';
-            renderCanvas();
-      document.getElementById("prevCard").style.display="block";
-      document.getElementById("prevCard").scrollIntoView({behavior:"smooth"});
+      renderCanvas();
+      savePhoto();
     };
     img.src=ev.target.result;
   };
@@ -297,75 +286,52 @@ function renderCanvas(){
   var ctx=cv.getContext("2d");
   ctx.drawImage(loadedImg,0,0);
 
-  var date=lockedInfo.date;
-  var time=lockedInfo.time;
-  var tag=lockedInfo.tag;
-  var cat=lockedInfo.cat;
-  var loc=lockedInfo.loc;
-  var leader=lockedInfo.leader;
-  var note=lockedInfo.note;
-  var wt=lockedInfo.wt;
+  var catTxt=lockedInfo.wt==="신규" ? lockedInfo.cat : "["+lockedInfo.wt+"] "+lockedInfo.cat;
+  var lines=[
+    catTxt,
+    lockedInfo.tag||"-",
+    lockedInfo.loc,
+    lockedInfo.leader||"-",
+    lockedInfo.note||"-",
+    lockedInfo.date
+  ];
 
-  var fs=Math.max(12,Math.round(W*0.018));
-  var lh=Math.round(fs*1.4);
+  var fs=Math.max(11,Math.round(W*0.022));
+  var maxBoxW=Math.round(W*0.55);
   var padX=Math.round(W*0.025);
-  var padY=Math.round(fs*0.3);
-  var bgStyle="rgba(0,0,0,0.82)";
-  var borderH=Math.max(2,Math.round(W*0.003));
+  var padY=Math.round(fs*0.45);
 
   ctx.textBaseline="top";
+
+  /* 가장 긴 줄 기준으로 폰트 자동 축소 */
+  lines.forEach(function(l){
+    var tfs=fs;
+    ctx.font="bold "+tfs+"px Arial,sans-serif";
+    while(ctx.measureText(l).width>maxBoxW-padX*2&&tfs>10){
+      tfs--;ctx.font="bold "+tfs+"px Arial,sans-serif";
+    }
+    if(tfs<fs)fs=tfs;
+  });
+
+  var lh=Math.round(fs*1.6);
   ctx.font="bold "+fs+"px Arial,sans-serif";
 
-  /* 상단 바 */
-  var topBoxH=lh+padY*2;
-  ctx.fillStyle=bgStyle;
-  ctx.fillRect(0,0,W,topBoxH);
-  ctx.fillStyle="#FFFFFF";
-  ctx.fillRect(0,topBoxH-borderH,W,borderH);
-  ctx.fillStyle="#FFFFFF";
-  var topLeftTxt=wt==="신규" ? cat : "["+wt+"] "+cat;
-  var dateStr=date+"  "+time;
-  var tfs=fs;
-  while(ctx.measureText(topLeftTxt).width+ctx.measureText(dateStr).width+padX*3>W&&tfs>10){
-    tfs--;ctx.font="bold "+tfs+"px Arial,sans-serif";
-  }
-  ctx.fillText(topLeftTxt,padX,padY);
-  var dateW=ctx.measureText(dateStr).width;
-  ctx.fillText(dateStr,W-padX-dateW,padY);
+  var maxTxtW=0;
+  lines.forEach(function(l){var w=ctx.measureText(l).width;if(w>maxTxtW)maxTxtW=w;});
 
-  /* 하단 바 2행 */
-  var botBoxH=lh*2+padY*2;
-  var botBoxY=H-botBoxH;
-  ctx.fillStyle=bgStyle;
-  ctx.fillRect(0,botBoxY,W,botBoxH);
-  ctx.fillStyle="#FFFFFF";
-  ctx.fillRect(0,botBoxY,W,borderH);
-  ctx.fillRect(W/2,botBoxY+borderH,borderH,botBoxH-borderH);
+  var boxW=maxTxtW+padX*2;
+  var boxH=lines.length*lh+padY*2;
+  var margin=Math.round(W*0.02);
+  var boxX=W-boxW-margin;
+  var boxY=H-boxH-margin;
+
+  ctx.fillStyle="rgba(0,0,0,0.5)";
+  ctx.fillRect(boxX,boxY,boxW,boxH);
 
   ctx.fillStyle="#FFFFFF";
-  /* 행1 좌: NAME (작업구분) */
-  var tagTxt=(tag||"-");
-  var dfs=fs;
-  ctx.font="bold "+dfs+"px Arial,sans-serif";
-  while(ctx.measureText(tagTxt).width>W/2-padX*2&&dfs>12){dfs--;ctx.font="bold "+dfs+"px Arial,sans-serif";}
-  ctx.fillText(tagTxt,padX,botBoxY+padY);
-  /* 행1 우: AREA */
-  ctx.font="bold "+fs+"px Arial,sans-serif";
-  var areaW=ctx.measureText(loc).width;
-  var afs=fs;
-  while(areaW>W/2-padX*2&&afs>12){afs--;ctx.font="bold "+afs+"px Arial,sans-serif";areaW=ctx.measureText(loc).width;}
-  ctx.fillText(loc,W/2+padX,botBoxY+padY);
-  /* 행2 좌: 특이사항 */
-  ctx.font="bold "+fs+"px Arial,sans-serif";
-  var nfs=fs;
-  while(ctx.measureText(note).width>W/2-padX*2&&nfs>12){nfs--;ctx.font="bold "+nfs+"px Arial,sans-serif";}
-  ctx.fillText(note,padX,botBoxY+padY+lh);
-  /* 행2 우: 팀이름 */
-  ctx.font="bold "+fs+"px Arial,sans-serif";
-  var ldr=leader||"-";
-  var lfs=fs;
-  while(ctx.measureText(ldr).width>W/2-padX*2&&lfs>12){lfs--;ctx.font="bold "+lfs+"px Arial,sans-serif";}
-  ctx.fillText(ldr,W/2+padX,botBoxY+padY+lh);
+  lines.forEach(function(l,i){
+    ctx.fillText(l,boxX+padX,boxY+padY+i*lh);
+  });
 }
 
 function sanitizeForFilename(str){
@@ -399,9 +365,6 @@ function buildFileName(idx){
 
 function savePhoto(){
   if(!loadedImg)return;
-  renderCanvas();
-  var btn=document.getElementById("saveBtn");
-  btn.disabled=true;btn.textContent="추가 중...";
 
   var cv=document.getElementById("canvas");
   var fname=buildFileName(savedPhotos.length+1);
@@ -426,10 +389,7 @@ function savePhoto(){
   savedPhotos.push({dataUrl:dataUrl,filename:fname,blob:blob,info:info});
 
   updateList();
-  showT("목록에 추가! 총 "+savedPhotos.length+"장");
-
-  btn.disabled=false;
-  btn.innerHTML="&#128247; 목록에 추가";
+  showT("추가 완료! 총 "+savedPhotos.length+"장");
   setTimeout(function(){resetCam();},500);
 }
 
@@ -534,8 +494,7 @@ function resetCam(){
     +'</div>'
     +'<div class="corner tl"></div><div class="corner tr"></div>'
     +'<div class="corner bl"></div><div class="corner br"></div>';
-  document.getElementById("prevCard").style.display="none";
-    document.getElementById("inTime").value=new Date().toTimeString().slice(0,5);
+  document.getElementById("inTime").value=new Date().toTimeString().slice(0,5);
   document.getElementById("camCard").scrollIntoView({behavior:"smooth"});
 }
 
