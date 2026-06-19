@@ -180,13 +180,7 @@ canvas{width:100%;border-radius:12px;display:block;}
   <div class="flbl">미리보기 (4:3)</div>
   <canvas id="canvas"></canvas>
   <div class="hdivider"></div>
-  <button class="sbtn sbtn-save" id="saveBtn">&#128190; 저장 후 목록에 추가</button>
-  <div class="save-guide" id="saveGuide">
-    <b>&#9989; 저장 완료!</b><br/>
-    &#128241; 안드로이드: 다운로드 폴더 확인<br/>
-    &#127381; 아이폰: 공유 &#8594; 사진에 저장<br/>
-    &#128197; <span id="savedName" style="color:#1A7A3A;font-size:13px;"></span>
-  </div>
+  <button class="sbtn sbtn-save" id="saveBtn">&#128247; 목록에 추가</button>
 </div>
 
 <!-- 저장된 사진 목록 -->
@@ -201,6 +195,7 @@ canvas{width:100%;border-radius:12px;display:block;}
   <div class="saved-list" id="savedList">
     <div class="empty-msg">촬영된 사진이 없습니다</div>
   </div>
+  <button class="sbtn sbtn-save" id="saveAllBtn" onclick="saveAllPhotos()" style="display:none;margin-top:14px;">&#128190; 전체 저장 후 처음으로</button>
 </div>
 
 
@@ -231,7 +226,6 @@ document.getElementById("inCat").addEventListener("change",updCat);
 document.querySelectorAll('input[name="workType"]').forEach(function(r){
   r.addEventListener("change",function(){togglePhaseRow();});
 });
-document.getElementById("inCat").addEventListener("change",updCat);
 
 function updCat(){
   var v=document.getElementById("inCat").value;
@@ -285,8 +279,7 @@ function loadImg(e){
         '<img src="'+loadedImg.toDataURL()+'" style="width:100%;height:100%;object-fit:cover;border-radius:12px;"/>'
         +'<div class="corner tl"></div><div class="corner tr"></div>'
         +'<div class="corner bl"></div><div class="corner br"></div>';
-      document.getElementById("saveGuide").style.display="none";
-      renderCanvas();
+            renderCanvas();
       document.getElementById("prevCard").style.display="block";
       document.getElementById("prevCard").scrollIntoView({behavior:"smooth"});
     };
@@ -408,7 +401,7 @@ function savePhoto(){
   if(!loadedImg)return;
   renderCanvas();
   var btn=document.getElementById("saveBtn");
-  btn.disabled=true;btn.textContent="저장 중...";
+  btn.disabled=true;btn.textContent="추가 중...";
 
   var cv=document.getElementById("canvas");
   var fname=buildFileName(savedPhotos.length+1);
@@ -432,23 +425,18 @@ function savePhoto(){
   var blob=new Blob([ab],{type:"image/jpeg"});
   savedPhotos.push({dataUrl:dataUrl,filename:fname,blob:blob,info:info});
 
-  var a=document.createElement("a");
-  a.href=dataUrl;a.download=fname;
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
-
   updateList();
-  document.getElementById("savedName").textContent=fname;
-  document.getElementById("saveGuide").style.display="block";
-  showT("저장 완료! 총 "+savedPhotos.length+"장");
+  showT("목록에 추가! 총 "+savedPhotos.length+"장");
 
   btn.disabled=false;
-  btn.innerHTML="&#128190; 저장 후 목록에 추가";
-  setTimeout(function(){resetCam();},1000);
+  btn.innerHTML="&#128247; 목록에 추가";
+  setTimeout(function(){resetCam();},500);
 }
 
 function updateList(){
   var cnt=savedPhotos.length;
   document.getElementById("photoCount").textContent=cnt;
+  document.getElementById("saveAllBtn").style.display=cnt>0?"block":"none";
   var list=document.getElementById("savedList");
   if(cnt===0){list.innerHTML='<div class="empty-msg">촬영된 사진이 없습니다</div>';return;}
   var html="";
@@ -463,6 +451,23 @@ function updateList(){
 }
 
 window.removePhoto=function(idx){savedPhotos.splice(idx,1);updateList();};
+
+function saveAllPhotos(){
+  if(!savedPhotos.length){showTE("저장할 사진이 없습니다.");return;}
+  savedPhotos.forEach(function(p){
+    var a=document.createElement("a");
+    a.href=p.dataUrl;a.download=p.filename;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+  });
+  var cnt=savedPhotos.length;
+  savedPhotos=[];
+  loadedImg=null;lockedInfo=null;
+  updateList();
+  document.getElementById("prevCard").style.display="none";
+  document.getElementById("inTime").value=new Date().toTimeString().slice(0,5);
+  showT(cnt+"장 저장 완료!");
+  setTimeout(function(){window.scrollTo({top:0,behavior:"smooth"});},300);
+}
 
 function sharePhotos(){
   if(!savedPhotos.length){showTE("공유할 사진이 없습니다.");return;}
@@ -530,8 +535,7 @@ function resetCam(){
     +'<div class="corner tl"></div><div class="corner tr"></div>'
     +'<div class="corner bl"></div><div class="corner br"></div>';
   document.getElementById("prevCard").style.display="none";
-  document.getElementById("saveGuide").style.display="none";
-  document.getElementById("inTime").value=new Date().toTimeString().slice(0,5);
+    document.getElementById("inTime").value=new Date().toTimeString().slice(0,5);
   document.getElementById("camCard").scrollIntoView({behavior:"smooth"});
 }
 
