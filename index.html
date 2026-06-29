@@ -194,6 +194,7 @@ canvas{width:100%;border-radius:12px;display:block;}
     <div class="empty-msg">촬영된 사진이 없습니다</div>
   </div>
   <button class="sbtn sbtn-save" id="saveAllBtn" onclick="saveAllPhotos()" style="display:none;margin-top:14px;">&#128190; 전체 저장 후 처음으로</button>
+  <button class="sbtn" id="sendBtn" onclick="sendToSupabase()" style="display:none;margin-top:8px;background:linear-gradient(135deg,#2980B9,#1A5276);color:#fff;">&#9729;&#65039; 전송하기</button>
 </div>
 
 
@@ -255,20 +256,36 @@ var sbClient=null;
 try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }
 catch(e){ console.error('Supabase 초기화 실패',e); }
 
-function uploadToSupabase(blob,fname,info){
-  if(!sbClient) return Promise.resolve(false);
-  var filePath=(info.date||'nodate')+'/'+fname;
-  return sbClient.storage.from('work-photos').upload(filePath,blob,{contentType:'image/jpeg',upsert:false})
-    .then(function(res){
-      if(res.error) throw res.error;
-      return sbClient.from('photos').insert({
-        date:info.date||'', time:info.time||'', tag:info.tag||'',
-        cat:info.cat||'', wt:info.wt||'', area:info.loc||'',
-        note:info.note||'', file_path:filePath, filename:fname, source:'mobile'
+async function sendToSupabase(){
+  if(!savedPhotos.length){ showTE("전송할 사진이 없습니다."); return; }
+  if(!sbClient){ showTE("Supabase 연결 실패"); return; }
+
+  var btn=document.getElementById('sendBtn');
+  btn.disabled=true;
+  var total=savedPhotos.length, success=0;
+
+  for(var i=0;i<total;i++){
+    var p=savedPhotos[i];
+    btn.textContent='☁️ 전송 중... ('+(i+1)+'/'+total+'장)';
+    try{
+      var filePath=(p.info.date||'nodate')+'/'+p.filename;
+      var storageRes=await sbClient.storage.from('work-photo').upload(filePath,p.blob,{contentType:'image/jpeg',upsert:true});
+      if(storageRes.error) throw storageRes.error;
+      var photoUrl=sbClient.storage.from('work-photo').getPublicUrl(filePath).data.publicUrl;
+      var dbRes=await sbClient.from('work_photos').insert({
+        date:p.info.date||'', time:p.info.time||'', tag:p.info.tag||'',
+        cat:p.info.cat||'', loc:p.info.loc||'', work_type:p.info.wt||'',
+        note:p.info.note||'', photo_url:photoUrl
       });
-    })
-    .then(function(res){ if(res.error) throw res.error; return true; })
-    .catch(function(e){ console.error('Supabase 업로드 실패:',e); return false; });
+      if(dbRes.error) throw dbRes.error;
+      success++;
+    }catch(e){ console.error('전송 실패:',p.filename,e); }
+  }
+
+  btn.disabled=false;
+  btn.textContent='☁️ 전송하기';
+  if(success===total) showT('✅ '+success+'장 전송 완료!');
+  else showTE(success+'/'+total+'장 전송 (일부 실패)');
 }
 
 var loadedImg=null, savedPhotos=[], lockedInfo=null;
@@ -497,16 +514,13 @@ function savePhoto(){
   showT("추가 완료! 총 "+savedPhotos.length+"장");
   setTimeout(function(){resetCam();},500);
 
-  uploadToSupabase(blob,fname,info).then(function(ok){
-    if(ok) showT("☁️ 클라우드 전송 완료!");
-    else   showTE("⚠️ 클라우드 전송 실패 (로컬 저장은 됨)");
-  });
 }
 
 function updateList(){
   var cnt=savedPhotos.length;
   document.getElementById("photoCount").textContent=cnt;
   document.getElementById("saveAllBtn").style.display=cnt>0?"block":"none";
+  document.getElementById("sendBtn").style.display=cnt>0?"block":"none";
   var list=document.getElementById("savedList");
   if(cnt===0){list.innerHTML='<div class="empty-msg">촬영된 사진이 없습니다</div>';return;}
   var html="";
