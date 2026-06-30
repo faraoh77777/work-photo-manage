@@ -67,6 +67,13 @@ canvas{width:100%;border-radius:12px;display:block;}
 .num-badge{position:absolute;bottom:3px;left:5px;font-size:11px;color:#fff;
   font-weight:800;text-shadow:0 1px 3px rgba(0,0,0,0.6);}
 .empty-msg{grid-column:span 3;text-align:center;padding:24px;color:#A0BBD4;font-size:15px;}
+.mic-row{display:flex;gap:8px;align-items:stretch;}
+.mic-row .f{flex:1;}
+.mic-btn{flex-shrink:0;width:50px;border:1.5px solid #C8D8E8;border-radius:10px;
+  background:#F7FAFC;font-size:22px;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;transition:background 0.15s,border-color 0.15s;}
+.mic-btn.listening{background:#FDEDEC;border-color:#E74C3C;animation:micpulse 0.8s infinite alternate;}
+@keyframes micpulse{from{box-shadow:0 0 0 0 rgba(231,76,60,0.4);}to{box-shadow:0 0 0 6px rgba(231,76,60,0);}}
 #toast,#toastE{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);
   padding:12px 22px;border-radius:12px;font-size:15px;font-weight:700;
   display:none;z-index:9998;white-space:nowrap;color:#fff;
@@ -85,7 +92,10 @@ canvas{width:100%;border-radius:12px;display:block;}
 <!-- 정보 입력 -->
 <div class="card">
   <div class="flbl">기기번호 (Tag No, EQ No 등 모든 기기번호)</div>
-  <input type="text" id="inTag" class="f" placeholder="예: PT-2101, EQ-001 등 기기 번호"/>
+  <div class="mic-row">
+    <input type="text" id="inTag" class="f" placeholder="예: PT-2101, EQ-001 등 기기 번호"/>
+    <button class="mic-btn" id="micTag" onclick="startSTT('inTag','micTag')" title="음성 입력">&#127908;</button>
+  </div>
 
   <div class="flbl">작업 구분</div>
   <div style="display:flex;gap:10px;margin-bottom:4px;">
@@ -153,7 +163,10 @@ canvas{width:100%;border-radius:12px;display:block;}
   </select>
 
   <div class="flbl">특이사항</div>
-  <textarea id="inNote" class="f" placeholder="특이사항을 입력하세요..."></textarea>
+  <div class="mic-row" style="align-items:flex-start;">
+    <textarea id="inNote" class="f" placeholder="특이사항을 입력하세요..."></textarea>
+    <button class="mic-btn" id="micNote" onclick="startSTT('inNote','micNote')" title="음성 입력" style="height:70px;">&#127908;</button>
+  </div>
 </div>
 
 <!-- 카메라 -->
@@ -617,6 +630,28 @@ function resetCam(){
 
 function showT(m){var t=document.getElementById("toast");t.textContent=m;t.style.display="block";setTimeout(function(){t.style.display="none";},3000);}
 function showTE(m){var t=document.getElementById("toastE");t.textContent=m;t.style.display="block";setTimeout(function(){t.style.display="none";},4000);}
+
+// ── 음성 인식 (STT) ──────────────────────────────────
+var SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+var activeRec=null;
+function startSTT(fieldId,btnId){
+  if(!SpeechRecognition){showTE("이 브라우저는 음성 인식을 지원하지 않습니다.");return;}
+  var btn=document.getElementById(btnId);
+  if(activeRec){activeRec.stop();return;}
+  var rec=new SpeechRecognition();
+  rec.lang="ko-KR";rec.interimResults=true;rec.maxAlternatives=1;
+  activeRec=rec;btn.classList.add("listening");btn.textContent="⏹";
+  rec.onresult=function(e){
+    var t="";
+    for(var i=e.resultIndex;i<e.results.length;i++)t+=e.results[i][0].transcript;
+    document.getElementById(fieldId).value=t;
+    if(e.results[e.results.length-1].isFinal)showT("음성 입력 완료");
+  };
+  rec.onerror=function(e){if(e.error!=="aborted")showTE("음성 오류: "+e.error);_stopSTT(btn);};
+  rec.onend=function(){_stopSTT(btn);};
+  rec.start();
+}
+function _stopSTT(btn){activeRec=null;btn.classList.remove("listening");btn.textContent="🎤";}
 </script>
 </body>
 </html>
