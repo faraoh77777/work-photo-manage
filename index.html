@@ -81,6 +81,22 @@ canvas{width:100%;border-radius:12px;display:block;}
 .scan-btn:active{background:#D0E4F4;}
 .scan-btn.scanning{background:#FEF9E7;border-color:#F39C12;animation:scanpulse 0.6s infinite alternate;}
 @keyframes scanpulse{from{box-shadow:0 0 0 0 rgba(243,156,18,0.4);}to{box-shadow:0 0 0 6px rgba(243,156,18,0);}}
+.sender-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.18);
+  border:1px solid rgba(255,255,255,0.35);border-radius:20px;padding:5px 12px;
+  font-size:13px;font-weight:700;color:#fff;cursor:pointer;margin-top:6px;}
+.sender-chip:active{background:rgba(255,255,255,0.28);}
+.name-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);
+  z-index:9000;align-items:center;justify-content:center;padding:24px;}
+.name-overlay.show{display:flex;}
+.name-modal{background:#fff;border-radius:16px;padding:24px;width:100%;max-width:360px;}
+.name-modal h3{font-size:17px;font-weight:800;color:#1A2332;margin-bottom:6px;}
+.name-modal p{font-size:13px;color:#7A9AB8;margin-bottom:16px;}
+.name-modal input{width:100%;background:#F7FAFC;border:1.5px solid #C8D8E8;border-radius:10px;
+  padding:13px 14px;font-size:17px;font-weight:700;color:#1A2332;outline:none;margin-bottom:14px;
+  text-align:center;}
+.name-modal input:focus{border-color:#2E5F9E;}
+.name-modal button{width:100%;padding:14px;border:none;border-radius:10px;font-size:16px;
+  font-weight:800;cursor:pointer;background:linear-gradient(135deg,#2E5F9E,#1E3A5F);color:#fff;}
 #toast,#toastE{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);
   padding:12px 22px;border-radius:12px;font-size:15px;font-weight:700;
   display:none;z-index:9998;white-space:nowrap;color:#fff;
@@ -94,6 +110,18 @@ canvas{width:100%;border-radius:12px;display:block;}
 <div class="app-header">
   <div class="app-title">&#128247; 작업 사진</div>
   <div class="app-sub">계장 &amp; 전기 공사</div>
+  <div class="sender-chip" onclick="openNameModal()">&#128100; <span id="senderChipName">이름 설정</span></div>
+</div>
+
+<!-- 이름 입력 모달 -->
+<div class="name-overlay" id="nameOverlay">
+  <div class="name-modal">
+    <h3>&#128100; 보내는 사람 이름</h3>
+    <p>이름을 입력하면 이후 자동으로 채워집니다.</p>
+    <input type="text" id="nameInput" placeholder="예: 홍길동 팀장" maxlength="20"
+      onkeydown="if(event.key==='Enter')saveName()"/>
+    <button onclick="saveName()">확인</button>
+  </div>
 </div>
 
 <!-- 정보 입력 -->
@@ -287,7 +315,8 @@ async function sendToSupabase(){
       var dbRes=await sbClient.from('work_photos').insert({
         date:p.info.date||'', time:p.info.time||'', tag:p.info.tag||'',
         cat:p.info.cat||'', loc:p.info.loc||'', work_type:p.info.wt||'',
-        note:p.info.note||'', photo_url:photoUrl
+        note:p.info.note||'', photo_url:photoUrl,
+        sender:localStorage.getItem('senderName')||''
       });
       if(dbRes.error){
         failMsgs.push('[DB] 파일: '+p.filename+'\n오류: '+dbRes.error.message);
@@ -640,6 +669,38 @@ function resetCam(){
 
 function showT(m){var t=document.getElementById("toast");t.textContent=m;t.style.display="block";setTimeout(function(){t.style.display="none";},3000);}
 function showTE(m){var t=document.getElementById("toastE");t.textContent=m;t.style.display="block";setTimeout(function(){t.style.display="none";},4000);}
+
+// ── 보내는 사람 이름 ──────────────────────────────────
+function initSender(){
+  var name=localStorage.getItem('senderName');
+  if(name){
+    document.getElementById('senderChipName').textContent=name;
+  }else{
+    openNameModal();
+  }
+}
+function openNameModal(){
+  var name=localStorage.getItem('senderName')||'';
+  document.getElementById('nameInput').value=name;
+  document.getElementById('nameOverlay').classList.add('show');
+  setTimeout(function(){document.getElementById('nameInput').focus();},100);
+}
+function saveName(){
+  var name=document.getElementById('nameInput').value.trim();
+  if(!name){showTE("이름을 입력해주세요.");return;}
+  localStorage.setItem('senderName',name);
+  document.getElementById('senderChipName').textContent=name;
+  document.getElementById('nameOverlay').classList.remove('show');
+  showT("이름 저장: "+name);
+}
+document.addEventListener('DOMContentLoaded',function(){
+  // 오버레이 바깥 탭 시 닫기 (이름 이미 있을 때만)
+  document.getElementById('nameOverlay').addEventListener('click',function(e){
+    if(e.target===this&&localStorage.getItem('senderName'))
+      this.classList.remove('show');
+  });
+});
+initSender();
 
 // ── TAG OCR (카메라 스캔) ─────────────────────────────
 function startOCR(){
