@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <title>작업 사진</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/piexifjs/2.0.0-beta.8/piexif.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:100vh;
@@ -42,6 +43,8 @@ canvas{width:100%;border-radius:12px;display:block;}
 .sbtn-cam{background:linear-gradient(135deg,#2E5F9E,#1E3A5F);color:#fff;}
 .sbtn-save{background:linear-gradient(135deg,#27AE60,#1E8449);color:#fff;}
 .sbtn-save:disabled{background:#BDC3C7;color:#fff;cursor:not-allowed;}
+.sbtn-send{background:linear-gradient(135deg,#2980B9,#1A5276);color:#fff;}
+.sbtn-send:disabled{background:#BDC3C7;color:#fff;cursor:not-allowed;}
 .hdivider{height:1px;background:#E8EEF4;margin:10px 0;}
 .save-guide{background:#EAF8F0;border:1.5px solid #A9DFBF;border-radius:10px;
   padding:12px 14px;margin-top:10px;font-size:14px;color:#1E8449;line-height:1.8;display:none;}
@@ -182,6 +185,7 @@ canvas{width:100%;border-radius:12px;display:block;}
     <div class="empty-msg">촬영된 사진이 없습니다</div>
   </div>
   <button class="sbtn sbtn-save" id="saveAllBtn" onclick="saveAllPhotos()" style="display:none;margin-top:14px;">&#128190; 전체 저장 후 처음으로</button>
+  <button class="sbtn sbtn-send" id="sendBtn" onclick="sendToSupabase()" style="display:none;margin-top:8px;">&#9729;&#65039; 전송하기</button>
 </div>
 
 
@@ -189,6 +193,43 @@ canvas{width:100%;border-radius:12px;display:block;}
 <div id="toastE"></div>
 
 <script>
+// ── Supabase ──────────────────────────────────────────
+var SUPABASE_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
+var SUPABASE_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
+var sbClient=null;
+try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }
+catch(e){ console.error('Supabase 초기화 실패',e); }
+
+async function sendToSupabase(){
+  if(!savedPhotos.length){ showTE("전송할 사진이 없습니다."); return; }
+  if(!sbClient){ showTE("Supabase 연결 실패"); return; }
+  var btn=document.getElementById('sendBtn');
+  btn.disabled=true;
+  var total=savedPhotos.length, success=0;
+  for(var i=0;i<total;i++){
+    var p=savedPhotos[i];
+    btn.textContent='⏳ 전송 중... ('+(i+1)+'/'+total+'장)';
+    try{
+      var filePath=(p.info.date||'nodate')+'/'+p.filename;
+      var storageRes=await sbClient.storage.from('work-photo').upload(filePath,p.blob,{contentType:'image/jpeg',upsert:true});
+      if(storageRes.error) throw storageRes.error;
+      var photoUrl=sbClient.storage.from('work-photo').getPublicUrl(filePath).data.publicUrl;
+      var dbRes=await sbClient.from('work_photos').insert({
+        date:p.info.date||'', time:p.info.time||'', tag:p.info.tag||'',
+        cat:p.info.cat||'', loc:p.info.loc||'', work_type:p.info.wt||'',
+        note:p.info.note||'', photo_url:photoUrl
+      });
+      if(dbRes.error) throw dbRes.error;
+      success++;
+    }catch(e){ console.error('전송 실패:',p.filename,e); }
+  }
+  btn.disabled=false;
+  btn.textContent='☁️ 전송하기';
+  if(success===total) showT('✅ '+success+'장 전송 완료!');
+  else showTE(success+'/'+total+'장 전송 (일부 실패)');
+}
+
+// ── 앱 로직 ───────────────────────────────────────────
 var CC={
   dcs:"#E67E22",lcp:"#E74C3C",jb:"#F39C12",fi:"#2980B9",duct:"#16A085",
   tray:"#8E44AD",conduit:"#C0392B",airpipe:"#27AE60",hookup:"#2E86AB",
@@ -309,7 +350,6 @@ function renderCanvas(){
   var padX=Math.round(W*0.018);
   var padY=Math.round(fs*0.55);
 
-  /* 텍스트 최대 너비 측정 후 폰트 자동 축소 */
   ctx.font="bold "+fs+"px Arial,sans-serif";
   var maxTxtW=0;
   lines.forEach(function(l){maxTxtW=Math.max(maxTxtW,ctx.measureText(l).width);});
@@ -329,11 +369,9 @@ function renderCanvas(){
   var boxX=W-boxW;
   var boxY=H-boxH;
 
-  /* 우측 하단 배경 (검정 50%) */
   ctx.fillStyle="rgba(0,0,0,0.5)";
   ctx.fillRect(boxX,boxY,boxW,boxH);
 
-  /* 노랑 텍스트, 우측 정렬 */
   ctx.textBaseline="top";
   ctx.textAlign="right";
   ctx.fillStyle="#FFE000";
@@ -371,7 +409,6 @@ function buildFileName(idx){
   return fname;
 }
 
-/* ===== EXIF 메타데이터 삽입 (파일 속성/세부정보에 작업정보 기록) ===== */
 function buildInfoText(info){
   return "["+info.wt+"] "+info.cat
     +"  기기번호:"+info.tag
@@ -429,7 +466,6 @@ function embedExif(dataUrl, info){
     return dataUrl;
   }
 }
-/* ================================================================ */
 
 function savePhoto(){
   if(!loadedImg)return;
@@ -472,6 +508,7 @@ function updateList(){
   var cnt=savedPhotos.length;
   document.getElementById("photoCount").textContent=cnt;
   document.getElementById("saveAllBtn").style.display=cnt>0?"block":"none";
+  document.getElementById("sendBtn").style.display=cnt>0?"block":"none";
   var list=document.getElementById("savedList");
   if(cnt===0){list.innerHTML='<div class="empty-msg">촬영된 사진이 없습니다</div>';return;}
   var html="";
