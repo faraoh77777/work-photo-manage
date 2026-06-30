@@ -249,7 +249,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
       <select id="fDate" onchange="renderPhotos()"><option value="">전체 날짜</option></select>
       <input type="text" id="fSearch" placeholder="TAG NO..." oninput="renderPhotos()">
       <select id="fTeam" onchange="renderPhotos()">
-        <option value="">전체 팀</option>
+        <option value="">전체 팀명</option>
       </select>
 <select id="fWt" onchange="renderPhotos()">
         <option value="">전체 구분</option>
@@ -328,7 +328,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 
     <div class="fg-row">
       <div class="fg">
-        <label>팀 <span class="auto-badge" id="teamBadge" style="display:none">자동</span></label>
+        <label>팀명 <span class="auto-badge" id="teamBadge" style="display:none">자동</span></label>
         <select id="upTeam"></select>
       </div>
       <div class="fg">
@@ -369,7 +369,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
       <div class="det-meta">
         <div class="det-row"><div class="det-lbl">TAG</div><div class="det-val" id="dTag"></div></div>
         <div class="det-row"><div class="det-lbl">날짜/시간</div><div class="det-val" id="dDate"></div></div>
-        <div class="det-row"><div class="det-lbl">팀</div><div class="det-val" id="dTeam"></div></div>
+        <div class="det-row"><div class="det-lbl">팀명</div><div class="det-val" id="dTeam"></div></div>
         <div class="det-row"><div class="det-lbl">작업구역</div><div class="det-val" id="dArea"></div></div>
         <div class="det-row" style="grid-column:1/-1"><div class="det-lbl">특이사항</div><div class="det-val" id="dNote"></div></div>
         <div class="det-row"><div class="det-lbl">파일명</div><div class="det-val" id="dName" style="font-size:0.72rem;color:var(--tx2)"></div></div>
@@ -398,7 +398,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
       </div>
       <div class="fg"><label>작업 분류</label><select id="eCat"></select></div>
       <div class="fg-row">
-        <div class="fg"><label>팀</label><select id="eTeam"></select></div>
+        <div class="fg"><label>팀명</label><select id="eTeam"></select></div>
         <div class="fg"><label>작업구역</label><select id="eArea"></select></div>
       </div>
       <div class="fg"><label>TAG</label><input type="text" id="eTag" placeholder="예: PT-2101, FT-2305"></div>
@@ -477,10 +477,10 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
     </div>
 
     <div style="margin-bottom:18px;">
-      <div style="font-size:0.8rem;font-weight:700;color:var(--tx2);margin-bottom:10px;">👥 팀 관리</div>
+      <div style="font-size:0.8rem;font-weight:700;color:var(--tx2);margin-bottom:10px;">👥 팀명 관리</div>
       <div class="chip-row" id="teamChips"></div>
       <div class="add-row">
-        <input type="text" id="newTeam" placeholder="새 팀 이름...">
+        <input type="text" id="newTeam" placeholder="새 팀명 입력...">
         <button class="btn btn-ghost" onclick="addTeam()">+ 추가</button>
       </div>
     </div>
@@ -1038,8 +1038,6 @@ function openUpload() {
   if(selCat) document.getElementById('upCat').value=selCat;
   if(selWt){const r=document.querySelector(`input[name="upWt"][value="${selWt}"]`);if(r)r.checked=true;}
   else document.querySelector('input[name="upWt"][value="신규"]').checked=true;
-  const sender=localStorage.getItem('senderName')||'';
-  if(sender) document.getElementById('upTeam').value=sender;
   ['upTag','upNote','upDate','upTime','upCat','upArea','upTeam','wtRg'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.dataset.me='';
   });
@@ -1425,11 +1423,9 @@ function populateDateFilter() {
 }
 
 function populateSelects(){
-  const sender=localStorage.getItem('senderName')||'';
-  const allTeams=sender&&!teams.includes(sender)?[...teams,sender]:teams;
-  document.getElementById('fTeam').innerHTML='<option value="">전체 팀</option>'+allTeams.map(v=>`<option>${v}</option>`).join('');
+  document.getElementById('fTeam').innerHTML='<option value="">전체 팀명</option>'+teams.map(v=>`<option>${v}</option>`).join('');
   document.getElementById('upCat').innerHTML=cats.map(v=>`<option value="${v}">${v}</option>`).join('');
-  document.getElementById('upTeam').innerHTML='<option value="">선택</option>'+allTeams.map(v=>`<option>${v}</option>`).join('');
+  document.getElementById('upTeam').innerHTML='<option value="">선택</option>'+teams.map(v=>`<option>${v}</option>`).join('');
   document.getElementById('upArea').innerHTML='<option value="">선택</option>'+areas.map(v=>`<option>${v}</option>`).join('');
   const np=document.getElementById('upNotePreset');
   np.innerHTML='<option value="">-- 프리셋 선택 --</option>'+notePresets.map(v=>`<option>${v}</option>`).join('');
