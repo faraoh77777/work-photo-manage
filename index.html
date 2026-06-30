@@ -4,6 +4,8 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <title>작업 사진</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/piexifjs/2.0.0-beta.8/piexif.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:100vh;
@@ -41,6 +43,8 @@ canvas{width:100%;border-radius:12px;display:block;}
 .sbtn-cam{background:linear-gradient(135deg,#2E5F9E,#1E3A5F);color:#fff;}
 .sbtn-save{background:linear-gradient(135deg,#27AE60,#1E8449);color:#fff;}
 .sbtn-save:disabled{background:#BDC3C7;color:#fff;cursor:not-allowed;}
+.sbtn-send{background:linear-gradient(135deg,#2980B9,#1A5276);color:#fff;}
+.sbtn-send:disabled{background:#BDC3C7;color:#fff;cursor:not-allowed;}
 .hdivider{height:1px;background:#E8EEF4;margin:10px 0;}
 .save-guide{background:#EAF8F0;border:1.5px solid #A9DFBF;border-radius:10px;
   padding:12px 14px;margin-top:10px;font-size:14px;color:#1E8449;line-height:1.8;display:none;}
@@ -57,13 +61,7 @@ canvas{width:100%;border-radius:12px;display:block;}
 .num-badge{position:absolute;bottom:3px;left:5px;font-size:11px;color:#fff;
   font-weight:800;text-shadow:0 1px 3px rgba(0,0,0,0.6);}
 .empty-msg{grid-column:span 3;text-align:center;padding:24px;color:#A0BBD4;font-size:15px;}
-.bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:9999;
-  padding:10px 16px 24px;background:linear-gradient(transparent,#F0F4F8 35%);}
-.btn-share{width:100%;padding:15px;border:none;border-radius:14px;font-size:16px;
-  font-weight:800;cursor:pointer;background:#FEE500;color:#1A2332;
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  box-shadow:0 4px 12px rgba(230,185,0,0.4);}
-#toast,#toastE{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);
+#toast,#toastE{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);
   padding:12px 22px;border-radius:12px;font-size:15px;font-weight:700;
   display:none;z-index:9998;white-space:nowrap;color:#fff;
   box-shadow:0 4px 12px rgba(0,0,0,0.2);}
@@ -73,25 +71,14 @@ canvas{width:100%;border-radius:12px;display:block;}
 </head>
 <body>
 
-<div class="app-header" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-  <div>
-    <div class="app-title">&#128247; 작업 사진</div>
-    <div class="app-sub">계장 &amp; 전기 공사</div>
-  </div>
-  <a href="https://faraoh77777.github.io/work-photo-gallery/" style="background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.4);
-    color:#fff;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;
-    text-decoration:none;white-space:nowrap;flex-shrink:0;">&#128202; 갤러리</a>
+<div class="app-header">
+  <div class="app-title">&#128247; 작업 사진</div>
+  <div class="app-sub">계장 &amp; 전기 공사</div>
 </div>
 
 <!-- 정보 입력 -->
 <div class="card">
-  <div class="flbl">날짜 / 시간</div>
-  <div class="row2">
-    <input type="date" id="inDate" class="f"/>
-    <input type="time" id="inTime" class="f"/>
-  </div>
-
-  <div class="flbl">기기번호 (TAG NO, EQ NO, 모든 기기이름 및 번호)</div>
+  <div class="flbl">기기번호 (Tag No, EQ No 등 모든 기기번호)</div>
   <input type="text" id="inTag" class="f" placeholder="예: PT-2101, EQ-001 등 기기 번호"/>
 
   <div class="flbl">작업 구분</div>
@@ -145,7 +132,6 @@ canvas{width:100%;border-radius:12px;display:block;}
     <option value="conn">Connection</option>
     <option value="linecheck">Line Check</option>
     <option value="looptest">Loop Test</option>
-    <option value="leaktest">Leak Test</option>
     <option value="calib">Instrument Calibration</option>
     <option value="steamtube">Steam Tracing Tube</option>
     <option value="steamins">Steam Tracing Insulation</option>
@@ -159,7 +145,6 @@ canvas{width:100%;border-radius:12px;display:block;}
     <option>SCC</option>
     <option>U&amp;O</option>
   </select>
-
 
   <div class="flbl">특이사항</div>
   <textarea id="inNote" class="f" placeholder="특이사항을 입력하세요..."></textarea>
@@ -179,7 +164,13 @@ canvas{width:100%;border-radius:12px;display:block;}
   <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none"/>
 </div>
 
-<canvas id="canvas" style="display:none;"></canvas>
+<!-- 미리보기 -->
+<div class="card" id="prevCard" style="display:none;">
+  <div class="flbl">미리보기 (4:3)</div>
+  <canvas id="canvas"></canvas>
+  <div class="hdivider"></div>
+  <button class="sbtn sbtn-save" id="saveBtn">&#128247; 목록에 추가</button>
+</div>
 
 <!-- 저장된 사진 목록 -->
 <div class="card">
@@ -194,62 +185,15 @@ canvas{width:100%;border-radius:12px;display:block;}
     <div class="empty-msg">촬영된 사진이 없습니다</div>
   </div>
   <button class="sbtn sbtn-save" id="saveAllBtn" onclick="saveAllPhotos()" style="display:none;margin-top:14px;">&#128190; 전체 저장 후 처음으로</button>
-  <button class="sbtn" id="sendBtn" onclick="sendToSupabase()" style="display:none;margin-top:8px;background:linear-gradient(135deg,#2980B9,#1A5276);color:#fff;">&#9729;&#65039; 전송하기</button>
+  <button class="sbtn sbtn-send" id="sendBtn" onclick="sendToSupabase()" style="display:none;margin-top:8px;">&#9729;&#65039; 전송하기</button>
 </div>
 
 
 <div id="toast"></div>
 <div id="toastE"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/piexifjs/2.0.0-beta.8/piexif.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-function embedExif(dataUrl, info){
-  try{
-    if(typeof piexif==="undefined")return dataUrl;
-    var fullText="["+info.wt+"] "+info.cat
-      +"  NAME:"+info.tag
-      +"  날짜:"+info.date+" "+info.time
-      +"  구역:"+info.loc
-      +"  특이사항:"+info.note;
-
-    function toXP(str){
-      var b=[];str=String(str||"");
-      for(var i=0;i<str.length;i++){
-        var c=str.charCodeAt(i);
-        b.push(c&0xff);b.push((c>>8)&0xff);
-      }
-      b.push(0,0);return b;
-    }
-
-    var zeroth={};
-    zeroth[piexif.ImageIFD.XPTitle]=toXP(info.tag);
-    zeroth[piexif.ImageIFD.XPSubject]=toXP(info.cat);
-    zeroth[piexif.ImageIFD.XPComment]=toXP(fullText);
-    zeroth[piexif.ImageIFD.XPKeywords]=toXP([info.wt,info.loc].join(";"));
-
-    var exif={};
-    var dDate=(info.date||"").replace(/-/g,":");
-    var dTime=(info.time||"00:00")+":00";
-    if(dDate)exif[piexif.ExifIFD.DateTimeOriginal]=dDate+" "+dTime;
-
-    var exifBytes=piexif.dump({"0th":zeroth,"Exif":exif});
-    return piexif.insert(exifBytes, dataUrl);
-  }catch(e){
-    console.error("EXIF 오류:",e);
-    return dataUrl;
-  }
-}
-
-var CC={
-  dcs:"#E67E22",lcp:"#E74C3C",jb:"#F39C12",fi:"#2980B9",duct:"#16A085",
-  tray:"#8E44AD",conduit:"#C0392B",airpipe:"#27AE60",hookup:"#2E86AB",
-  stanchion:"#5D6D7E",support:"#A569BD",conn:"#E74C3C",linecheck:"#1ABC9C",
-  looptest:"#3498DB",leaktest:"#1A5276",calib:"#D35400",steamtube:"#C0392B",steamins:"#922B21",
-  scaffold:"#7F8C8D",etc:"#95A5A6"
-};
-
-// ── Supabase ─────────────────────────────────────────
+// ── Supabase ──────────────────────────────────────────
 var SUPABASE_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
 var SUPABASE_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
 var sbClient=null;
@@ -259,86 +203,60 @@ catch(e){ console.error('Supabase 초기화 실패',e); }
 async function sendToSupabase(){
   if(!savedPhotos.length){ showTE("전송할 사진이 없습니다."); return; }
   if(!sbClient){ showTE("Supabase 연결 실패"); return; }
-
   var btn=document.getElementById('sendBtn');
   btn.disabled=true;
-  var total=savedPhotos.length, success=0;
-
+  var total=savedPhotos.length, success=0, lastErr='';
   for(var i=0;i<total;i++){
     var p=savedPhotos[i];
-    btn.textContent='☁️ 전송 중... ('+(i+1)+'/'+total+'장)';
+    btn.textContent='⏳ 전송 중... ('+(i+1)+'/'+total+'장)';
     try{
       var filePath=(p.info.date||'nodate')+'/'+p.filename;
       var storageRes=await sbClient.storage.from('work-photo').upload(filePath,p.blob,{contentType:'image/jpeg',upsert:true});
-      if(storageRes.error) throw storageRes.error;
+      if(storageRes.error){
+        lastErr='[Storage] '+storageRes.error.message;
+        console.error('Storage 오류:',storageRes.error);
+        continue;
+      }
       var photoUrl=sbClient.storage.from('work-photo').getPublicUrl(filePath).data.publicUrl;
       var dbRes=await sbClient.from('work_photos').insert({
         date:p.info.date||'', time:p.info.time||'', tag:p.info.tag||'',
         cat:p.info.cat||'', loc:p.info.loc||'', work_type:p.info.wt||'',
         note:p.info.note||'', photo_url:photoUrl
       });
-      if(dbRes.error) throw dbRes.error;
+      if(dbRes.error){
+        lastErr='[DB] '+dbRes.error.message;
+        console.error('DB 오류:',dbRes.error);
+        continue;
+      }
       success++;
-    }catch(e){ console.error('전송 실패:',p.filename,e); }
+    }catch(e){
+      lastErr=e.message||String(e);
+      console.error('전송 실패:',p.filename,e);
+    }
   }
-
   btn.disabled=false;
   btn.textContent='☁️ 전송하기';
   if(success===total) showT('✅ '+success+'장 전송 완료!');
-  else showTE(success+'/'+total+'장 전송 (일부 실패)');
+  else showTE('실패: '+lastErr);
 }
+
+// ── 앱 로직 ───────────────────────────────────────────
+var CC={
+  dcs:"#E67E22",lcp:"#E74C3C",jb:"#F39C12",fi:"#2980B9",duct:"#16A085",
+  tray:"#8E44AD",conduit:"#C0392B",airpipe:"#27AE60",hookup:"#2E86AB",
+  stanchion:"#5D6D7E",support:"#A569BD",conn:"#E74C3C",linecheck:"#1ABC9C",
+  looptest:"#3498DB",calib:"#D35400",steamtube:"#C0392B",steamins:"#922B21",
+  scaffold:"#7F8C8D",etc:"#95A5A6"
+};
 
 var loadedImg=null, savedPhotos=[], lockedInfo=null;
 
-// ── 갤러리 IndexedDB 연동 (ShaheenPhotoDB v2, admin.html과 공유) ──
-var galleryDB=null;
-(function initGalleryDB(){
-  var req=indexedDB.open('ShaheenPhotoDB',2);
-  req.onupgradeneeded=function(e){
-    var d=e.target.result;
-    if(!d.objectStoreNames.contains('photos')){
-      var s=d.createObjectStore('photos',{keyPath:'id'});
-      s.createIndex('date','date',{unique:false});
-      s.createIndex('team','team',{unique:false});
-      s.createIndex('work','work',{unique:false});
-    }
-    if(!d.objectStoreNames.contains('settings')){
-      d.createObjectStore('settings',{keyPath:'key'});
-    }
-  };
-  req.onsuccess=function(e){galleryDB=e.target.result;};
-})();
-
-function saveToGalleryDB(dataUrl,blob,info,filename){
-  if(!galleryDB)return;
-  var memoParts=['['+info.wt+']'];
-  if(info.tag&&info.tag!=='-')memoParts.push('NAME: '+info.tag);
-  memoParts.push('구역: '+info.loc);
-  if(info.note&&info.note!=='-')memoParts.push(info.note);
-  var photo={
-    id:Date.now()+Math.random(),
-    date:info.date,
-    work:info.cat,
-    memo:memoParts.join(' / '),
-    name:filename,
-    size:blob.size,
-    dataUrl:dataUrl,
-    ocrText:'',
-    created:new Date().toISOString(),
-    source:'mobile'
-  };
-  try{galleryDB.transaction('photos','readwrite').objectStore('photos').put(photo);}
-  catch(e){console.error('갤러리 저장 실패',e);}
-}
-
-var now=new Date();
-document.getElementById("inDate").value=now.toISOString().slice(0,10);
-document.getElementById("inTime").value=now.toTimeString().slice(0,5);
 updCat();
 togglePhaseRow();
 
 document.getElementById("camBox").addEventListener("click",function(){document.getElementById("fileInput").click();});
 document.getElementById("fileInput").addEventListener("change",loadImg);
+document.getElementById("saveBtn").addEventListener("click",savePhoto);
 document.getElementById("inCat").addEventListener("change",updCat);
 document.querySelectorAll('input[name="workType"]').forEach(function(r){
   r.addEventListener("change",function(){togglePhaseRow();});
@@ -378,21 +296,40 @@ function loadImg(e){
   var file=e.target.files[0];if(!file)return;
   var reader=new FileReader();
   reader.onload=function(ev){
+    var autoDate="",autoTime="";
+    try{
+      var exifObj=piexif.load(ev.target.result);
+      var dt=exifObj["Exif"]&&exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal];
+      if(dt&&dt.length>=16){
+        autoDate=dt.slice(0,10).replace(/:/g,"-");
+        autoTime=dt.slice(11,16);
+      }
+    }catch(ex){}
+    if(!autoDate){
+      var now=new Date();
+      autoDate=now.toISOString().slice(0,10);
+      autoTime=now.toTimeString().slice(0,5);
+    }
     var img=new Image();
     img.onload=function(){
       loadedImg=crop43(img);
       var catEl=document.getElementById("inCat");
       lockedInfo={
-        date:document.getElementById("inDate").value,
-        time:document.getElementById("inTime").value,
+        date:autoDate,
+        time:autoTime,
         tag:document.getElementById("inTag").value.trim(),
         cat:catEl.options[catEl.selectedIndex].text,
         loc:document.getElementById("inLoc").value,
         note:document.getElementById("inNote").value.trim()||"-",
         wt:getWorkLabel()
       };
+      document.getElementById("camBox").innerHTML=
+        '<img src="'+loadedImg.toDataURL()+'" style="width:100%;height:100%;object-fit:cover;border-radius:12px;"/>'
+        +'<div class="corner tl"></div><div class="corner tr"></div>'
+        +'<div class="corner bl"></div><div class="corner br"></div>';
       renderCanvas();
-      savePhoto();
+      document.getElementById("prevCard").style.display="block";
+      document.getElementById("prevCard").scrollIntoView({behavior:"smooth"});
     };
     img.src=ev.target.result;
   };
@@ -408,60 +345,61 @@ function renderCanvas(){
   var ctx=cv.getContext("2d");
   ctx.drawImage(loadedImg,0,0);
 
-  var catTxt=lockedInfo.wt==="신규" ? lockedInfo.cat : "["+lockedInfo.wt+"] "+lockedInfo.cat;
-  var lines=[
-    catTxt,
-    lockedInfo.tag||"-",
-    lockedInfo.loc,
-    lockedInfo.note||"-",
-    lockedInfo.date
-  ];
+  var tag=lockedInfo.tag;
+  var cat=lockedInfo.cat;
+  var loc=lockedInfo.loc;
+  var note=lockedInfo.note;
+  var wt=lockedInfo.wt;
+  var date=lockedInfo.date;
+  var time=lockedInfo.time;
 
-  var fs=Math.max(11,Math.round(W*0.022));
-  var maxBoxW=Math.round(W*0.55);
-  var padX=Math.round(W*0.025);
-  var padY=Math.round(fs*0.45);
+  var label=wt==="신규"?cat:"["+wt+"] "+cat;
+  var lines=[label, tag||"-", loc, date+"  "+time];
+  if(note&&note!=="-") lines.push(note);
 
-  ctx.textBaseline="top";
+  var fs=Math.max(11,Math.round(W*0.02));
+  var padX=Math.round(W*0.018);
+  var padY=Math.round(fs*0.55);
 
-  /* 가장 긴 줄 기준으로 폰트 자동 축소 */
-  lines.forEach(function(l){
-    var tfs=fs;
-    ctx.font="bold "+tfs+"px Arial,sans-serif";
-    while(ctx.measureText(l).width>maxBoxW-padX*2&&tfs>10){
-      tfs--;ctx.font="bold "+tfs+"px Arial,sans-serif";
-    }
-    if(tfs<fs)fs=tfs;
-  });
-
-  var lh=Math.round(fs*1.6);
   ctx.font="bold "+fs+"px Arial,sans-serif";
-
   var maxTxtW=0;
-  lines.forEach(function(l){var w=ctx.measureText(l).width;if(w>maxTxtW)maxTxtW=w;});
+  lines.forEach(function(l){maxTxtW=Math.max(maxTxtW,ctx.measureText(l).width);});
+  while(fs>10&&maxTxtW>W*0.6){
+    fs--;
+    ctx.font="bold "+fs+"px Arial,sans-serif";
+    maxTxtW=0;
+    lines.forEach(function(l){maxTxtW=Math.max(maxTxtW,ctx.measureText(l).width);});
+  }
+
+  var lh=Math.round(fs*1.55);
+  padX=Math.round(W*0.018);
+  padY=Math.round(fs*0.55);
 
   var boxW=maxTxtW+padX*2;
   var boxH=lines.length*lh+padY*2;
-  var margin=Math.round(W*0.02);
-  var boxX=W-boxW-margin;
-  var boxY=H-boxH-margin;
+  var boxX=W-boxW;
+  var boxY=H-boxH;
 
   ctx.fillStyle="rgba(0,0,0,0.5)";
   ctx.fillRect(boxX,boxY,boxW,boxH);
 
-  ctx.fillStyle="#FFFFFF";
-  lines.forEach(function(l,i){
-    ctx.fillText(l,boxX+padX,boxY+padY+i*lh);
+  ctx.textBaseline="top";
+  ctx.textAlign="right";
+  ctx.fillStyle="#FFE000";
+  ctx.font="bold "+fs+"px Arial,sans-serif";
+  lines.forEach(function(line,i){
+    ctx.fillText(line,W-padX,boxY+padY+i*lh);
   });
+  ctx.textAlign="left";
 }
 
 function sanitizeForFilename(str){
   if(!str)return "";
   return String(str)
     .trim()
-    .replace(/[\\\/:*?"<>|]/g,"")   // 파일명에 쓸 수 없는 특수문자 제거
-    .replace(/\s+/g,"_")            // 공백은 언더스코어로
-    .slice(0,30);                   // 항목별 길이 제한(전체 파일명 과다 길이 방지)
+    .replace(/[\\\/:*?"<>|]/g,"")
+    .replace(/\s+/g,"_")
+    .slice(0,30);
 }
 
 function buildFileName(idx){
@@ -476,18 +414,79 @@ function buildFileName(idx){
   var parts=["WORK",date,time,wt,cat,tag,loc,note,idx];
   var fname=parts.join("_")+".jpg";
 
-  // 윈도우 등에서 파일명 전체 길이 제한(확장자 포함 약 200자)을 넘지 않도록 보정
   if(fname.length>200){
     fname=fname.slice(0,196)+".jpg";
   }
   return fname;
 }
 
+function buildInfoText(info){
+  return "["+info.wt+"] "+info.cat
+    +"  기기번호:"+info.tag
+    +"  날짜:"+info.date+" "+info.time
+    +"  구역:"+info.loc
+    +"  특이사항:"+info.note;
+}
+
+function strToXPBytes(str){
+  var bytes=[];
+  str=String(str||"");
+  for(var i=0;i<str.length;i++){
+    var code=str.charCodeAt(i);
+    bytes.push(code & 0xff);
+    bytes.push((code>>8)&0xff);
+  }
+  bytes.push(0,0);
+  return bytes;
+}
+
+function strToUserCommentBinary(str){
+  var prefix="UNICODE ";
+  var bin="";
+  str=String(str||"");
+  for(var i=0;i<str.length;i++){
+    var code=str.charCodeAt(i);
+    bin+=String.fromCharCode(code & 0xff)+String.fromCharCode((code>>8)&0xff);
+  }
+  return prefix+bin;
+}
+
+function embedExif(dataUrl, info){
+  try{
+    if(typeof piexif==="undefined")return dataUrl;
+    var fullText=buildInfoText(info);
+
+    var zeroth={};
+    zeroth[piexif.ImageIFD.XPTitle]=strToXPBytes(info.tag);
+    zeroth[piexif.ImageIFD.XPSubject]=strToXPBytes(info.cat);
+    zeroth[piexif.ImageIFD.XPComment]=strToXPBytes(fullText);
+    zeroth[piexif.ImageIFD.XPKeywords]=strToXPBytes([info.wt,info.loc].join(";"));
+
+    var exifIfd={};
+    exifIfd[piexif.ExifIFD.UserComment]=strToUserCommentBinary(fullText);
+    var dDate=(info.date||"").replace(/-/g,":");
+    var dTime=(info.time||"00:00");
+    if(dTime.length===5)dTime+=":00";
+    if(dDate)exifIfd[piexif.ExifIFD.DateTimeOriginal]=dDate+" "+dTime;
+
+    var exifObj={"0th":zeroth,"Exif":exifIfd};
+    var exifBytes=piexif.dump(exifObj);
+    return piexif.insert(exifBytes, dataUrl);
+  }catch(e){
+    console.error("EXIF 삽입 실패:",e);
+    return dataUrl;
+  }
+}
+
 function savePhoto(){
   if(!loadedImg)return;
+  renderCanvas();
+  var btn=document.getElementById("saveBtn");
+  btn.disabled=true;btn.textContent="추가 중...";
 
   var cv=document.getElementById("canvas");
   var fname=buildFileName(savedPhotos.length+1);
+  var rawDataUrl=cv.toDataURL("image/jpeg",0.92);
 
   var info={
     date:lockedInfo.date,
@@ -499,8 +498,7 @@ function savePhoto(){
     wt:lockedInfo.wt
   };
 
-  var rawDataUrl=cv.toDataURL("image/jpeg",0.92);
-  var dataUrl=embedExif(rawDataUrl,info);
+  var dataUrl=embedExif(rawDataUrl, info);
 
   var byteStr=atob(dataUrl.split(",")[1]);
   var ab=new ArrayBuffer(byteStr.length);
@@ -508,12 +506,13 @@ function savePhoto(){
   for(var i=0;i<byteStr.length;i++)ia[i]=byteStr.charCodeAt(i);
   var blob=new Blob([ab],{type:"image/jpeg"});
   savedPhotos.push({dataUrl:dataUrl,filename:fname,blob:blob,info:info});
-  saveToGalleryDB(dataUrl,blob,info,fname);
 
   updateList();
-  showT("추가 완료! 총 "+savedPhotos.length+"장");
-  setTimeout(function(){resetCam();},500);
+  showT("목록에 추가! 총 "+savedPhotos.length+"장");
 
+  btn.disabled=false;
+  btn.innerHTML="&#128247; 목록에 추가";
+  setTimeout(function(){resetCam();},500);
 }
 
 function updateList(){
@@ -547,63 +546,9 @@ function saveAllPhotos(){
   savedPhotos=[];
   loadedImg=null;lockedInfo=null;
   updateList();
-  document.getElementById("inTime").value=new Date().toTimeString().slice(0,5);
+  document.getElementById("prevCard").style.display="none";
   showT(cnt+"장 저장 완료!");
   setTimeout(function(){window.scrollTo({top:0,behavior:"smooth"});},300);
-}
-
-function sharePhotos(){
-  if(!savedPhotos.length){showTE("공유할 사진이 없습니다.");return;}
-
-  var txt="[작업사진] 총 "+savedPhotos.length+"장\n";
-  savedPhotos.forEach(function(p,i){
-    var info=p.info;
-    txt+="\n"+(i+1)+". ["+info.wt+"] "+info.cat
-      +"\n   NAME: "+info.tag
-      +" / 날짜: "+info.date+" "+info.time
-      +"\n   구역: "+info.loc
-      +"\n   특이사항: "+info.note+"\n";
-  });
-
-  var files=savedPhotos.map(function(p){return new File([p.blob],p.filename,{type:"image/jpeg"});});
-
-  function fallbackDownload(){
-    savedPhotos.forEach(function(p){
-      var a=document.createElement("a");
-      a.href=p.dataUrl;a.download=p.filename;
-      document.body.appendChild(a);a.click();document.body.removeChild(a);
-    });
-    showT("사진 "+savedPhotos.length+"장 저장됨 → 카카오톡에서 직접 전송하세요");
-  }
-
-  if(!navigator.share){fallbackDownload();return;}
-
-  var shareData={files:files,title:"[작업사진] "+savedPhotos.length+"장",text:txt};
-
-  if(navigator.canShare&&navigator.canShare(shareData)){
-    navigator.share(shareData)
-      .then(function(){showT("전송 완료! ("+savedPhotos.length+"장)");})
-      .catch(function(e){
-        if(e.name==="AbortError")return;
-        fallbackDownload();
-      });
-  } else {
-    shareOneByOne(0,files,txt);
-  }
-}
-
-function shareOneByOne(idx,files,txt){
-  if(idx>=files.length){showT("전송 완료! ("+files.length+"장)");return;}
-  var isLast=(idx===files.length-1);
-  var shareData=isLast
-    ?{files:[files[idx]],title:"[작업사진] "+(idx+1)+"/"+files.length,text:txt}
-    :{files:[files[idx]],title:"[작업사진] "+(idx+1)+"/"+files.length};
-  navigator.share(shareData)
-    .then(function(){shareOneByOne(idx+1,files,txt);})
-    .catch(function(e){
-      if(e.name==="AbortError")return;
-      showTE("전송 실패: "+e.message);
-    });
 }
 
 function resetCam(){
@@ -617,7 +562,7 @@ function resetCam(){
     +'</div>'
     +'<div class="corner tl"></div><div class="corner tr"></div>'
     +'<div class="corner bl"></div><div class="corner br"></div>';
-  document.getElementById("inTime").value=new Date().toTimeString().slice(0,5);
+  document.getElementById("prevCard").style.display="none";
   document.getElementById("camCard").scrollIntoView({behavior:"smooth"});
 }
 
