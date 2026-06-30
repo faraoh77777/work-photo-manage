@@ -1038,6 +1038,8 @@ function openUpload() {
   if(selCat) document.getElementById('upCat').value=selCat;
   if(selWt){const r=document.querySelector(`input[name="upWt"][value="${selWt}"]`);if(r)r.checked=true;}
   else document.querySelector('input[name="upWt"][value="신규"]').checked=true;
+  const sender=localStorage.getItem('senderName')||'';
+  if(sender) document.getElementById('upTeam').value=sender;
   ['upTag','upNote','upDate','upTime','upCat','upArea','upTeam','wtRg'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.dataset.me='';
   });
@@ -1423,9 +1425,11 @@ function populateDateFilter() {
 }
 
 function populateSelects(){
-  document.getElementById('fTeam').innerHTML='<option value="">전체 팀</option>'+teams.map(v=>`<option>${v}</option>`).join('');
+  const sender=localStorage.getItem('senderName')||'';
+  const allTeams=sender&&!teams.includes(sender)?[...teams,sender]:teams;
+  document.getElementById('fTeam').innerHTML='<option value="">전체 팀</option>'+allTeams.map(v=>`<option>${v}</option>`).join('');
   document.getElementById('upCat').innerHTML=cats.map(v=>`<option value="${v}">${v}</option>`).join('');
-  document.getElementById('upTeam').innerHTML='<option value="">선택</option>'+teams.map(v=>`<option>${v}</option>`).join('');
+  document.getElementById('upTeam').innerHTML='<option value="">선택</option>'+allTeams.map(v=>`<option>${v}</option>`).join('');
   document.getElementById('upArea').innerHTML='<option value="">선택</option>'+areas.map(v=>`<option>${v}</option>`).join('');
   const np=document.getElementById('upNotePreset');
   np.innerHTML='<option value="">-- 프리셋 선택 --</option>'+notePresets.map(v=>`<option>${v}</option>`).join('');
