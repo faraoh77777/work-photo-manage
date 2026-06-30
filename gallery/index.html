@@ -247,7 +247,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
   <div class="content">
     <div class="filterbar">
       <select id="fDate" onchange="renderPhotos()"><option value="">전체 날짜</option></select>
-      <input type="text" id="fSearch" placeholder="TAG NO..." oninput="renderPhotos()">
+      <input type="text" id="fSearch" placeholder="기기번호 검색..." oninput="renderPhotos()">
       <select id="fTeam" onchange="renderPhotos()">
         <option value="">전체 팀명</option>
       </select>
@@ -338,8 +338,8 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
     </div>
 
     <div class="fg">
-      <label>TAG <span class="auto-badge" id="tagBadge" style="display:none">자동</span></label>
-      <input type="text" id="upTag" placeholder="예: PT-2101, FT-2305">
+      <label>기기번호 <span class="auto-badge" id="tagBadge" style="display:none">자동</span></label>
+      <input type="text" id="upTag" placeholder="예: PT-2101, EQ-2305 (TAG NO, EQ NO 등)">
     </div>
 
     <div class="fg">
@@ -367,7 +367,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
     <div id="detView">
       <div style="margin-bottom:10px;"><div id="dPath"></div></div>
       <div class="det-meta">
-        <div class="det-row"><div class="det-lbl">TAG</div><div class="det-val" id="dTag"></div></div>
+        <div class="det-row"><div class="det-lbl">기기번호</div><div class="det-val" id="dTag"></div></div>
         <div class="det-row"><div class="det-lbl">날짜/시간</div><div class="det-val" id="dDate"></div></div>
         <div class="det-row"><div class="det-lbl">팀명</div><div class="det-val" id="dTeam"></div></div>
         <div class="det-row"><div class="det-lbl">작업구역</div><div class="det-val" id="dArea"></div></div>
@@ -401,7 +401,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
         <div class="fg"><label>팀명</label><select id="eTeam"></select></div>
         <div class="fg"><label>작업구역</label><select id="eArea"></select></div>
       </div>
-      <div class="fg"><label>TAG</label><input type="text" id="eTag" placeholder="예: PT-2101, FT-2305"></div>
+      <div class="fg"><label>기기번호</label><input type="text" id="eTag" placeholder="예: PT-2101, EQ-2305 (TAG NO, EQ NO 등)"></div>
       <div class="fg">
         <label>특이사항</label>
         <select id="eNotePreset" onchange="applyEditNotePreset(this)" style="margin-bottom:5px;display:none;"></select>
@@ -420,7 +420,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
   <div class="modal" style="width:480px;max-width:100%;">
     <div class="m-title">🔄 전체 자동 분류</div>
     <p style="font-size:0.81rem;color:var(--tx2);margin-bottom:14px;line-height:1.7;">
-      저장된 사진을 OCR로 분석하여 <strong>작업 분류</strong>·<strong>작업 구분</strong>·<strong>TAG</strong>를<br>
+      저장된 사진을 OCR로 분석하여 <strong>작업 분류</strong>·<strong>작업 구분</strong>·<strong>기기번호</strong>를<br>
       자동으로 올바른 폴더에 배치합니다.
     </p>
 
