@@ -219,6 +219,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
   <div class="hdr-right">
     <div class="hdr-crumb" id="hdrCrumb"><span class="cc">전체 사진</span></div>
     <div class="spacer"></div>
+    <button class="btn btn-ghost" id="folderBtn" onclick="loadFromFolder()" title="PC 폴더에서 사진 불러오기" style="display:none">📂 폴더</button>
     <button class="btn btn-ghost" id="syncBtn" onclick="syncFromSupabase()" title="클라우드에서 사진 가져오기">☁️ 동기화</button>
     <button class="btn btn-ghost" onclick="openBatch()" title="OCR로 전체 자동 분류">🔄 자동 분류</button>
     <button class="btn btn-ghost" onclick="openSettings()" title="설정">⚙️</button>
@@ -467,6 +468,16 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
     <button class="m-close" onclick="closeSettings()">✕</button>
     <div class="m-title">⚙️ 설정</div>
 
+    <div style="margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--bd);">
+      <div style="font-size:0.8rem;font-weight:700;color:var(--tx2);margin-bottom:8px;">💾 PC 저장 폴더</div>
+      <div style="font-size:0.74rem;color:var(--tx3);margin-bottom:8px;line-height:1.6;">동기화 시 사진을 PC 폴더에 자동 저장합니다.<br>Chrome / Edge 전용 기능입니다.</div>
+      <div id="folderStatus" style="font-size:0.77rem;color:var(--tx3);margin-bottom:10px;">폴더가 지정되지 않았습니다.</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-ghost" onclick="pickFolder()">📁 폴더 선택</button>
+        <button class="btn btn-ghost" id="folderScanBtn" onclick="loadFromFolder()" style="display:none">🔄 새로고침</button>
+      </div>
+    </div>
+
     <div style="margin-bottom:18px;">
       <div style="font-size:0.8rem;font-weight:700;color:var(--tx2);margin-bottom:10px;">📁 작업 분류 폴더 관리</div>
       <div class="folder-list" id="folderList"></div>
@@ -537,6 +548,9 @@ async function syncFromSupabase(){
     const newRecs=records.filter(r=>r.photo_url&&!localUrls.has(r.photo_url));
     if(newRecs.length===0){ alert('이미 최신 상태입니다. (클라우드 총 '+records.length+'장)'); return; }
 
+    // 폴더 저장 권한 사전 확인 (루프마다 팝업 방지)
+    const folderOk = dirHandle ? await verifyFolderPermission() : false;
+
     let saved=0;
     for(let i=0;i<newRecs.length;i++){
       const rec=newRecs[i];
@@ -545,10 +559,14 @@ async function syncFromSupabase(){
         const resp=await fetch(rec.photo_url);
         if(!resp.ok) throw new Error('HTTP '+resp.status);
         const blob=await resp.blob();
+        const fname=rec.photo_url.split('/').pop().split('?')[0];
+
+        // PC 폴더에 .jpg 파일로 저장
+        if(folderOk) await savePhotoToFolder(blob, fname);
+
         const dataUrl=await new Promise((res,rej)=>{
           const fr=new FileReader();fr.onload=e=>res(e.target.result);fr.onerror=rej;fr.readAsDataURL(blob);
         });
-        const fname=rec.photo_url.split('/').pop().split('?')[0];
         const photo={
           id:Date.now()+Math.random(),
           date:rec.date||'', time:rec.time||'', tag:rec.tag||'',
@@ -571,6 +589,152 @@ async function syncFromSupabase(){
     alert('동기화 실패: '+e.message);
   }finally{
     btn.disabled=false; btn.textContent='☁️ 동기화';
+  }
+}
+
+// ── PC 폴더 저장 ────────────────────────────────────
+let dirHandle = null;
+
+async function loadFolderHandle() {
+  return new Promise(res => {
+    try {
+      const r = txStore('settings').get('folderHandle');
+      r.onsuccess = e => {
+        if (e.target.result) { dirHandle = e.target.result.value; updateFolderUI(); }
+        res();
+      };
+      r.onerror = () => res();
+    } catch(e) { res(); }
+  });
+}
+
+async function verifyFolderPermission() {
+  if (!dirHandle) return false;
+  try {
+    const opts = { mode: 'readwrite' };
+    if (await dirHandle.queryPermission(opts) === 'granted') return true;
+    if (await dirHandle.requestPermission(opts) === 'granted') return true;
+    return false;
+  } catch(e) { return false; }
+}
+
+async function pickFolder() {
+  if (!window.showDirectoryPicker) {
+    alert('이 기능은 Chrome/Edge에서만 지원됩니다.');
+    return;
+  }
+  try {
+    const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    dirHandle = handle;
+    txStore('settings', 'readwrite').put({ key: 'folderHandle', value: handle });
+    updateFolderUI();
+  } catch(e) {
+    if (e.name !== 'AbortError') alert('폴더 선택 실패: ' + e.message);
+  }
+}
+
+function updateFolderUI() {
+  const status  = document.getElementById('folderStatus');
+  const scanBtn = document.getElementById('folderScanBtn');
+  const hdrBtn  = document.getElementById('folderBtn');
+  if (dirHandle) {
+    if (status)  status.innerHTML = `<span style="color:var(--green);">✅ ${dirHandle.name}</span>`;
+    if (scanBtn) scanBtn.style.display = '';
+    if (hdrBtn)  hdrBtn.style.display  = '';
+  } else {
+    if (status)  status.textContent = '폴더가 지정되지 않았습니다.';
+    if (scanBtn) scanBtn.style.display = 'none';
+    if (hdrBtn)  hdrBtn.style.display  = 'none';
+  }
+}
+
+async function savePhotoToFolder(blob, filename) {
+  try {
+    const fh = await dirHandle.getFileHandle(filename, { create: true });
+    const writable = await fh.createWritable();
+    await writable.write(blob);
+    await writable.close();
+  } catch(e) { console.error('파일 저장 실패:', filename, e); }
+}
+
+function parseWorkFilename(name) {
+  const r = {};
+  // WORK_YYYYMMDD_HHMM_... 형식
+  const m = name.match(/WORK_(\d{4})(\d{2})(\d{2})_(\d{4})_/);
+  if (m) {
+    r.date = `${m[1]}-${m[2]}-${m[3]}`;
+    r.time = `${m[4].slice(0,2)}:${m[4].slice(2)}`;
+  }
+  // 작업구분
+  const wtM = name.match(/WORK_\d+_\d+_(NEW|EDIT-BEFORE|EDIT-AFTER)_/);
+  if (wtM) {
+    const wmap = { NEW:'신규', 'EDIT-BEFORE':'수정-작업전', 'EDIT-AFTER':'수정-작업후' };
+    r.wt = wmap[wtM[1]] || '';
+  }
+  // 기기번호
+  const tagM = name.match(/\b([A-Z]{1,4}-\d{3,6}[A-Z]?)\b/);
+  if (tagM) r.tag = tagM[1];
+  // 작업분류 (파일명의 _를 공백으로 치환 후 매칭)
+  const namePlain = name.replace(/_/g, ' ');
+  for (const cat of cats) {
+    if (namePlain.includes(cat)) { r.cat = cat; break; }
+  }
+  return r;
+}
+
+async function loadFromFolder() {
+  if (!dirHandle) { openSettings(); return; }
+  const ok = await verifyFolderPermission();
+  if (!ok) { alert('폴더 접근 권한이 필요합니다.'); return; }
+
+  const btn = document.getElementById('folderBtn');
+  const scanBtn = document.getElementById('folderScanBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 스캔 중...'; }
+  if (scanBtn) { scanBtn.disabled = true; }
+
+  const existingNames = new Set(photos.map(p => p.name));
+  let added = 0;
+
+  try {
+    for await (const [name, handle] of dirHandle.entries()) {
+      if (handle.kind !== 'file') continue;
+      if (!/\.(jpg|jpeg|png)$/i.test(name)) continue;
+      if (existingNames.has(name)) continue;
+
+      try {
+        const file = await handle.getFile();
+        const dataUrl = await fileToDataUrl(file);
+        const parsed = parseWorkFilename(name);
+        const photo = {
+          id: Date.now() + Math.random(),
+          name, date: parsed.date||'', time: parsed.time||'',
+          tag: parsed.tag||'', wt: parsed.wt||'',
+          cat: parsed.cat||'', team:'', area:'', note:'',
+          size: file.size, dataUrl,
+          created: file.lastModified
+            ? new Date(file.lastModified).toISOString()
+            : new Date().toISOString(),
+          source: 'folder'
+        };
+        await savePhotoToDB(photo);
+        photos.unshift(photo);
+        existingNames.add(name);
+        added++;
+      } catch(e) { console.error('파일 로드 실패:', name, e); }
+    }
+
+    if (added > 0) {
+      photos.sort((a,b) => (b.date+b.created).localeCompare(a.date+a.created));
+      populateDateFilter(); renderSidebar(); renderPhotos(); updateHeader();
+      alert(`✅ ${added}장 새로 불러왔습니다.`);
+    } else {
+      alert('새로 불러올 사진이 없습니다. (이미 모두 로드됨)');
+    }
+  } catch(e) {
+    alert('폴더 스캔 실패: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📂 폴더'; }
+    if (scanBtn) { scanBtn.disabled = false; }
   }
 }
 
@@ -713,7 +877,7 @@ function initDB() {
     }
     if (!d.objectStoreNames.contains('settings')) d.createObjectStore('settings',{keyPath:'key'});
   };
-  req.onsuccess = e => { db = e.target.result; loadSettings().then(loadPhotos); };
+  req.onsuccess = e => { db = e.target.result; loadSettings().then(() => { loadPhotos(); loadFolderHandle(); }); };
 }
 function txStore(name,mode='readonly'){ return db.transaction(name,mode).objectStore(name); }
 
