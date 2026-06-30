@@ -46,6 +46,12 @@ canvas{width:100%;border-radius:12px;display:block;}
 .sbtn-send{background:linear-gradient(135deg,#2980B9,#1A5276);color:#fff;}
 .sbtn-send:disabled{background:#BDC3C7;color:#fff;cursor:not-allowed;}
 .hdivider{height:1px;background:#E8EEF4;margin:10px 0;}
+.err-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:9999;display:none;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto;}
+.err-overlay.show{display:flex;}
+.err-modal{background:#fff;border-radius:16px;padding:24px;width:100%;max-width:480px;margin:auto;}
+.err-modal-title{font-size:17px;font-weight:800;color:#E74C3C;margin-bottom:12px;}
+.err-modal-body{font-size:13px;color:#333;line-height:1.8;word-break:break-all;white-space:pre-wrap;background:#FFF5F5;border:1px solid #FADBD8;border-radius:8px;padding:12px;margin-bottom:16px;max-height:50vh;overflow-y:auto;}
+.err-modal-close{width:100%;padding:13px;background:#E74C3C;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:800;cursor:pointer;}
 .save-guide{background:#EAF8F0;border:1.5px solid #A9DFBF;border-radius:10px;
   padding:12px 14px;margin-top:10px;font-size:14px;color:#1E8449;line-height:1.8;display:none;}
 .list-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
@@ -192,6 +198,15 @@ canvas{width:100%;border-radius:12px;display:block;}
 <div id="toast"></div>
 <div id="toastE"></div>
 
+<!-- 에러 모달 -->
+<div class="err-overlay" id="errModal">
+  <div class="err-modal">
+    <div class="err-modal-title" id="errModalTitle">오류</div>
+    <div class="err-modal-body" id="errModalBody"></div>
+    <button class="err-modal-close" onclick="closeErrModal()">확인</button>
+  </div>
+</div>
+
 <script>
 // ── Supabase ──────────────────────────────────────────
 var SUPABASE_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
@@ -200,44 +215,78 @@ var sbClient=null;
 try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }
 catch(e){ console.error('Supabase 초기화 실패',e); }
 
+// Storage 경로 전용 sanitize: 한글→ASCII 매핑 후 비-ASCII 제거
+var WT_MAP={'신규':'NEW','수정':'EDIT','작업전':'BEFORE','작업후':'AFTER'};
+function sanitizeForStorage(str){
+  if(!str) return 'noname';
+  var s=String(str).trim();
+  Object.keys(WT_MAP).forEach(function(k){ s=s.split(k).join(WT_MAP[k]); });
+  s=s.replace(/[^\x20-\x7E]/g,'');   // 비-ASCII 전부 제거
+  s=s.replace(/[\\\/:*?"<>|]/g,'');  // 경로 불가 문자 제거
+  s=s.replace(/\s+/g,'_');
+  s=s.replace(/_+/g,'_').replace(/^_|_$/g,'');
+  return s||'noname';
+}
+
+function showErrModal(title, detail){
+  document.getElementById('errModalTitle').textContent=title;
+  document.getElementById('errModalBody').textContent=detail;
+  document.getElementById('errModal').classList.add('show');
+}
+function closeErrModal(){
+  document.getElementById('errModal').classList.remove('show');
+}
+
 async function sendToSupabase(){
   if(!savedPhotos.length){ showTE("전송할 사진이 없습니다."); return; }
   if(!sbClient){ showTE("Supabase 연결 실패"); return; }
   var btn=document.getElementById('sendBtn');
   btn.disabled=true;
-  var total=savedPhotos.length, success=0, lastErr='';
+  var total=savedPhotos.length, success=0, failMsgs=[];
   for(var i=0;i<total;i++){
     var p=savedPhotos[i];
     btn.textContent='⏳ 전송 중... ('+(i+1)+'/'+total+'장)';
     try{
-      var filePath=(p.info.date||'nodate')+'/'+p.filename;
+      // Storage 경로: ASCII 전용 (한글 매핑 후 비-ASCII 제거)
+      var safeFilename=sanitizeForStorage(p.filename);
+      var filePath=(p.info.date||'nodate')+'/'+safeFilename;
+      console.log('[Storage 경로 확인]', filePath);  // ASCII 검증
+
       var storageRes=await sbClient.storage.from('work-photo').upload(filePath,p.blob,{contentType:'image/jpeg',upsert:true});
       if(storageRes.error){
-        lastErr='[Storage] '+storageRes.error.message;
-        console.error('Storage 오류:',storageRes.error);
+        failMsgs.push('[Storage] 파일: '+p.filename+'\n경로: '+filePath+'\n오류: '+storageRes.error.message);
+        console.error('Storage 오류:', storageRes.error, '\n경로:', filePath);
         continue;
       }
       var photoUrl=sbClient.storage.from('work-photo').getPublicUrl(filePath).data.publicUrl;
+
+      // DB insert: 한글 원본값 유지 — sanitize 적용 안 함
       var dbRes=await sbClient.from('work_photos').insert({
         date:p.info.date||'', time:p.info.time||'', tag:p.info.tag||'',
         cat:p.info.cat||'', loc:p.info.loc||'', work_type:p.info.wt||'',
         note:p.info.note||'', photo_url:photoUrl
       });
       if(dbRes.error){
-        lastErr='[DB] '+dbRes.error.message;
-        console.error('DB 오류:',dbRes.error);
+        failMsgs.push('[DB] 파일: '+p.filename+'\n오류: '+dbRes.error.message);
+        console.error('DB 오류:', dbRes.error);
         continue;
       }
       success++;
     }catch(e){
-      lastErr=e.message||String(e);
-      console.error('전송 실패:',p.filename,e);
+      failMsgs.push('파일: '+p.filename+'\n오류: '+(e.message||String(e)));
+      console.error('전송 실패:', p.filename, e);
     }
   }
   btn.disabled=false;
   btn.textContent='☁️ 전송하기';
-  if(success===total) showT('✅ '+success+'장 전송 완료!');
-  else showTE('실패: '+lastErr);
+  if(success===total){
+    showT('✅ '+success+'장 전송 완료!');
+  } else {
+    showErrModal(
+      '전송 실패 ('+success+'/'+total+'장 성공)',
+      failMsgs.join('\n\n')
+    );
+  }
 }
 
 // ── 앱 로직 ───────────────────────────────────────────
