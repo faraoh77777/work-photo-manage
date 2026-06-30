@@ -205,28 +205,39 @@ async function sendToSupabase(){
   if(!sbClient){ showTE("Supabase 연결 실패"); return; }
   var btn=document.getElementById('sendBtn');
   btn.disabled=true;
-  var total=savedPhotos.length, success=0;
+  var total=savedPhotos.length, success=0, lastErr='';
   for(var i=0;i<total;i++){
     var p=savedPhotos[i];
     btn.textContent='⏳ 전송 중... ('+(i+1)+'/'+total+'장)';
     try{
       var filePath=(p.info.date||'nodate')+'/'+p.filename;
       var storageRes=await sbClient.storage.from('work-photo').upload(filePath,p.blob,{contentType:'image/jpeg',upsert:true});
-      if(storageRes.error) throw storageRes.error;
+      if(storageRes.error){
+        lastErr='[Storage] '+storageRes.error.message;
+        console.error('Storage 오류:',storageRes.error);
+        continue;
+      }
       var photoUrl=sbClient.storage.from('work-photo').getPublicUrl(filePath).data.publicUrl;
       var dbRes=await sbClient.from('work_photos').insert({
         date:p.info.date||'', time:p.info.time||'', tag:p.info.tag||'',
         cat:p.info.cat||'', loc:p.info.loc||'', work_type:p.info.wt||'',
         note:p.info.note||'', photo_url:photoUrl
       });
-      if(dbRes.error) throw dbRes.error;
+      if(dbRes.error){
+        lastErr='[DB] '+dbRes.error.message;
+        console.error('DB 오류:',dbRes.error);
+        continue;
+      }
       success++;
-    }catch(e){ console.error('전송 실패:',p.filename,e); }
+    }catch(e){
+      lastErr=e.message||String(e);
+      console.error('전송 실패:',p.filename,e);
+    }
   }
   btn.disabled=false;
   btn.textContent='☁️ 전송하기';
   if(success===total) showT('✅ '+success+'장 전송 완료!');
-  else showTE(success+'/'+total+'장 전송 (일부 실패)');
+  else showTE('실패: '+lastErr);
 }
 
 // ── 앱 로직 ───────────────────────────────────────────
