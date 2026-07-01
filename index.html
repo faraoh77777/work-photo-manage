@@ -620,5 +620,10 @@ function startSTT(fieldId,btnId){
 }
 function _stopSTT(btn){activeRec=null;btn.classList.remove("listening");btn.textContent="🎤";}
 </script>
+<script>
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js');
+}
+</script>
 </body>
 </html>
