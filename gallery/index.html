@@ -563,9 +563,9 @@ async function syncFromSupabase(){
         const blob=await resp.blob();
         const fname=rec.photo_url.split('/').pop().split('?')[0];
 
-        // PC 폴더에 .jpg 파일로 저장
+        // PC 폴더에 작업분류별 서브폴더로 저장
         if(folderOk){
-          const ok = await savePhotoToFolder(blob, fname);
+          const ok = await savePhotoToFolder(blob, fname, rec.cat||'');
           if(ok) folderSaved++;
         }
 
@@ -665,13 +665,16 @@ function updateFolderUI() {
   }
 }
 
-async function savePhotoToFolder(blob, filename) {
+async function savePhotoToFolder(blob, filename, cat) {
   try {
-    const fh = await dirHandle.getFileHandle(filename, { create: true });
+    // 작업분류별 서브폴더 자동 생성 (없으면 생성, 있으면 기존 사용)
+    const folderName = cat || 'Others';
+    const subDir = await dirHandle.getDirectoryHandle(folderName, { create: true });
+    const fh = await subDir.getFileHandle(filename, { create: true });
     const writable = await fh.createWritable();
     await writable.write(blob);
     await writable.close();
-    console.log('[폴더 저장 완료]', filename);
+    console.log('[폴더 저장 완료]', folderName + '/' + filename);
     return true;
   } catch(e) {
     console.error('[폴더 저장 실패]', filename, e);
@@ -729,32 +732,46 @@ async function loadFromFolder() {
   const existingNames = new Set(photos.map(p => p.name));
   let added = 0;
 
+  async function processFile(fileHandle, name, cat) {
+    if (existingNames.has(name)) return;
+    try {
+      const file = await fileHandle.getFile();
+      const dataUrl = await fileToDataUrl(file);
+      const parsed = parseWorkFilename(name);
+      const photo = {
+        id: Date.now() + Math.random(),
+        name, date: parsed.date||'', time: parsed.time||'',
+        tag: parsed.tag||'', wt: parsed.wt||'',
+        cat: cat || parsed.cat || '',
+        team:'', area:'', note:'',
+        size: file.size, dataUrl,
+        created: file.lastModified
+          ? new Date(file.lastModified).toISOString()
+          : new Date().toISOString(),
+        source: 'folder'
+      };
+      await savePhotoToDB(photo);
+      photos.unshift(photo);
+      existingNames.add(name);
+      added++;
+    } catch(e) { console.error('파일 로드 실패:', name, e); }
+  }
+
   try {
     for await (const [name, handle] of dirHandle.entries()) {
-      if (handle.kind !== 'file') continue;
-      if (!/\.(jpg|jpeg|png)$/i.test(name)) continue;
-      if (existingNames.has(name)) continue;
-
-      try {
-        const file = await handle.getFile();
-        const dataUrl = await fileToDataUrl(file);
-        const parsed = parseWorkFilename(name);
-        const photo = {
-          id: Date.now() + Math.random(),
-          name, date: parsed.date||'', time: parsed.time||'',
-          tag: parsed.tag||'', wt: parsed.wt||'',
-          cat: parsed.cat||'', team:'', area:'', note:'',
-          size: file.size, dataUrl,
-          created: file.lastModified
-            ? new Date(file.lastModified).toISOString()
-            : new Date().toISOString(),
-          source: 'folder'
-        };
-        await savePhotoToDB(photo);
-        photos.unshift(photo);
-        existingNames.add(name);
-        added++;
-      } catch(e) { console.error('파일 로드 실패:', name, e); }
+      if (handle.kind === 'directory') {
+        // 작업분류 서브폴더 스캔
+        const cat = (name === 'Others') ? '' : name;
+        for await (const [subName, subHandle] of handle.entries()) {
+          if (subHandle.kind !== 'file') continue;
+          if (!/\.(jpg|jpeg|png)$/i.test(subName)) continue;
+          await processFile(subHandle, subName, cat);
+        }
+      } else if (handle.kind === 'file') {
+        // 루트에 있는 파일도 처리 (이전 버전 호환)
+        if (!/\.(jpg|jpeg|png)$/i.test(name)) continue;
+        await processFile(handle, name, '');
+      }
     }
 
     if (added > 0) {
