@@ -103,37 +103,27 @@ textarea.f{resize:none;height:48px;}
   <input type="file" id="ocrInput" accept="image/*" capture="environment" style="display:none"/>
 
   <div class="flbl">작업 구분</div>
-  <div style="display:flex;gap:8px;margin-bottom:4px;">
-    <label style="flex:1;display:flex;align-items:center;gap:6px;background:#F7FAFC;
+  <div style="display:flex;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+    <label style="flex:1;min-width:80px;display:flex;align-items:center;gap:6px;background:#F7FAFC;
       border:1.5px solid #C8D8E8;border-radius:8px;padding:9px 10px;cursor:pointer;
       font-size:17px;font-weight:700;color:#2980B9;">
       <input type="radio" name="workType" id="wtNew" value="신규" checked
         style="width:16px;height:16px;accent-color:#2980B9;"/>
       &#127381; 신규
     </label>
-    <label style="flex:1;display:flex;align-items:center;gap:6px;background:#F7FAFC;
-      border:1.5px solid #C8D8E8;border-radius:8px;padding:9px 10px;cursor:pointer;
-      font-size:17px;font-weight:700;color:#E67E22;">
-      <input type="radio" name="workType" id="wtMod" value="수정"
-        style="width:16px;height:16px;accent-color:#E67E22;"/>
-      &#9999;&#65039; 수정
-    </label>
-  </div>
-
-  <div id="phaseRow" style="display:none;gap:8px;margin-bottom:4px;">
-    <label style="flex:1;display:flex;align-items:center;gap:6px;background:#F7FAFC;
+    <label style="flex:1;min-width:80px;display:flex;align-items:center;gap:6px;background:#F7FAFC;
       border:1.5px solid #C8D8E8;border-radius:8px;padding:9px 10px;cursor:pointer;
       font-size:17px;font-weight:700;color:#7F8C8D;">
-      <input type="radio" name="workPhase" id="phBefore" value="작업전" checked
+      <input type="radio" name="workType" id="wtBefore" value="수정-작업전"
         style="width:16px;height:16px;accent-color:#7F8C8D;"/>
-      &#128247; 작업전
+      &#128247; 수정-작업전
     </label>
-    <label style="flex:1;display:flex;align-items:center;gap:6px;background:#F7FAFC;
+    <label style="flex:1;min-width:80px;display:flex;align-items:center;gap:6px;background:#F7FAFC;
       border:1.5px solid #C8D8E8;border-radius:8px;padding:9px 10px;cursor:pointer;
       font-size:17px;font-weight:700;color:#27AE60;">
-      <input type="radio" name="workPhase" id="phAfter" value="작업후"
+      <input type="radio" name="workType" id="wtAfter" value="수정-작업후"
         style="width:16px;height:16px;accent-color:#27AE60;"/>
-      &#9989; 작업후
+      &#9989; 수정-작업후
     </label>
   </div>
 
@@ -342,32 +332,19 @@ var CC={
 var savedPhotos=[], lockedInfo=null;
 
 updCat();
-togglePhaseRow();
 
 document.getElementById("camBox").addEventListener("click",function(){document.getElementById("fileInput").click();});
 document.getElementById("fileInput").addEventListener("change",loadImg);
 document.getElementById("inCat").addEventListener("change",updCat);
-document.querySelectorAll('input[name="workType"]').forEach(function(r){
-  r.addEventListener("change",togglePhaseRow);
-});
 
 function updCat(){
   var v=document.getElementById("inCat").value;
   document.getElementById("catBar").style.background=CC[v]||"#7F8C8D";
 }
 
-function togglePhaseRow(){
-  var isMod=document.getElementById("wtMod").checked;
-  document.getElementById("phaseRow").style.display=isMod?"flex":"none";
-}
-
 function getWorkLabel(){
-  var wt=document.querySelector('input[name="workType"]:checked').value;
-  if(wt==="수정"){
-    var ph=document.querySelector('input[name="workPhase"]:checked');
-    return wt+"-"+(ph?ph.value:"작업전");
-  }
-  return wt;
+  var wt=document.querySelector('input[name="workType"]:checked');
+  return wt?wt.value:'신규';
 }
 
 function crop43(img){
