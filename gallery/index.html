@@ -271,9 +271,9 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 <!-- 선택 다운로드 바 -->
 <div class="sel-bar" id="selBar">
   <button class="btn btn-ghost" id="selAllBtn" onclick="selectAllFiltered()">전체 선택</button>
+  <button class="btn btn-danger" id="delSelBtn" onclick="deleteSelected()" disabled>🗑 삭제</button>
   <span id="selCount" style="font-size:0.82rem;color:var(--tx2);">0장 선택됨</span>
   <button class="btn btn-ghost" onclick="exitSelMode()">취소</button>
-  <button class="btn btn-danger" id="delSelBtn" onclick="deleteSelected()" disabled>🗑 삭제</button>
   <button class="btn btn-primary" id="dlSelBtn" onclick="downloadSelected()" disabled>⬇️ 다운로드</button>
 </div>
 
