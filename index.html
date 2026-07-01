@@ -423,19 +423,28 @@ function renderCanvas(loadedImg){
 }
 
 function sanitizeForFilename(str){
-  return str?String(str).trim().replace(/[\\\/:*?"<>|]/g,"").replace(/\s+/g,"_").slice(0,30):"";
+  return str?String(str).trim()
+    .replace(/[^\x00-\x7F]/g,"")
+    .replace(/[\\\/:*?"<>|&]/g,"")
+    .replace(/\s+/g,"_")
+    .replace(/^[_\-]+|[_\-]+$/g,"")
+    .slice(0,30):"";
 }
 
+var WT_EN={'신규':'new','수정-작업전':'mod-before','수정-작업후':'mod-after'};
+
 function buildFileName(idx){
+  var wt=WT_EN[lockedInfo.wt]||sanitizeForFilename(lockedInfo.wt)||'work';
+  var cat=sanitizeForFilename(lockedInfo.cat)||'etc';
+  var tag=sanitizeForFilename(lockedInfo.tag)||'NONAME';
+  var loc=sanitizeForFilename(lockedInfo.loc)||'LOC';
+  var note=sanitizeForFilename(lockedInfo.note);
   var parts=["WORK",
     (lockedInfo.date||"").replace(/-/g,""),
     (lockedInfo.time||"").replace(":",""),
-    sanitizeForFilename(lockedInfo.wt),
-    sanitizeForFilename(lockedInfo.cat)||"기타",
-    sanitizeForFilename(lockedInfo.tag)||"NONAME",
-    sanitizeForFilename(lockedInfo.loc)||"구역없음",
-    sanitizeForFilename(lockedInfo.note)||"특이사항없음",
-    idx];
+    wt, cat, tag, loc];
+  if(note) parts.push(note);
+  parts.push(idx);
   var fname=parts.join("_")+".jpg";
   return fname.length>200?fname.slice(0,196)+".jpg":fname;
 }
