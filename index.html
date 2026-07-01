@@ -141,26 +141,26 @@ textarea.f{resize:none;height:48px;}
     <div>
       <div class="flbl">작업 분류</div>
       <select id="inCat" class="f">
-        <option value="dcs">DCS Panel</option>
-        <option value="lcp">LCP</option>
-        <option value="jb">Junction Box</option>
-        <option value="fi" selected>Field Instrument</option>
-        <option value="duct">Cable Duct</option>
-        <option value="tray">Cable Tray</option>
-        <option value="conduit">Conduit Pipe</option>
-        <option value="airpipe">Air Pipe</option>
-        <option value="hookup">Hook Up</option>
-        <option value="stanchion">Stanchion</option>
-        <option value="support">Support</option>
-        <option value="conn">Connection</option>
-        <option value="linecheck">Line Check</option>
-        <option value="looptest">Loop Test</option>
-        <option value="leaktest">Leak Test</option>
-        <option value="calib">Calibration</option>
-        <option value="steamtube">Steam Tube</option>
-        <option value="steamins">Steam Ins</option>
-        <option value="scaffold">Scaffolding</option>
-        <option value="etc">Others</option>
+        <option value="DCS Panel">DCS Panel</option>
+        <option value="LCP">LCP</option>
+        <option value="Junction Box">Junction Box</option>
+        <option value="Field Instrument" selected>Field Instrument</option>
+        <option value="Cable Duct">Cable Duct</option>
+        <option value="Cable Tray">Cable Tray</option>
+        <option value="Conduit Pipe">Conduit Pipe</option>
+        <option value="Air Pipe">Air Pipe</option>
+        <option value="Hook Up">Hook Up</option>
+        <option value="Stanchion">Stanchion</option>
+        <option value="Support">Support</option>
+        <option value="Connection">Connection</option>
+        <option value="Line Check">Line Check</option>
+        <option value="Loop Test">Loop Test</option>
+        <option value="Leak Test">Leak Test</option>
+        <option value="Calibration">Calibration</option>
+        <option value="Steam Tube">Steam Tube</option>
+        <option value="Steam Ins">Steam Ins</option>
+        <option value="Scaffolding">Scaffolding</option>
+        <option value="Others">Others</option>
       </select>
       <div class="cat-bar" id="catBar"></div>
     </div>
@@ -332,11 +332,11 @@ function downloadAll(photos){
 
 // ── 앱 로직 ───────────────────────────────────────────
 var CC={
-  dcs:"#E67E22",lcp:"#E74C3C",jb:"#F39C12",fi:"#2980B9",duct:"#16A085",
-  tray:"#8E44AD",conduit:"#C0392B",airpipe:"#27AE60",hookup:"#2E86AB",
-  stanchion:"#5D6D7E",support:"#A569BD",conn:"#E74C3C",linecheck:"#1ABC9C",
-  looptest:"#3498DB",leaktest:"#1A6B72",calib:"#D35400",steamtube:"#C0392B",steamins:"#922B21",
-  scaffold:"#7F8C8D",etc:"#95A5A6"
+  'DCS Panel':"#E67E22",'LCP':"#E74C3C",'Junction Box':"#F39C12",'Field Instrument':"#2980B9",'Cable Duct':"#16A085",
+  'Cable Tray':"#8E44AD",'Conduit Pipe':"#C0392B",'Air Pipe':"#27AE60",'Hook Up':"#2E86AB",
+  'Stanchion':"#5D6D7E",'Support':"#A569BD",'Connection':"#E74C3C",'Line Check':"#1ABC9C",
+  'Loop Test':"#3498DB",'Leak Test':"#1A6B72",'Calibration':"#D35400",'Steam Tube':"#C0392B",'Steam Ins':"#922B21",
+  'Scaffolding':"#7F8C8D",'Others':"#95A5A6"
 };
 
 var savedPhotos=[], lockedInfo=null;
