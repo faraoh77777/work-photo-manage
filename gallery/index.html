@@ -590,7 +590,7 @@ async function syncFromSupabase(){
         const photo={
           id:Date.now()+Math.random(),
           date:rec.date||'', time:rec.time||'', tag:rec.tag||'',
-          cat:rec.cat||'', wt:rec.work_type||'', team:'',
+          cat:rec.cat||'', wt:rec.work_type||'', team:rec.sender||'',
           area:rec.loc||'', note:rec.note||'', name:fname,
           size:blob.size, dataUrl,
           created:rec.created_at||rec.date||new Date().toISOString(),
