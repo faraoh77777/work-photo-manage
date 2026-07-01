@@ -589,12 +589,15 @@ async function syncFromSupabase(){
         const dataUrl=await new Promise((res,rej)=>{
           const fr=new FileReader();fr.onload=e=>res(e.target.result);fr.onerror=rej;fr.readAsDataURL(blob);
         });
-        const fnP = parseFilename(fname);
+        const fnP = parseWorkFilename(fname);
+        const mn = localStorage.getItem('member_name')||'';
+        const sender = rec.sender||mn;
+        const displayName = sender ? fname.replace(/\.jpg$/i, `_${sender}.jpg`) : fname;
         const photo={
           id:Date.now()+Math.random(),
           date:rec.date||fnP.date||'', time:rec.time||fnP.time||'', tag:rec.tag||fnP.tag||'',
-          cat:rec.cat||fnP.cat||'', wt:rec.work_type||fnP.wt||'', team:rec.sender||'',
-          area:rec.loc||'', note:rec.note||'', name:fname,
+          cat:rec.cat||fnP.cat||'', wt:rec.work_type||fnP.wt||'', team:sender,
+          area:rec.loc||fnP.area||'', note:rec.note||'', name:displayName,
           size:blob.size, dataUrl,
           created:rec.created_at||rec.date||new Date().toISOString(),
           source:'cloud', cloud_url:rec.photo_url
@@ -742,6 +745,9 @@ function parseWorkFilename(name) {
   for (const cat of cats) {
     if (namePlain.includes(cat)) { r.cat = cat; break; }
   }
+  // 작업구역
+  if (/_SCC_/.test(name)) r.area = 'SCC';
+  else if (/_U_O_/.test(name)) r.area = 'U&O';
   return r;
 }
 
