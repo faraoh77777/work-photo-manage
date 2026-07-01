@@ -605,7 +605,9 @@ async function syncFromSupabase(){
       }catch(e){ console.error('다운로드 실패:',rec.photo_url,e); }
     }
     photos.sort((a,b)=>(b.date+b.created).localeCompare(a.date+a.created));
-    populateDateFilter(); renderSidebar(); renderPhotos(); updateHeader();
+    const newSenders=[...new Set(photos.map(p=>p.team).filter(t=>t&&!teams.includes(t)))];
+    if(newSenders.length){teams.push(...newSenders);saveSettings();}
+    populateDateFilter(); populateSelects(); renderSidebar(); renderPhotos(); updateHeader();
     let msg = `✅ ${saved}장 동기화 완료!`;
     if (dirHandle) {
       msg += folderOk
