@@ -223,6 +223,8 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
     <button class="btn btn-ghost" id="syncBtn" onclick="syncFromSupabase()" title="클라우드에서 사진 가져오기">☁️ 동기화</button>
     <button class="btn btn-ghost" onclick="openBatch()" title="OCR로 전체 자동 분류">🔄 자동 분류</button>
     <button class="btn btn-ghost" onclick="openSettings()" title="설정">⚙️</button>
+    <span id="hdrUserChip" style="font-size:0.78rem;color:var(--tx2);padding:0 4px;white-space:nowrap;"></span>
+    <button class="btn btn-ghost" onclick="galleryLogout()" title="로그아웃" style="color:var(--red);border-color:var(--red);">로그아웃</button>
     <button class="btn btn-primary" onclick="openUpload()">+ 사진 추가</button>
   </div>
 </div>
@@ -527,6 +529,19 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 </div>
 
 <script>
+// ── 인증 체크 ─────────────────────────────────────────
+(function(){
+  if(!localStorage.getItem('member_id')){location.href='../login.html';return;}
+  const n=localStorage.getItem('member_name')||'';
+  const c=localStorage.getItem('member_company')||'';
+  const chip=document.getElementById('hdrUserChip');
+  if(chip&&(n||c)) chip.textContent='👤 '+(n||'')+(c?' · '+c:'');
+})();
+function galleryLogout(){
+  ['member_id','member_name','member_company','member_project','member_phone','senderName'].forEach(k=>localStorage.removeItem(k));
+  location.href='../login.html';
+}
+
 // ── Supabase ─────────────────────────────────────────
 const SUPABASE_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
 const SUPABASE_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';

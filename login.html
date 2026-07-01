@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>로그인 — 작업 사진</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:100vh;
+  padding:24px 16px;font-size:17px;}
+.wrap{max-width:420px;margin:0 auto;}
+.app-header{background:linear-gradient(135deg,#1E3A5F,#2E5F9E);border-radius:12px;
+  padding:14px 18px;margin-bottom:16px;color:#fff;}
+.app-title{font-size:20px;font-weight:800;letter-spacing:1px;}
+.app-sub{font-size:11px;opacity:0.75;margin-top:2px;}
+.card{background:#fff;border:1px solid #D1DCE8;border-radius:12px;
+  padding:16px;box-shadow:0 2px 6px rgba(0,0,0,0.06);}
+.tab-bar{display:grid;grid-template-columns:1fr 1fr;margin-bottom:18px;
+  border-radius:8px;overflow:hidden;border:1.5px solid #C8D8E8;}
+.tab-btn{padding:11px;border:none;background:#F7FAFC;font-size:15px;font-weight:700;
+  cursor:pointer;color:#5A7A9A;transition:all 0.2s;}
+.tab-btn.active{background:#2E5F9E;color:#fff;}
+.flbl{font-size:11px;font-weight:700;color:#5A7A9A;letter-spacing:0.5px;
+  text-transform:uppercase;margin-bottom:5px;margin-top:14px;}
+.flbl:first-child{margin-top:0;}
+.f{width:100%;background:#F7FAFC;border:1.5px solid #C8D8E8;border-radius:8px;
+  padding:11px;color:#1A2332;font-size:17px;outline:none;font-family:Arial;
+  transition:border-color 0.2s;}
+.f:focus{border-color:#2E5F9E;background:#fff;}
+.sbtn{width:100%;padding:13px;border:none;border-radius:10px;font-size:16px;
+  font-weight:800;cursor:pointer;margin-top:18px;
+  background:linear-gradient(135deg,#2980B9,#1A5276);color:#fff;}
+.sbtn:disabled{background:#BDC3C7;cursor:not-allowed;}
+#toast,#toastE{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  padding:10px 20px;border-radius:10px;font-size:14px;font-weight:700;
+  display:none;z-index:9998;white-space:nowrap;color:#fff;
+  box-shadow:0 4px 12px rgba(0,0,0,0.2);}
+#toast{background:#27AE60;}
+#toastE{background:#E74C3C;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="app-header">
+    <div class="app-title">&#128247; 작업 사진</div>
+    <div class="app-sub">계장 &amp; 전기 공사</div>
+  </div>
+
+  <div class="card">
+    <div class="tab-bar">
+      <button class="tab-btn active" id="tabLogin" onclick="switchTab('login')">로그인</button>
+      <button class="tab-btn" id="tabSignup" onclick="switchTab('signup')">회원가입</button>
+    </div>
+
+    <!-- 로그인 -->
+    <div id="panelLogin">
+      <div class="flbl">전화번호</div>
+      <input type="tel" id="loginPhone" class="f" placeholder="01012345678"/>
+      <button class="sbtn" onclick="doLogin()">로그인</button>
+    </div>
+
+    <!-- 회원가입 -->
+    <div id="panelSignup" style="display:none;">
+      <div class="flbl">회사명</div>
+      <input type="text" id="regCompany" class="f" placeholder="(주)OOO건설"/>
+      <div class="flbl">프로젝트명</div>
+      <input type="text" id="regProject" class="f" placeholder="OOO 플랜트 공사"/>
+      <div class="flbl">이름</div>
+      <input type="text" id="regName" class="f" placeholder="홍길동"/>
+      <div class="flbl">전화번호</div>
+      <input type="tel" id="regPhone" class="f" placeholder="01012345678"/>
+      <button class="sbtn" onclick="doSignup()">가입하기</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="toastE"></div>
+
+<script>
+var SUPABASE_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
+var SUPABASE_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
+var sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+// 이미 로그인된 경우 바로 이동
+if(localStorage.getItem('member_id')){location.href='index.html';}
+
+function switchTab(t){
+  document.getElementById('panelLogin').style.display=t==='login'?'':'none';
+  document.getElementById('panelSignup').style.display=t==='signup'?'':'none';
+  document.getElementById('tabLogin').classList.toggle('active',t==='login');
+  document.getElementById('tabSignup').classList.toggle('active',t==='signup');
+}
+
+function normPhone(v){return v.replace(/\D/g,'');}
+
+async function doLogin(){
+  var phone=normPhone(document.getElementById('loginPhone').value.trim());
+  if(phone.length<10){showTE('전화번호를 입력해 주세요.');return;}
+  showT('확인 중...');
+  var res=await sbClient.from('members').select('*').eq('phone',phone).single();
+  if(res.error||!res.data){showTE('등록된 번호가 없습니다. 회원가입 해주세요.');return;}
+  saveSession(res.data);
+  showT('안녕하세요, '+res.data.name+'님!');
+  setTimeout(function(){location.href='index.html';},900);
+}
+
+async function doSignup(){
+  var company=document.getElementById('regCompany').value.trim();
+  var project=document.getElementById('regProject').value.trim();
+  var name=document.getElementById('regName').value.trim();
+  var phone=normPhone(document.getElementById('regPhone').value.trim());
+  if(!company||!project||!name||phone.length<10){showTE('모든 항목을 입력해 주세요.');return;}
+  showT('가입 중...');
+  var res=await sbClient.from('members').insert({company:company,project:project,name:name,phone:phone}).select().single();
+  if(res.error){
+    var msg=res.error.message||'';
+    if(msg.includes('unique')||msg.includes('duplicate')){showTE('이미 등록된 전화번호입니다.');}
+    else{showTE('가입 실패: '+msg);}
+    return;
+  }
+  saveSession(res.data);
+  showT('가입 완료! 환영합니다, '+res.data.name+'님!');
+  setTimeout(function(){location.href='index.html';},1000);
+}
+
+function saveSession(m){
+  localStorage.setItem('member_id',m.id);
+  localStorage.setItem('member_name',m.name);
+  localStorage.setItem('member_company',m.company);
+  localStorage.setItem('member_project',m.project);
+  localStorage.setItem('member_phone',m.phone);
+  localStorage.setItem('senderName',m.name);
+}
+
+function showT(m){var t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none';},2500);}
+function showTE(m){var t=document.getElementById('toastE');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none';},6000);}
+</script>
+</body>
+</html>

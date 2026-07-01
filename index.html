@@ -79,8 +79,13 @@ textarea.f{resize:none;height:48px;}
 <body>
 
 <div class="app-header">
-  <div class="app-title">&#128247; 작업 사진</div>
-  <div class="app-sub">계장 &amp; 전기 공사</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <div class="app-title">&#128247; 작업 사진</div>
+      <div class="app-sub" id="hdrUser">계장 &amp; 전기 공사</div>
+    </div>
+    <button onclick="logout()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer;">로그아웃</button>
+  </div>
 </div>
 
 <!-- 정보 입력 -->
@@ -202,6 +207,18 @@ textarea.f{resize:none;height:48px;}
 <div id="toastE"></div>
 
 <script>
+// ── 인증 체크 ─────────────────────────────────────────
+(function(){
+  if(!localStorage.getItem('member_id')){location.href='login.html';return;}
+  var n=localStorage.getItem('member_name')||'';
+  var c=localStorage.getItem('member_company')||'';
+  if(n||c) document.getElementById('hdrUser').textContent=(n||'')+(c?' · '+c:'');
+})();
+function logout(){
+  ['member_id','member_name','member_company','member_project','member_phone','senderName'].forEach(function(k){localStorage.removeItem(k);});
+  location.href='login.html';
+}
+
 // ── Supabase ──────────────────────────────────────────
 var SUPABASE_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
 var SUPABASE_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
@@ -227,7 +244,7 @@ async function sendToSupabase(){
         date:p.info.date||'', time:p.info.time||'', tag:p.info.tag||'',
         cat:p.info.cat||'', loc:p.info.loc||'', work_type:p.info.wt||'',
         note:p.info.note||'', photo_url:photoUrl,
-        sender:localStorage.getItem('senderName')||''
+        sender:localStorage.getItem('member_name')||localStorage.getItem('senderName')||''
       };
       var dbRes=await sbClient.from('work_photos').insert(insertData);
       if(dbRes.error){
