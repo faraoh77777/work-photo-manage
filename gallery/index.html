@@ -1274,6 +1274,8 @@ function openUpload() {
   ['tagBadge','dateBadge','timeBadge','wtBadge','catBadge','teamBadge','noteBadge'].forEach(id=>{
     document.getElementById(id).style.display='none';
   });
+  const mn=localStorage.getItem('member_name')||'';
+  if(mn) document.getElementById('upTeam').value=mn;
   document.getElementById('upOverlay').classList.add('show');
 }
 function closeUpload() {
@@ -1653,9 +1655,11 @@ function populateDateFilter() {
 }
 
 function populateSelects(){
-  document.getElementById('fTeam').innerHTML='<option value="">전체 팀명</option>'+teams.map(v=>`<option>${v}</option>`).join('');
+  const mn=localStorage.getItem('member_name')||'';
+  const allTeams=mn&&!teams.includes(mn)?[...teams,mn]:teams;
+  document.getElementById('fTeam').innerHTML='<option value="">전체 팀명</option>'+allTeams.map(v=>`<option>${v}</option>`).join('');
   document.getElementById('upCat').innerHTML=cats.map(v=>`<option value="${v}">${v}</option>`).join('');
-  document.getElementById('upTeam').innerHTML='<option value="">선택</option>'+teams.map(v=>`<option>${v}</option>`).join('');
+  document.getElementById('upTeam').innerHTML='<option value="">선택</option>'+allTeams.map(v=>`<option>${v}</option>`).join('');
   document.getElementById('upArea').innerHTML='<option value="">선택</option>'+areas.map(v=>`<option>${v}</option>`).join('');
   const np=document.getElementById('upNotePreset');
   np.innerHTML='<option value="">-- 프리셋 선택 --</option>'+notePresets.map(v=>`<option>${v}</option>`).join('');
