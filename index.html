@@ -223,13 +223,21 @@ async function sendToSupabase(){
       var storageRes=await sbClient.storage.from('work-photo').upload(filePath,p.blob,{contentType:'image/jpeg',upsert:true});
       if(storageRes.error){ lastErr='[Storage] '+storageRes.error.message; continue; }
       var photoUrl=sbClient.storage.from('work-photo').getPublicUrl(filePath).data.publicUrl;
-      var dbRes=await sbClient.from('work_photos').insert({
+      var insertData={
         date:p.info.date||'', time:p.info.time||'', tag:p.info.tag||'',
         cat:p.info.cat||'', loc:p.info.loc||'', work_type:p.info.wt||'',
         note:p.info.note||'', photo_url:photoUrl,
         sender:localStorage.getItem('senderName')||''
-      });
-      if(dbRes.error){ lastErr='[DB] '+dbRes.error.message; continue; }
+      };
+      var dbRes=await sbClient.from('work_photos').insert(insertData);
+      if(dbRes.error){
+        // sender 컬럼 미존재 시 sender 없이 재시도
+        if(dbRes.error.message&&dbRes.error.message.toLowerCase().includes('sender')){
+          var d2=Object.assign({},insertData); delete d2.sender;
+          var dbRes2=await sbClient.from('work_photos').insert(d2);
+          if(dbRes2.error){ lastErr='[DB] '+dbRes2.error.message; continue; }
+        } else { lastErr='[DB] '+dbRes.error.message; continue; }
+      }
       success++;
     }catch(e){ lastErr=e.message||String(e); }
   }
@@ -238,8 +246,10 @@ async function sendToSupabase(){
   if(success===total){
     showT('✅ '+success+'장 전송 완료! 저장 중...');
     autoSaveToDevice(savedPhotos.slice());
+  } else if(success>0){
+    showTE('⚠️ '+success+'/'+total+'장 성공 — '+lastErr);
   } else {
-    showTE('실패: '+lastErr);
+    showTE('❌ 전송 실패: '+lastErr);
   }
 }
 
@@ -498,7 +508,7 @@ function resetCam(){
 }
 
 function showT(m){var t=document.getElementById("toast");t.textContent=m;t.style.display="block";setTimeout(function(){t.style.display="none";},2500);}
-function showTE(m){var t=document.getElementById("toastE");t.textContent=m;t.style.display="block";setTimeout(function(){t.style.display="none";},4000);}
+function showTE(m){var t=document.getElementById("toastE");t.textContent=m;t.style.display="block";setTimeout(function(){t.style.display="none";},7000);}
 
 // ── TAG OCR (카메라 스캔) ─────────────────────────────
 function startOCR(){document.getElementById("ocrInput").click();}
