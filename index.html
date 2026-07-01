@@ -271,19 +271,7 @@ async function sendToSupabase(){
 }
 
 function autoSaveToDevice(photos){
-  // Web Share API (iOS 15+ / Android Chrome) - 파일로 공유/저장
-  var blobs=photos.map(function(p){
-    return new File([p.blob], p.filename, {type:'image/jpeg'});
-  });
-  if(navigator.share && navigator.canShare && navigator.canShare({files:blobs})){
-    navigator.share({files:blobs, title:'작업 사진'}).catch(function(){
-      // 공유 취소 시 다운로드 fallback
-      downloadAll(photos);
-    });
-  } else {
-    // Fallback: 순차 다운로드 (Android Downloads / PC)
-    downloadAll(photos);
-  }
+  downloadAll(photos);
 }
 
 function downloadAll(photos){
