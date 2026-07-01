@@ -114,16 +114,16 @@ textarea.f{resize:none;height:48px;}
     <label style="flex:1;min-width:80px;display:flex;align-items:center;gap:6px;background:#F7FAFC;
       border:1.5px solid #C8D8E8;border-radius:8px;padding:9px 10px;cursor:pointer;
       font-size:17px;font-weight:700;color:#7F8C8D;">
-      <input type="radio" name="workType" id="wtBefore" value="수정-작업전"
+      <input type="radio" name="workType" id="wtBefore" value="작업전"
         style="width:16px;height:16px;accent-color:#7F8C8D;"/>
-      &#128247; 수정-작업전
+      &#128247; 작업전
     </label>
     <label style="flex:1;min-width:80px;display:flex;align-items:center;gap:6px;background:#F7FAFC;
       border:1.5px solid #C8D8E8;border-radius:8px;padding:9px 10px;cursor:pointer;
       font-size:17px;font-weight:700;color:#27AE60;">
-      <input type="radio" name="workType" id="wtAfter" value="수정-작업후"
+      <input type="radio" name="workType" id="wtAfter" value="작업후"
         style="width:16px;height:16px;accent-color:#27AE60;"/>
-      &#9989; 수정-작업후
+      &#9989; 작업후
     </label>
   </div>
 
@@ -303,11 +303,25 @@ async function autoSaveToDevice(photos){
         console.error('파일저장실패',p.filename,e);
       }
     }
-    if(cnt>0) showT('📁 '+dirHandle.name+'에 '+cnt+'장 저장 완료!');
-    else{showTE('폴더 저장 실패: '+lastErr);downloadAll(photos);}
+    if(cnt>0){showT('📁 '+dirHandle.name+'에 '+cnt+'장 저장 완료!');setTimeout(resetApp,2000);}
+    else{showTE('폴더 저장 실패: '+lastErr);downloadAll(photos);setTimeout(resetApp,photos.length*300+2000);}
   } else {
     downloadAll(photos);
+    setTimeout(resetApp,photos.length*300+2000);
   }
+}
+
+function resetApp(){
+  savedPhotos=[];
+  lockedInfo=null;
+  document.getElementById('fileInput').value='';
+  document.getElementById('inTag').value='';
+  document.getElementById('inNote').value='';
+  document.getElementById('wtNew').checked=true;
+  document.getElementById('inCat').value='Field Instrument';
+  document.getElementById('inLoc').value='SCC';
+  updateList();
+  resetCam();
 }
 
 function downloadAll(photos){
@@ -442,7 +456,7 @@ function sanitizeForFilename(str){
     .slice(0,30):"";
 }
 
-var WT_EN={'신규':'new','수정-작업전':'mod-before','수정-작업후':'mod-after'};
+var WT_EN={'신규':'new','작업전':'mod-before','작업후':'mod-after'};
 
 function buildFileName(idx){
   var wt=WT_EN[lockedInfo.wt]||sanitizeForFilename(lockedInfo.wt)||'work';

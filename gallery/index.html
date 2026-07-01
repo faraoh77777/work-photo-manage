@@ -256,7 +256,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
       </select>
 <select id="fWt" onchange="renderPhotos()">
         <option value="">전체 구분</option>
-        <option>신규</option><option>수정-작업전</option><option>수정-작업후</option>
+        <option>신규</option><option>작업전</option><option>작업후</option>
       </select>
       <div class="f-sep"></div>
       <button class="f-reset" onclick="resetFilter()">초기화</button>
@@ -321,8 +321,8 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
       <label>작업 구분 <span class="auto-badge" id="wtBadge" style="display:none">자동</span></label>
       <div class="wt-radios" id="wtRg">
         <label><input type="radio" name="upWt" value="신규" checked><span>🆕 신규</span></label>
-        <label><input type="radio" name="upWt" value="수정-작업전"><span>📷 수정-작업전</span></label>
-        <label><input type="radio" name="upWt" value="수정-작업후"><span>✅ 수정-작업후</span></label>
+        <label><input type="radio" name="upWt" value="작업전"><span>📷 작업전</span></label>
+        <label><input type="radio" name="upWt" value="작업후"><span>✅ 작업후</span></label>
       </div>
     </div>
 
@@ -397,8 +397,8 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
         <label>작업 구분</label>
         <div class="wt-radios" id="eWtRg">
           <label><input type="radio" name="eWt" value="신규" checked><span>🆕 신규</span></label>
-          <label><input type="radio" name="eWt" value="수정-작업전"><span>📷 수정-작업전</span></label>
-          <label><input type="radio" name="eWt" value="수정-작업후"><span>✅ 수정-작업후</span></label>
+          <label><input type="radio" name="eWt" value="작업전"><span>📷 작업전</span></label>
+          <label><input type="radio" name="eWt" value="작업후"><span>✅ 작업후</span></label>
         </div>
       </div>
       <div class="fg"><label>작업 분류</label><select id="eCat"></select></div>
@@ -729,7 +729,7 @@ function parseWorkFilename(name) {
   // 작업구분
   const wtM = name.match(/WORK_\d+_\d+_(NEW|EDIT-BEFORE|EDIT-AFTER)_/);
   if (wtM) {
-    const wmap = { NEW:'신규', 'EDIT-BEFORE':'수정-작업전', 'EDIT-AFTER':'수정-작업후' };
+    const wmap = { NEW:'신규', 'EDIT-BEFORE':'작업전', 'EDIT-AFTER':'작업후' };
     r.wt = wmap[wtM[1]] || '';
   }
   // 기기번호
@@ -841,11 +841,11 @@ const CAT_ICON = {
   'Instrument Calibration':'🔬','Steam Tracing Tube':'♨️',
   'Steam Tracing Insulation':'🧱','Scaffolding':'🏗️','Others':'📁'
 };
-const WT_ORDER = ['신규','수정-작업전','수정-작업후'];
+const WT_ORDER = ['신규','작업전','작업후'];
 const WT_META  = {
-  '신규':       { icon:'🆕', ptCls:'pt-new',  bCls:'b-wt-new'  },
-  '수정-작업전': { icon:'📷', ptCls:'pt-pre',  bCls:'b-wt-pre'  },
-  '수정-작업후': { icon:'✅', ptCls:'pt-post', bCls:'b-wt-post' },
+  '신규':  { icon:'🆕', ptCls:'pt-new',  bCls:'b-wt-new'  },
+  '작업전': { icon:'📷', ptCls:'pt-pre',  bCls:'b-wt-pre'  },
+  '작업후': { icon:'✅', ptCls:'pt-post', bCls:'b-wt-post' },
 };
 
 // ── 전체 자동 분류 ────────────────────────────────────
@@ -1210,8 +1210,8 @@ function parseOCRText(text) {
   if(dateM) r.date=`${dateM[1]}-${dateM[2]}-${dateM[3]}`;
   const timeM=t.match(/(\d{1,2})[:\s시](\d{2})(?:[:\s분]|$)/m)||t.match(/(\d{2}):(\d{2}):\d{2}/);
   if(timeM) r.time=`${timeM[1].padStart(2,'0')}:${timeM[2]}`;
-  if(/수정.{0,2}작업.{0,2}후/.test(t)) r.wt='수정-작업후';
-  else if(/수정.{0,2}작업.{0,2}전/.test(t)) r.wt='수정-작업전';
+  if(/작업.{0,2}후/.test(t)) r.wt='작업후';
+  else if(/작업.{0,2}전/.test(t)) r.wt='작업전';
   else if(/신규/.test(t)) r.wt='신규';
   for(const cat of cats){if(t.includes(cat)){r.cat=cat;break;}}
 for(const tm of teams){if(t.includes(tm)){r.team=tm;break;}}
