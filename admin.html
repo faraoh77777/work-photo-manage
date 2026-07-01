@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>작업 사진</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:100vh;
+  padding:16px;font-size:16px;}
+.app-header{background:linear-gradient(135deg,#1E3A5F,#2E5F9E);border-radius:16px;
+  padding:18px 20px;margin-bottom:16px;color:#fff;}
+.app-title{font-size:20px;font-weight:800;letter-spacing:1px;margin-bottom:2px;}
+.app-sub{font-size:13px;opacity:0.75;}
+.card{background:#fff;border:1px solid #D1DCE8;border-radius:16px;
+  padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,0.07);}
+.flbl{font-size:13px;font-weight:700;color:#5A7A9A;letter-spacing:0.5px;
+  text-transform:uppercase;margin-bottom:8px;margin-top:12px;}
+.flbl:first-child{margin-top:0;}
+.f{width:100%;background:#F7FAFC;border:1.5px solid #C8D8E8;border-radius:10px;
+  padding:13px 14px;color:#1A2332;font-size:16px;outline:none;font-family:Arial;
+  transition:border-color 0.2s;}
+.f:focus{border-color:#2E5F9E;background:#fff;}
+select.f option{background:#fff;color:#1A2332;}
+textarea.f{resize:none;height:70px;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.cat-bar{height:4px;border-radius:2px;margin-top:8px;transition:background 0.2s;}
+.cam-box{width:100%;aspect-ratio:4/3;background:#EAF0F8;border:2px dashed #A0BBD4;
+  border-radius:14px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;cursor:pointer;position:relative;overflow:hidden;margin-bottom:12px;}
+.cam-placeholder p{font-size:15px;color:#7A9AB8;margin-top:8px;}
+.cam-placeholder .icon{font-size:52px;}
+.corner{position:absolute;width:22px;height:22px;}
+.tl{top:10px;left:10px;border-top:3px solid #2E5F9E;border-left:3px solid #2E5F9E;border-radius:3px 0 0 0;}
+.tr{top:10px;right:10px;border-top:3px solid #2E5F9E;border-right:3px solid #2E5F9E;border-radius:0 3px 0 0;}
+.bl{bottom:10px;left:10px;border-bottom:3px solid #2E5F9E;border-left:3px solid #2E5F9E;border-radius:0 0 0 3px;}
+.br{bottom:10px;right:10px;border-bottom:3px solid #2E5F9E;border-right:3px solid #2E5F9E;border-radius:0 0 3px 0;}
+canvas{width:100%;border-radius:12px;display:block;}
+.sbtn{width:100%;padding:15px;border:none;border-radius:12px;font-size:17px;
+  font-weight:800;cursor:pointer;margin-top:10px;}
+.sbtn-cam{background:linear-gradient(135deg,#2E5F9E,#1E3A5F);color:#fff;}
+.sbtn-save{background:linear-gradient(135deg,#27AE60,#1E8449);color:#fff;}
+.sbtn-save:disabled{background:#BDC3C7;color:#fff;cursor:not-allowed;}
+.hdivider{height:1px;background:#E8EEF4;margin:10px 0;}
+.save-guide{background:#EAF8F0;border:1.5px solid #A9DFBF;border-radius:10px;
+  padding:12px 14px;margin-top:10px;font-size:14px;color:#1E8449;line-height:1.8;display:none;}
+.list-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.list-title{font-size:15px;font-weight:700;color:#1A2332;}
+.list-count{font-size:15px;font-weight:800;color:#2E5F9E;}
+.saved-list{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px;}
+.saved-item{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;
+  border:2px solid #D1DCE8;box-shadow:0 2px 6px rgba(0,0,0,0.1);}
+.saved-item img{width:100%;height:100%;object-fit:cover;}
+.del-btn{position:absolute;top:3px;right:3px;background:rgba(231,76,60,0.9);
+  border:none;border-radius:50%;width:22px;height:22px;color:#fff;font-size:12px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:800;}
+.num-badge{position:absolute;bottom:3px;left:5px;font-size:11px;color:#fff;
+  font-weight:800;text-shadow:0 1px 3px rgba(0,0,0,0.6);}
+.empty-msg{grid-column:span 3;text-align:center;padding:24px;color:#A0BBD4;font-size:15px;}
+.bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:9999;
+  padding:10px 16px 24px;background:linear-gradient(transparent,#F0F4F8 35%);}
+.btn-share{width:100%;padding:15px;border:none;border-radius:14px;font-size:16px;
+  font-weight:800;cursor:pointer;background:#FEE500;color:#1A2332;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  box-shadow:0 4px 12px rgba(230,185,0,0.4);}
+#toast,#toastE{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);
+  padding:12px 22px;border-radius:12px;font-size:15px;font-weight:700;
+  display:none;z-index:9998;white-space:nowrap;color:#fff;
+  box-shadow:0 4px 12px rgba(0,0,0,0.2);}
+#toast{background:#27AE60;}
+#toastE{background:#E74C3C;}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="app-title">&#128247; 작업 사진</div>
+  <div class="app-sub">계장 &amp; 전기 공사</div>
+</div>
+
+<!-- 정보 입력 -->
+<div class="card">
+  <div class="flbl">날짜 / 시간</div>
+  <div class="row2">
+    <input type="date" id="inDate" class="f"/>
+    <input type="time" id="inTime" class="f"/>
+  </div>
+
+  <div class="flbl">기기번호 (TAG NO, EQ NO, 모든 기기이름 및 번호)</div>
+  <input type="text" id="inTag" class="f" placeholder="예: PT-2101, EQ-001 등 기기 번호"/>
+
+  <div class="flbl">작업 구분</div>
+  <div style="display:flex;gap:10px;margin-bottom:4px;">
+    <label style="flex:1;display:flex;align-items:center;gap:8px;background:#F7FAFC;
+      border:1.5px solid #C8D8E8;border-radius:10px;padding:13px 14px;cursor:pointer;
+      font-size:16px;font-weight:700;color:#2980B9;">
+      <input type="radio" name="workType" id="wtNew" value="신규" checked
+        style="width:18px;height:18px;accent-color:#2980B9;"/>
+      &#127381; 신규
+    </label>
+    <label style="flex:1;display:flex;align-items:center;gap:8px;background:#F7FAFC;
+      border:1.5px solid #C8D8E8;border-radius:10px;padding:13px 14px;cursor:pointer;
+      font-size:16px;font-weight:700;color:#E67E22;">
+      <input type="radio" name="workType" id="wtMod" value="수정"
+        style="width:18px;height:18px;accent-color:#E67E22;"/>
+      &#9999;&#65039; 수정
+    </label>
+  </div>
+
+  <div id="phaseRow" style="display:none;gap:10px;margin-top:8px;">
+    <label style="flex:1;display:flex;align-items:center;gap:8px;background:#F7FAFC;
+      border:1.5px solid #C8D8E8;border-radius:10px;padding:13px 14px;cursor:pointer;
+      font-size:16px;font-weight:700;color:#7F8C8D;">
+      <input type="radio" name="workPhase" id="phBefore" value="작업전" checked
+        style="width:18px;height:18px;accent-color:#7F8C8D;"/>
+      &#128247; 작업전
+    </label>
+    <label style="flex:1;display:flex;align-items:center;gap:8px;background:#F7FAFC;
+      border:1.5px solid #C8D8E8;border-radius:10px;padding:13px 14px;cursor:pointer;
+      font-size:16px;font-weight:700;color:#27AE60;">
+      <input type="radio" name="workPhase" id="phAfter" value="작업후"
+        style="width:18px;height:18px;accent-color:#27AE60;"/>
+      &#9989; 작업후
+    </label>
+  </div>
+
+  <div class="flbl">작업 분류</div>
+  <select id="inCat" class="f">
+    <option value="dcs">DCS Panel</option>
+    <option value="lcp">LCP</option>
+    <option value="jb">Junction Box</option>
+    <option value="fi" selected>Field Instrument</option>
+    <option value="duct">Cable Duct</option>
+    <option value="tray">Cable Tray</option>
+    <option value="conduit">Conduit Pipe</option>
+    <option value="airpipe">Air Pipe</option>
+    <option value="hookup">Hook Up</option>
+    <option value="stanchion">Stanchion</option>
+    <option value="support">Support</option>
+    <option value="conn">Connection</option>
+    <option value="linecheck">Line Check</option>
+    <option value="looptest">Loop Test</option>
+    <option value="leaktest">Leak Test</option>
+    <option value="calib">Instrument Calibration</option>
+    <option value="steamtube">Steam Tracing Tube</option>
+    <option value="steamins">Steam Tracing Insulation</option>
+    <option value="scaffold">Scaffolding</option>
+    <option value="etc">Others</option>
+  </select>
+  <div class="cat-bar" id="catBar"></div>
+
+  <div class="flbl">작업 구역</div>
+  <select id="inLoc" class="f">
+    <option>SCC</option>
+    <option>U&amp;O</option>
+  </select>
+
+  <div class="flbl">팀 이름</div>
+  <input type="text" id="inLeader" class="f" placeholder="팀 이름 입력"/>
+
+  <div class="flbl">특이사항</div>
+  <textarea id="inNote" class="f" placeholder="특이사항을 입력하세요..."></textarea>
+</div>
+
+<!-- 카메라 -->
+<div class="card" id="camCard">
+  <div class="flbl">사진 촬영 (4:3)</div>
+  <div class="cam-box" id="camBox">
+    <div class="cam-placeholder" style="text-align:center;pointer-events:none;">
+      <div class="icon">&#128247;</div>
+      <p>탭하여 사진 촬영 (4:3)</p>
+    </div>
+    <div class="corner tl"></div><div class="corner tr"></div>
+    <div class="corner bl"></div><div class="corner br"></div>
+  </div>
+  <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none"/>
+</div>
+
+<canvas id="canvas" style="display:none;"></canvas>
+
+<!-- 저장된 사진 목록 -->
+<div class="card">
+  <div class="list-header">
+    <div>
+      <span class="list-title">저장된 사진 </span>
+      <span class="list-count" id="photoCount">0</span>
+      <span class="list-title">장</span>
+    </div>
+  </div>
+  <div class="saved-list" id="savedList">
+    <div class="empty-msg">촬영된 사진이 없습니다</div>
+  </div>
+  <button class="sbtn sbtn-save" id="saveAllBtn" onclick="saveAllPhotos()" style="display:none;margin-top:14px;">&#128190; 전체 저장 후 처음으로</button>
+</div>
+
+
+<div id="toast"></div>
+<div id="toastE"></div>
+
+<script>
+var CC={
+  dcs:"#E67E22",lcp:"#E74C3C",jb:"#F39C12",fi:"#2980B9",duct:"#16A085",
+  tray:"#8E44AD",conduit:"#C0392B",airpipe:"#27AE60",hookup:"#2E86AB",
+  stanchion:"#5D6D7E",support:"#A569BD",conn:"#E74C3C",linecheck:"#1ABC9C",
+  looptest:"#3498DB",leaktest:"#1A5276",calib:"#D35400",steamtube:"#C0392B",steamins:"#922B21",
+  scaffold:"#7F8C8D",etc:"#95A5A6"
+};
+
+var loadedImg=null, savedPhotos=[], lockedInfo=null;
+
+var now=new Date();
+document.getElementById("inDate").value=now.toISOString().slice(0,10);
+document.getElementById("inTime").value=now.toTimeString().slice(0,5);
+updCat();
+togglePhaseRow();
+
+document.getElementById("camBox").addEventListener("click",function(){document.getElementById("fileInput").click();});
+document.getElementById("fileInput").addEventListener("change",loadImg);
+document.getElementById("inCat").addEventListener("change",updCat);
+document.querySelectorAll('input[name="workType"]').forEach(function(r){
+  r.addEventListener("change",function(){togglePhaseRow();});
+});
+
+function updCat(){
+  var v=document.getElementById("inCat").value;
+  document.getElementById("catBar").style.background=CC[v]||"#7F8C8D";
+}
+
+function togglePhaseRow(){
+  var isMod=document.getElementById("wtMod").checked;
+  document.getElementById("phaseRow").style.display=isMod?"flex":"none";
+}
+
+function getWorkLabel(){
+  var wt=document.querySelector('input[name="workType"]:checked').value;
+  if(wt==="수정"){
+    var phaseEl=document.querySelector('input[name="workPhase"]:checked');
+    var phase=phaseEl?phaseEl.value:"작업전";
+    return wt+"-"+phase;
+  }
+  return wt;
+}
+
+function crop43(img){
+  var sW=img.width,sH=img.height,r=4/3,cW,cH,ox=0,oy=0;
+  if(sW/sH>r){cH=sH;cW=Math.round(sH*r);ox=Math.round((sW-cW)/2);}
+  else{cW=sW;cH=Math.round(sW/r);oy=Math.round((sH-cH)/2);}
+  var c=document.createElement("canvas");
+  c.width=cW;c.height=cH;c._w=cW;c._h=cH;
+  c.getContext("2d").drawImage(img,ox,oy,cW,cH,0,0,cW,cH);
+  return c;
+}
+
+function loadImg(e){
+  var file=e.target.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var img=new Image();
+    img.onload=function(){
+      loadedImg=crop43(img);
+      var catEl=document.getElementById("inCat");
+      lockedInfo={
+        date:document.getElementById("inDate").value,
+        time:document.getElementById("inTime").value,
+        tag:document.getElementById("inTag").value.trim(),
+        cat:catEl.options[catEl.selectedIndex].text,
+        loc:document.getElementById("inLoc").value,
+        leader:document.getElementById("inLeader").value.trim(),
+        note:document.getElementById("inNote").value.trim()||"-",
+        wt:getWorkLabel()
+      };
+      renderCanvas();
+      savePhoto();
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value="";
+}
+
+function renderCanvas(){
+  if(!loadedImg||!lockedInfo)return;
+  var cv=document.getElementById("canvas");
+  var W=loadedImg._w,H=loadedImg._h;
+  cv.width=W;cv.height=H;
+  var ctx=cv.getContext("2d");
+  ctx.drawImage(loadedImg,0,0);
+
+  var catTxt=lockedInfo.wt==="신규" ? lockedInfo.cat : "["+lockedInfo.wt+"] "+lockedInfo.cat;
+  var lines=[
+    catTxt,
+    lockedInfo.tag||"-",
+    lockedInfo.loc,
+    lockedInfo.leader||"-",
+    lockedInfo.note||"-",
+    lockedInfo.date
+  ];
+
+  var fs=Math.max(11,Math.round(W*0.022));
+  var maxBoxW=Math.round(W*0.55);
+  var padX=Math.round(W*0.025);
+  var padY=Math.round(fs*0.45);
+
+  ctx.textBaseline="top";
+
+  /* 가장 긴 줄 기준으로 폰트 자동 축소 */
+  lines.forEach(function(l){
+    var tfs=fs;
+    ctx.font="bold "+tfs+"px Arial,sans-serif";
+    while(ctx.measureText(l).width>maxBoxW-padX*2&&tfs>10){
+      tfs--;ctx.font="bold "+tfs+"px Arial,sans-serif";
+    }
+    if(tfs<fs)fs=tfs;
+  });
+
+  var lh=Math.round(fs*1.6);
+  ctx.font="bold "+fs+"px Arial,sans-serif";
+
+  var maxTxtW=0;
+  lines.forEach(function(l){var w=ctx.measureText(l).width;if(w>maxTxtW)maxTxtW=w;});
+
+  var boxW=maxTxtW+padX*2;
+  var boxH=lines.length*lh+padY*2;
+  var margin=Math.round(W*0.02);
+  var boxX=W-boxW-margin;
+  var boxY=H-boxH-margin;
+
+  ctx.fillStyle="rgba(0,0,0,0.5)";
+  ctx.fillRect(boxX,boxY,boxW,boxH);
+
+  ctx.fillStyle="#FFFFFF";
+  lines.forEach(function(l,i){
+    ctx.fillText(l,boxX+padX,boxY+padY+i*lh);
+  });
+}
+
+function sanitizeForFilename(str){
+  if(!str)return "";
+  return String(str)
+    .trim()
+    .replace(/[\\\/:*?"<>|]/g,"")   // 파일명에 쓸 수 없는 특수문자 제거
+    .replace(/\s+/g,"_")            // 공백은 언더스코어로
+    .slice(0,30);                   // 항목별 길이 제한(전체 파일명 과다 길이 방지)
+}
+
+function buildFileName(idx){
+  var date=(lockedInfo.date||"").replace(/-/g,"");
+  var time=(lockedInfo.time||"").replace(":","");
+  var tag=sanitizeForFilename(lockedInfo.tag)||"NONAME";
+  var cat=sanitizeForFilename(lockedInfo.cat)||"기타";
+  var loc=sanitizeForFilename(lockedInfo.loc)||"구역없음";
+  var leader=sanitizeForFilename(lockedInfo.leader)||"팀없음";
+  var note=sanitizeForFilename(lockedInfo.note)||"특이사항없음";
+  var wt=sanitizeForFilename(lockedInfo.wt);
+
+  var parts=["WORK",date,time,wt,cat,tag,loc,leader,note,idx];
+  var fname=parts.join("_")+".jpg";
+
+  // 윈도우 등에서 파일명 전체 길이 제한(확장자 포함 약 200자)을 넘지 않도록 보정
+  if(fname.length>200){
+    fname=fname.slice(0,196)+".jpg";
+  }
+  return fname;
+}
+
+function savePhoto(){
+  if(!loadedImg)return;
+
+  var cv=document.getElementById("canvas");
+  var fname=buildFileName(savedPhotos.length+1);
+  var dataUrl=cv.toDataURL("image/jpeg",0.92);
+
+  var info={
+    date:lockedInfo.date,
+    time:lockedInfo.time,
+    tag:lockedInfo.tag||"-",
+    cat:lockedInfo.cat,
+    loc:lockedInfo.loc,
+    leader:lockedInfo.leader||"-",
+    note:lockedInfo.note,
+    wt:lockedInfo.wt
+  };
+
+  var byteStr=atob(dataUrl.split(",")[1]);
+  var ab=new ArrayBuffer(byteStr.length);
+  var ia=new Uint8Array(ab);
+  for(var i=0;i<byteStr.length;i++)ia[i]=byteStr.charCodeAt(i);
+  var blob=new Blob([ab],{type:"image/jpeg"});
+  savedPhotos.push({dataUrl:dataUrl,filename:fname,blob:blob,info:info});
+
+  updateList();
+  showT("추가 완료! 총 "+savedPhotos.length+"장");
+  setTimeout(function(){resetCam();},500);
+}
+
+function updateList(){
+  var cnt=savedPhotos.length;
+  document.getElementById("photoCount").textContent=cnt;
+  document.getElementById("saveAllBtn").style.display=cnt>0?"block":"none";
+  var list=document.getElementById("savedList");
+  if(cnt===0){list.innerHTML='<div class="empty-msg">촬영된 사진이 없습니다</div>';return;}
+  var html="";
+  savedPhotos.forEach(function(p,i){
+    html+='<div class="saved-item">'
+      +'<img src="'+p.dataUrl+'"/>'
+      +'<button class="del-btn" onclick="removePhoto('+i+')">&#10005;</button>'
+      +'<span class="num-badge">'+(i+1)+'</span>'
+      +'</div>';
+  });
+  list.innerHTML=html;
+}
+
+window.removePhoto=function(idx){savedPhotos.splice(idx,1);updateList();};
+
+function saveAllPhotos(){
+  if(!savedPhotos.length){showTE("저장할 사진이 없습니다.");return;}
+  savedPhotos.forEach(function(p){
+    var a=document.createElement("a");
+    a.href=p.dataUrl;a.download=p.filename;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+  });
+  var cnt=savedPhotos.length;
+  savedPhotos=[];
+  loadedImg=null;lockedInfo=null;
+  updateList();
+  document.getElementById("prevCard").style.display="none";
+  document.getElementById("inTime").value=new Date().toTimeString().slice(0,5);
+  showT(cnt+"장 저장 완료!");
+  setTimeout(function(){window.scrollTo({top:0,behavior:"smooth"});},300);
+}
+
+function sharePhotos(){
+  if(!savedPhotos.length){showTE("공유할 사진이 없습니다.");return;}
+
+  var txt="[작업사진] 총 "+savedPhotos.length+"장\n";
+  savedPhotos.forEach(function(p,i){
+    var info=p.info;
+    txt+="\n"+(i+1)+". ["+info.wt+"] "+info.cat
+      +"\n   NAME: "+info.tag
+      +" / 날짜: "+info.date+" "+info.time
+      +"\n   구역: "+info.loc+" / 팀: "+info.leader
+      +"\n   특이사항: "+info.note+"\n";
+  });
+
+  var files=savedPhotos.map(function(p){return new File([p.blob],p.filename,{type:"image/jpeg"});});
+
+  function fallbackDownload(){
+    savedPhotos.forEach(function(p){
+      var a=document.createElement("a");
+      a.href=p.dataUrl;a.download=p.filename;
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+    });
+    showT("사진 "+savedPhotos.length+"장 저장됨 → 카카오톡에서 직접 전송하세요");
+  }
+
+  if(!navigator.share){fallbackDownload();return;}
+
+  var shareData={files:files,title:"[작업사진] "+savedPhotos.length+"장",text:txt};
+
+  if(navigator.canShare&&navigator.canShare(shareData)){
+    navigator.share(shareData)
+      .then(function(){showT("전송 완료! ("+savedPhotos.length+"장)");})
+      .catch(function(e){
+        if(e.name==="AbortError")return;
+        fallbackDownload();
+      });
+  } else {
+    shareOneByOne(0,files,txt);
+  }
+}
+
+function shareOneByOne(idx,files,txt){
+  if(idx>=files.length){showT("전송 완료! ("+files.length+"장)");return;}
+  var isLast=(idx===files.length-1);
+  var shareData=isLast
+    ?{files:[files[idx]],title:"[작업사진] "+(idx+1)+"/"+files.length,text:txt}
+    :{files:[files[idx]],title:"[작업사진] "+(idx+1)+"/"+files.length};
+  navigator.share(shareData)
+    .then(function(){shareOneByOne(idx+1,files,txt);})
+    .catch(function(e){
+      if(e.name==="AbortError")return;
+      showTE("전송 실패: "+e.message);
+    });
+}
+
+function resetCam(){
+  loadedImg=null;lockedInfo=null;
+  document.getElementById("fileInput").value="";
+  document.getElementById("camBox").innerHTML=
+    '<div class="cam-placeholder" style="text-align:center;pointer-events:none;">'
+    +'<div class="icon">&#128247;</div>'
+    +'<p>탭하여 사진 촬영 (4:3)</p>'
+    +'<p style="font-size:14px;color:#2E5F9E;margin-top:6px;font-weight:700;">저장된 사진: '+savedPhotos.length+'장</p>'
+    +'</div>'
+    +'<div class="corner tl"></div><div class="corner tr"></div>'
+    +'<div class="corner bl"></div><div class="corner br"></div>';
+  document.getElementById("inTime").value=new Date().toTimeString().slice(0,5);
+  document.getElementById("camCard").scrollIntoView({behavior:"smooth"});
+}
+
+function showT(m){var t=document.getElementById("toast");t.textContent=m;t.style.display="block";setTimeout(function(){t.style.display="none";},3000);}
+function showTE(m){var t=document.getElementById("toastE");t.textContent=m;t.style.display="block";setTimeout(function(){t.style.display="none";},4000);}
+</script>
+</body>
+</html>
