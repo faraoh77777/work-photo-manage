@@ -682,12 +682,18 @@ function updateFolderUI() {
 
 async function savePhotoToFolder(blob, filename, cat) {
   try {
-    // 작업분류별 서브폴더 자동 생성 (없으면 생성, 있으면 기존 사용)
-    const folderName = cat || 'Others';
+    // cats 배열과 대소문자 무관 매칭으로 정확한 폴더명 사용
+    const matched = cats.find(c => c.toLowerCase() === (cat||'').toLowerCase().replace(/_/g,' '));
+    const folderName = matched || cat || 'Others';
     const subDir = await dirHandle.getDirectoryHandle(folderName, { create: true });
     const fh = await subDir.getFileHandle(filename, { create: true });
     const writable = await fh.createWritable();
-    await writable.write(blob);
+    // Blob → ArrayBuffer 변환 후 write (InvalidStateError 방지)
+    const ab = await new Promise((res,rej)=>{
+      const fr=new FileReader(); fr.onload=e=>res(e.target.result); fr.onerror=rej;
+      fr.readAsArrayBuffer(blob);
+    });
+    await writable.write(new Uint8Array(ab));
     await writable.close();
     console.log('[폴더 저장 완료]', folderName + '/' + filename);
     return true;
