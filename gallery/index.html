@@ -589,10 +589,11 @@ async function syncFromSupabase(){
         const dataUrl=await new Promise((res,rej)=>{
           const fr=new FileReader();fr.onload=e=>res(e.target.result);fr.onerror=rej;fr.readAsDataURL(blob);
         });
+        const fnP = parseFilename(fname);
         const photo={
           id:Date.now()+Math.random(),
-          date:rec.date||'', time:rec.time||'', tag:rec.tag||'',
-          cat:rec.cat||'', wt:rec.work_type||'', team:rec.sender||'',
+          date:rec.date||fnP.date||'', time:rec.time||fnP.time||'', tag:rec.tag||fnP.tag||'',
+          cat:rec.cat||fnP.cat||'', wt:rec.work_type||fnP.wt||'', team:rec.sender||'',
           area:rec.loc||'', note:rec.note||'', name:fname,
           size:blob.size, dataUrl,
           created:rec.created_at||rec.date||new Date().toISOString(),
