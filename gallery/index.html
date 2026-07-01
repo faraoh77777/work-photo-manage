@@ -561,10 +561,36 @@ async function syncFromSupabase(){
     if(error) throw error;
     if(!records||records.length===0){ alert('클라우드에 사진이 없습니다.'); return; }
 
+    // 기존 사진에 team/name 업데이트 (sender가 새로 생긴 경우)
+    const mn0=localStorage.getItem('member_name')||'';
+    let updated=0;
+    for(const rec of records){
+      if(!rec.photo_url) continue;
+      const ex=photos.find(p=>p.cloud_url===rec.photo_url);
+      if(!ex) continue;
+      const sender0=rec.sender||mn0;
+      let changed=false;
+      if(!ex.team&&sender0){ex.team=sender0;changed=true;}
+      if(sender0&&!ex.name.includes(sender0)){
+        ex.name=ex.name.replace(/\.jpg$/i,`_${sender0}.jpg`);
+        changed=true;
+      }
+      if(changed){await savePhotoToDB(ex);updated++;}
+    }
+
     // photo_url 기준으로 중복 제거
     const localUrls=new Set(photos.filter(p=>p.cloud_url).map(p=>p.cloud_url));
     const newRecs=records.filter(r=>r.photo_url&&!localUrls.has(r.photo_url));
-    if(newRecs.length===0){ alert('이미 최신 상태입니다. (클라우드 총 '+records.length+'장)'); return; }
+    if(newRecs.length===0){
+      if(updated>0){
+        photos.sort((a,b)=>(b.date+b.created).localeCompare(a.date+a.created));
+        populateDateFilter(); populateSelects(); renderSidebar(); renderPhotos(); updateHeader();
+        alert(`✅ 팀명/파일명 ${updated}건 업데이트 완료!`);
+      } else {
+        alert('이미 최신 상태입니다. (클라우드 총 '+records.length+'장)');
+      }
+      return;
+    }
 
     // 폴더 저장 권한 사전 확인 (루프마다 팝업 방지 — user gesture 컨텍스트 유지)
     const folderOk = dirHandle ? await verifyFolderPermission() : false;
