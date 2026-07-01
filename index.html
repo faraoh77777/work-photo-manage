@@ -274,9 +274,15 @@ async function sendToSupabase(){
 }
 
 var dirHandle=null;
+var isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+(function(){
+  var btn=document.getElementById('folderBtn');
+  if(isMobile) btn.style.display='none';
+})();
 
 async function pickSaveFolder(){
-  if(!window.showDirectoryPicker){showTE('이 브라우저는 폴더 저장을 지원하지 않습니다.(Chrome/Edge 전용)');return;}
+  if(!window.showDirectoryPicker){showTE('Chrome/Edge 데스크탑 전용 기능입니다.');return;}
   try{
     dirHandle=await window.showDirectoryPicker({mode:'readwrite',startIn:'downloads'});
     document.getElementById('folderBtn').textContent='📁 '+dirHandle.name;
@@ -287,7 +293,7 @@ async function pickSaveFolder(){
 }
 
 async function autoSaveToDevice(photos){
-  if(dirHandle){
+  if(dirHandle&&!isMobile){
     var cnt=0, lastErr='';
     for(var i=0;i<photos.length;i++){
       var p=photos[i];
