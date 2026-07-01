@@ -261,6 +261,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
       <div class="f-sep"></div>
       <button class="f-reset" onclick="resetFilter()">초기화</button>
       <button class="f-reset" id="selModeBtn" onclick="toggleSelMode()">☑️ 선택</button>
+      <button class="f-reset" onclick="selectAll()">🔲 전체 선택</button>
       <span class="f-count" id="fCount"></span>
     </div>
     <div class="scroll" id="mainScroll"><div id="viewContent"></div></div>
@@ -1471,6 +1472,17 @@ function toggleSelect(id) {
   const cb = document.querySelector(`.pc-cb[data-id="${sid}"]`);
   if (cb) cb.checked = selectedIds.has(sid);
   updateSelBar();
+}
+
+function selectAll() {
+  if (!selMode) {
+    selMode = true;
+    document.getElementById('selBar').classList.add('show');
+    document.getElementById('selModeBtn').textContent = '✕ 선택 끄기';
+    updateSelBar();
+    renderPhotos();
+  }
+  selectAllFiltered();
 }
 
 function selectAllFiltered() {
