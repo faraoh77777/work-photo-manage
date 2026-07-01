@@ -262,6 +262,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
       <button class="f-reset" onclick="resetFilter()">초기화</button>
       <button class="f-reset" id="selModeBtn" onclick="toggleSelMode()">☑️ 선택</button>
       <button class="f-reset" onclick="selectAll()">🔲 전체 선택</button>
+      <button class="f-reset" id="delFilterBtn" onclick="deleteSelected()" style="display:none;color:var(--red);border:1px solid var(--red);">🗑 선택 삭제</button>
       <span class="f-count" id="fCount"></span>
     </div>
     <div class="scroll" id="mainScroll"><div id="viewContent"></div></div>
@@ -1451,6 +1452,7 @@ function toggleSelMode() {
   if (!selMode) selectedIds.clear();
   document.getElementById('selBar').classList.toggle('show', selMode);
   document.getElementById('selModeBtn').textContent = selMode ? '✕ 선택 끄기' : '☑️ 선택';
+  document.getElementById('delFilterBtn').style.display = selMode ? '' : 'none';
   updateSelBar();
   renderPhotos();
 }
@@ -1460,6 +1462,7 @@ function exitSelMode() {
   selectedIds.clear();
   document.getElementById('selBar').classList.remove('show');
   document.getElementById('selModeBtn').textContent = '☑️ 선택';
+  document.getElementById('delFilterBtn').style.display = 'none';
   renderPhotos();
 }
 
@@ -1479,6 +1482,7 @@ function selectAll() {
     selMode = true;
     document.getElementById('selBar').classList.add('show');
     document.getElementById('selModeBtn').textContent = '✕ 선택 끄기';
+    document.getElementById('delFilterBtn').style.display = '';
     updateSelBar();
     renderPhotos();
   }
