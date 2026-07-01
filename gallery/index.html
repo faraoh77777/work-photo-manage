@@ -320,9 +320,9 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
     <div class="fg">
       <label>작업 구분 <span class="auto-badge" id="wtBadge" style="display:none">자동</span></label>
       <div class="wt-radios" id="wtRg">
-        <label><input type="radio" name="upWt" value="신규" checked><span>🆕 신규</span></label>
-        <label><input type="radio" name="upWt" value="작업전"><span>📷 작업전</span></label>
-        <label><input type="radio" name="upWt" value="작업후"><span>✅ 작업후</span></label>
+        <label><input type="radio" name="upWt" value="신규" checked><span>신규</span></label>
+        <label><input type="radio" name="upWt" value="작업전"><span>작업전</span></label>
+        <label><input type="radio" name="upWt" value="작업후"><span>작업후</span></label>
       </div>
     </div>
 
@@ -396,9 +396,9 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
       <div class="fg">
         <label>작업 구분</label>
         <div class="wt-radios" id="eWtRg">
-          <label><input type="radio" name="eWt" value="신규" checked><span>🆕 신규</span></label>
-          <label><input type="radio" name="eWt" value="작업전"><span>📷 작업전</span></label>
-          <label><input type="radio" name="eWt" value="작업후"><span>✅ 작업후</span></label>
+          <label><input type="radio" name="eWt" value="신규" checked><span>신규</span></label>
+          <label><input type="radio" name="eWt" value="작업전"><span>작업전</span></label>
+          <label><input type="radio" name="eWt" value="작업후"><span>작업후</span></label>
         </div>
       </div>
       <div class="fg"><label>작업 분류</label><select id="eCat"></select></div>
@@ -843,9 +843,9 @@ const CAT_ICON = {
 };
 const WT_ORDER = ['신규','작업전','작업후'];
 const WT_META  = {
-  '신규':  { icon:'🆕', ptCls:'pt-new',  bCls:'b-wt-new'  },
-  '작업전': { icon:'📷', ptCls:'pt-pre',  bCls:'b-wt-pre'  },
-  '작업후': { icon:'✅', ptCls:'pt-post', bCls:'b-wt-post' },
+  '신규':  { icon:'', ptCls:'pt-new',  bCls:'b-wt-new'  },
+  '작업전': { icon:'', ptCls:'pt-pre',  bCls:'b-wt-pre'  },
+  '작업후': { icon:'', ptCls:'pt-post', bCls:'b-wt-post' },
 };
 
 // ── 전체 자동 분류 ────────────────────────────────────
