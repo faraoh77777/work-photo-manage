@@ -84,7 +84,10 @@ textarea.f{resize:none;height:48px;}
       <div class="app-title">&#128247; 작업 사진</div>
       <div class="app-sub" id="hdrUser">계장 &amp; 전기 공사</div>
     </div>
-    <button onclick="logout()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer;">로그아웃</button>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
+      <button onclick="logout()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer;">로그아웃</button>
+      <button id="folderBtn" onclick="pickSaveFolder()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;">📁 폴더설정</button>
+    </div>
   </div>
 </div>
 
@@ -270,8 +273,35 @@ async function sendToSupabase(){
   }
 }
 
+var dirHandle=null;
+
+async function pickSaveFolder(){
+  if(!window.showDirectoryPicker){showTE('이 브라우저는 폴더 저장을 지원하지 않습니다.(Chrome/Edge 전용)');return;}
+  try{
+    dirHandle=await window.showDirectoryPicker({mode:'readwrite',startIn:'downloads'});
+    document.getElementById('folderBtn').textContent='📁 '+dirHandle.name;
+    showT('저장 폴더: '+dirHandle.name);
+  }catch(e){
+    if(e.name!=='AbortError') showTE('폴더 선택 실패: '+e.message);
+  }
+}
+
 function autoSaveToDevice(photos){
-  downloadAll(photos);
+  if(dirHandle){
+    var cnt=0;
+    Promise.all(photos.map(function(p){
+      return dirHandle.getFileHandle(p.filename,{create:true})
+        .then(function(fh){return fh.createWritable();})
+        .then(function(w){return w.write(p.blob).then(function(){return w.close();});})
+        .then(function(){cnt++;})
+        .catch(function(e){console.error('폴더저장실패',p.filename,e);});
+    })).then(function(){
+      if(cnt>0) showT('📁 '+dirHandle.name+'에 '+cnt+'장 저장 완료!');
+      else{showTE('폴더 저장 실패 — 다운로드로 대체합니다.');downloadAll(photos);}
+    });
+  } else {
+    downloadAll(photos);
+  }
 }
 
 function downloadAll(photos){
