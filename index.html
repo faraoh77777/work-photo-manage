@@ -292,9 +292,13 @@ async function autoSaveToDevice(photos){
     for(var i=0;i<photos.length;i++){
       var p=photos[i];
       try{
+        var ab=await new Promise(function(res,rej){
+          var fr=new FileReader();fr.onload=function(e){res(e.target.result);};fr.onerror=rej;
+          fr.readAsArrayBuffer(p.blob);
+        });
         var fh=await dirHandle.getFileHandle(p.filename,{create:true});
         var w=await fh.createWritable();
-        await w.write(p.blob);
+        await w.write(new Uint8Array(ab));
         await w.close();
         cnt++;
       }catch(e){
