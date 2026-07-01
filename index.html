@@ -288,25 +288,22 @@ async function pickSaveFolder(){
 
 async function autoSaveToDevice(photos){
   if(dirHandle){
-    try{
-      var perm=await dirHandle.queryPermission({mode:'readwrite'});
-      if(perm!=='granted') perm=await dirHandle.requestPermission({mode:'readwrite'});
-      if(perm!=='granted'){showTE('폴더 쓰기 권한이 없습니다.');downloadAll(photos);return;}
-      var cnt=0;
-      for(var i=0;i<photos.length;i++){
-        var p=photos[i];
-        try{
-          var ab=await p.blob.arrayBuffer();
-          var fh=await dirHandle.getFileHandle(p.filename,{create:true});
-          var w=await fh.createWritable();
-          await w.write(ab);
-          await w.close();
-          cnt++;
-        }catch(e){console.error('파일저장실패',p.filename,e);}
+    var cnt=0, lastErr='';
+    for(var i=0;i<photos.length;i++){
+      var p=photos[i];
+      try{
+        var fh=await dirHandle.getFileHandle(p.filename,{create:true});
+        var w=await fh.createWritable();
+        await w.write(p.blob);
+        await w.close();
+        cnt++;
+      }catch(e){
+        lastErr=e.message||String(e);
+        console.error('파일저장실패',p.filename,e);
       }
-      if(cnt>0) showT('📁 '+dirHandle.name+'에 '+cnt+'장 저장 완료!');
-      else{showTE('폴더 저장 실패 — 다운로드로 대체합니다.');downloadAll(photos);}
-    }catch(e){showTE('폴더 저장 오류: '+e.message);downloadAll(photos);}
+    }
+    if(cnt>0) showT('📁 '+dirHandle.name+'에 '+cnt+'장 저장 완료!');
+    else{showTE('폴더 저장 실패: '+lastErr);downloadAll(photos);}
   } else {
     downloadAll(photos);
   }
