@@ -274,6 +274,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
   <span id="selCount" style="font-size:0.82rem;color:var(--tx2);min-width:64px;">0장 선택됨</span>
   <div class="spacer"></div>
   <button class="btn btn-ghost" onclick="exitSelMode()">취소</button>
+  <button class="btn btn-danger" id="delSelBtn" onclick="deleteSelected()" disabled>🗑 선택 삭제</button>
   <button class="btn btn-primary" id="dlSelBtn" onclick="downloadSelected()" disabled>⬇️ 선택 다운로드</button>
 </div>
 
@@ -1500,9 +1501,23 @@ function updateSelBar() {
   const count = selectedIds.size;
   document.getElementById('selCount').textContent = count + '장 선택됨';
   document.getElementById('dlSelBtn').disabled = count === 0;
+  document.getElementById('delSelBtn').disabled = count === 0;
   const filtered = getFiltered();
   const allSel = filtered.length > 0 && filtered.every(p => selectedIds.has(String(p.id)));
   document.getElementById('selAllBtn').textContent = allSel ? '전체 해제' : '전체 선택';
+}
+
+async function deleteSelected() {
+  const ids = [...selectedIds];
+  if (!ids.length) return;
+  if (!confirm(ids.length + '장을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) return;
+  for (const sid of ids) {
+    const id = photos.find(p => String(p.id) === sid)?.id;
+    if (id !== undefined) await deletePhotoDB(id);
+  }
+  photos = photos.filter(p => !selectedIds.has(String(p.id)));
+  exitSelMode();
+  renderSidebar(); renderPhotos(); updateHeader();
 }
 
 async function downloadSelected() {
