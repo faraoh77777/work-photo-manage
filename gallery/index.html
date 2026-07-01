@@ -826,8 +826,8 @@ let cats = [
   'Cable Duct','Cable Tray','Conduit Pipe','Air Pipe',
   'Hook Up','Stanchion','Support','Connection',
   'Line Check','Loop Test','Leak Test',
-  'Instrument Calibration','Steam Tracing Tube',
-  'Steam Tracing Insulation','Scaffolding','Others'
+  'Calibration','Steam Tube','Steam Ins',
+  'Scaffolding','Others'
 ];
 
 const CAT_ICON = {
@@ -835,8 +835,8 @@ const CAT_ICON = {
   'Cable Duct':'🛤️','Cable Tray':'🗄️','Conduit Pipe':'🔩','Air Pipe':'💨',
   'Hook Up':'🔗','Stanchion':'🏗️','Support':'🔧','Connection':'🔌',
   'Line Check':'📋','Loop Test':'🔁','Leak Test':'💧',
-  'Instrument Calibration':'🔬','Steam Tracing Tube':'♨️',
-  'Steam Tracing Insulation':'🧱','Scaffolding':'🏗️','Others':'📁'
+  'Calibration':'🔬','Steam Tube':'♨️',
+  'Steam Ins':'🧱','Scaffolding':'🏗️','Others':'📁'
 };
 const WT_ORDER = ['신규','수정-작업전','수정-작업후'];
 const WT_META  = {
@@ -1281,7 +1281,14 @@ function openUpload() {
     document.getElementById(id).style.display='none';
   });
   const mn=localStorage.getItem('member_name')||'';
-  if(mn) document.getElementById('upTeam').value=mn;
+  if(mn){
+    const sel=document.getElementById('upTeam');
+    if(!Array.from(sel.options).some(o=>o.value===mn)){
+      const opt=document.createElement('option');
+      opt.value=mn; opt.textContent=mn; sel.appendChild(opt);
+    }
+    sel.value=mn;
+  }
   document.getElementById('upOverlay').classList.add('show');
 }
 function closeUpload() {
