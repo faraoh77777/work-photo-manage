@@ -351,12 +351,17 @@ function renderCanvas(){
   var boxX=W-boxW-margin;
   var boxY=H-boxH-margin;
 
-  ctx.fillStyle="rgba(0,0,0,0.5)";
+  ctx.fillStyle="rgba(0,0,0,0.6)";
   ctx.fillRect(boxX,boxY,boxW,boxH);
 
+  ctx.lineJoin="round";ctx.miterLimit=2;
+  ctx.lineWidth=Math.max(2,Math.round(fs*0.12));
+  ctx.strokeStyle="#000000";
   ctx.fillStyle="#FFFFFF";
   lines.forEach(function(l,i){
-    ctx.fillText(l,boxX+padX,boxY+padY+i*lh);
+    var x=boxX+padX,y=boxY+padY+i*lh;
+    ctx.strokeText(l,x,y);
+    ctx.fillText(l,x,y);
   });
 }
 

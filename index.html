@@ -638,11 +638,19 @@ function renderCanvas(loadedImg){
   var lh=Math.round(fs*1.55);
   padX=Math.round(W*0.022);padY=Math.round(fs*0.55);
   var boxW=maxTxtW+padX*2,boxH=lines.length*lh+padY*2;
-  ctx.fillStyle="rgba(0,0,0,0.5)";
+  ctx.fillStyle="rgba(0,0,0,0.6)";
   ctx.fillRect(W-boxW,H-boxH,boxW,boxH);
   ctx.textBaseline="top";ctx.textAlign="right";
-  ctx.fillStyle="#FFE000";ctx.font="bold "+fs+"px Arial,sans-serif";
-  lines.forEach(function(line,i){ctx.fillText(line,W-padX,(H-boxH)+padY+i*lh);});
+  ctx.font="bold "+fs+"px Arial,sans-serif";
+  ctx.lineJoin="round";ctx.miterLimit=2;
+  ctx.lineWidth=Math.max(2,Math.round(fs*0.12));
+  ctx.strokeStyle="#000000";
+  ctx.fillStyle="#FFFFFF";
+  lines.forEach(function(line,i){
+    var x=W-padX,y=(H-boxH)+padY+i*lh;
+    ctx.strokeText(line,x,y);
+    ctx.fillText(line,x,y);
+  });
   return cv;
 }
 
