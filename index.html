@@ -46,8 +46,10 @@ textarea.f{resize:none;height:48px;}
 .tr{top:8px;right:8px;border-top:3px solid #2E5F9E;border-right:3px solid #2E5F9E;border-radius:0 3px 0 0;}
 .bl{bottom:8px;left:8px;border-bottom:3px solid #2E5F9E;border-left:3px solid #2E5F9E;border-radius:0 0 0 3px;}
 .br{bottom:8px;right:8px;border-bottom:3px solid #2E5F9E;border-right:3px solid #2E5F9E;border-radius:0 0 3px 0;}
-#camModal{display:none;position:fixed;inset:0;background:#000;z-index:9999;}
-#camVideo{width:100%;height:100%;object-fit:cover;}
+#camModal{display:none;position:fixed;inset:0;background:#000;z-index:9999;
+  align-items:center;justify-content:center;}
+#camViewport{position:relative;overflow:hidden;background:#000;}
+#camVideo{width:100%;height:100%;object-fit:cover;display:block;}
 #camCloseBtn{position:absolute;top:14px;right:14px;width:38px;height:38px;border-radius:50%;
   background:rgba(0,0,0,0.5);color:#fff;border:none;font-size:18px;cursor:pointer;}
 #camShotBtn{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);
@@ -202,7 +204,9 @@ textarea.f{resize:none;height:48px;}
 
 <!-- 후면 카메라 실시간 촬영 -->
 <div id="camModal">
-  <video id="camVideo" autoplay playsinline muted></video>
+  <div id="camViewport">
+    <video id="camVideo" autoplay playsinline muted></video>
+  </div>
   <button id="camCloseBtn" onclick="closeCamera()">&#10005;</button>
   <button id="camShotBtn" onclick="captureShot()"></button>
 </div>
@@ -451,8 +455,21 @@ updCat();
 document.getElementById("camBox").addEventListener("click",openCamera);
 document.getElementById("fileInput").addEventListener("change",loadImg);
 
-// ── 후면 카메라 실시간 촬영 ───────────────────────────
+// ── 후면 카메라 실시간 촬영 (3:4 고정) ─────────────────
 var camStream=null;
+var CAM_RATIO=3/4;
+function sizeCamViewport(){
+  var vw=window.innerWidth,vh=window.innerHeight;
+  var w,h;
+  if(vw/vh>CAM_RATIO){h=vh;w=Math.round(h*CAM_RATIO);}
+  else{w=vw;h=Math.round(w/CAM_RATIO);}
+  var vp=document.getElementById("camViewport");
+  vp.style.width=w+"px";
+  vp.style.height=h+"px";
+}
+window.addEventListener("resize",function(){
+  if(document.getElementById("camModal").style.display==="flex")sizeCamViewport();
+});
 async function openCamera(){
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
     document.getElementById("fileInput").click();
@@ -460,10 +477,10 @@ async function openCamera(){
   }
   var stream=null;
   try{
-    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{exact:"environment"}},audio:false});
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{exact:"environment"},aspectRatio:{ideal:CAM_RATIO}},audio:false});
   }catch(e1){
     try{
-      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false});
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",aspectRatio:{ideal:CAM_RATIO}},audio:false});
     }catch(e2){
       try{
         stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
@@ -475,15 +492,31 @@ async function openCamera(){
   }
   camStream=stream;
   document.getElementById("camVideo").srcObject=stream;
-  document.getElementById("camModal").style.display="block";
+  sizeCamViewport();
+  document.getElementById("camModal").style.display="flex";
 }
 function closeCamera(){
   if(camStream){camStream.getTracks().forEach(function(t){t.stop();});camStream=null;}
   document.getElementById("camModal").style.display="none";
 }
+function playShutterSound(){
+  try{
+    var ctx=new (window.AudioContext||window.webkitAudioContext)();
+    var o=ctx.createOscillator(),g=ctx.createGain();
+    o.type="square";
+    o.frequency.setValueAtTime(1200,ctx.currentTime);
+    g.gain.setValueAtTime(0.35,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.09);
+    o.connect(g);g.connect(ctx.destination);
+    o.start();
+    o.stop(ctx.currentTime+0.09);
+    o.onended=function(){ctx.close();};
+  }catch(e){}
+}
 function captureShot(){
   var video=document.getElementById("camVideo");
   if(!video.videoWidth)return;
+  playShutterSound();
   var cv=document.createElement("canvas");
   cv.width=video.videoWidth;cv.height=video.videoHeight;
   cv.getContext("2d").drawImage(video,0,0,cv.width,cv.height);
