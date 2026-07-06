@@ -83,6 +83,9 @@ textarea.f{resize:none;height:48px;}
   background:#EAF0F8;font-size:18px;cursor:pointer;display:flex;align-items:center;
   justify-content:center;transition:background 0.15s;}
 .scan-btn.scanning{background:#FEF9E7;border-color:#F39C12;animation:scanpulse 0.6s infinite alternate;}
+.ratio-btn{border:1.5px solid #C8D8E8;background:#F7FAFC;color:#5A7A9A;border-radius:6px;
+  padding:3px 10px;font-size:11px;font-weight:800;cursor:pointer;}
+.ratio-btn.active{background:#2E5F9E;border-color:#2E5F9E;color:#fff;}
 @keyframes scanpulse{from{box-shadow:0 0 0 0 rgba(243,156,18,0.4);}to{box-shadow:0 0 0 5px rgba(243,156,18,0);}}
 #toast,#toastE{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
   padding:10px 20px;border-radius:10px;font-size:14px;font-weight:700;
@@ -190,7 +193,13 @@ textarea.f{resize:none;height:48px;}
 
 <!-- 카메라 -->
 <div class="card" id="camCard">
-  <div class="flbl">사진 촬영 (탭하면 바로 추가)</div>
+  <div class="flbl" style="display:flex;justify-content:space-between;align-items:center;">
+    <span>사진 촬영 (탭하면 바로 추가)</span>
+    <div style="display:flex;gap:4px;">
+      <button type="button" id="ratioBtn34" class="ratio-btn" onclick="setCaptureRatio('3:4')">3:4</button>
+      <button type="button" id="ratioBtn43" class="ratio-btn" onclick="setCaptureRatio('4:3')">4:3</button>
+    </div>
+  </div>
   <div class="cam-box" id="camBox">
     <div class="cam-placeholder" style="text-align:center;pointer-events:none;">
       <div class="icon">&#128247;</div>
@@ -455,14 +464,26 @@ updCat();
 document.getElementById("camBox").addEventListener("click",openCamera);
 document.getElementById("fileInput").addEventListener("change",loadImg);
 
-// ── 후면 카메라 실시간 촬영 (3:4 고정) ─────────────────
+// ── 후면 카메라 실시간 촬영 (비율 선택 가능) ───────────
 var camStream=null;
-var CAM_RATIO=3/4;
+var captureRatio=(localStorage.getItem("capture_ratio")==="4:3")?4/3:3/4;
+function setCaptureRatio(mode){
+  captureRatio=(mode==="4:3")?4/3:3/4;
+  localStorage.setItem("capture_ratio",mode==="4:3"?"4:3":"3:4");
+  document.getElementById("ratioBtn34").classList.toggle("active",mode!=="4:3");
+  document.getElementById("ratioBtn43").classList.toggle("active",mode==="4:3");
+  if(document.getElementById("camModal").style.display==="flex")sizeCamViewport();
+}
+(function(){
+  var mode=localStorage.getItem("capture_ratio")==="4:3"?"4:3":"3:4";
+  document.getElementById("ratioBtn34").classList.toggle("active",mode!=="4:3");
+  document.getElementById("ratioBtn43").classList.toggle("active",mode==="4:3");
+})();
 function sizeCamViewport(){
   var vw=window.innerWidth,vh=window.innerHeight;
   var w,h;
-  if(vw/vh>CAM_RATIO){h=vh;w=Math.round(h*CAM_RATIO);}
-  else{w=vw;h=Math.round(w/CAM_RATIO);}
+  if(vw/vh>captureRatio){h=vh;w=Math.round(h*captureRatio);}
+  else{w=vw;h=Math.round(w/captureRatio);}
   var vp=document.getElementById("camViewport");
   vp.style.width=w+"px";
   vp.style.height=h+"px";
@@ -477,10 +498,10 @@ async function openCamera(){
   }
   var stream=null;
   try{
-    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{exact:"environment"},aspectRatio:{ideal:CAM_RATIO}},audio:false});
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{exact:"environment"},aspectRatio:{ideal:captureRatio}},audio:false});
   }catch(e1){
     try{
-      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",aspectRatio:{ideal:CAM_RATIO}},audio:false});
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",aspectRatio:{ideal:captureRatio}},audio:false});
     }catch(e2){
       try{
         stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
@@ -553,7 +574,7 @@ function getWorkLabel(){
 }
 
 function crop34(img){
-  var sW=img.width,sH=img.height,r=3/4,cW,cH,ox=0,oy=0;
+  var sW=img.width,sH=img.height,r=captureRatio,cW,cH,ox=0,oy=0;
   if(sW/sH>r){cH=sH;cW=Math.round(sH*r);ox=Math.round((sW-cW)/2);}
   else{cW=sW;cH=Math.round(sW/r);oy=Math.round((sH-cH)/2);}
   var c=document.createElement("canvas");
