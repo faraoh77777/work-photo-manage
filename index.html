@@ -46,6 +46,12 @@ textarea.f{resize:none;height:48px;}
 .tr{top:8px;right:8px;border-top:3px solid #2E5F9E;border-right:3px solid #2E5F9E;border-radius:0 3px 0 0;}
 .bl{bottom:8px;left:8px;border-bottom:3px solid #2E5F9E;border-left:3px solid #2E5F9E;border-radius:0 0 0 3px;}
 .br{bottom:8px;right:8px;border-bottom:3px solid #2E5F9E;border-right:3px solid #2E5F9E;border-radius:0 0 3px 0;}
+#camModal{display:none;position:fixed;inset:0;background:#000;z-index:9999;}
+#camVideo{width:100%;height:100%;object-fit:cover;}
+#camCloseBtn{position:absolute;top:14px;right:14px;width:38px;height:38px;border-radius:50%;
+  background:rgba(0,0,0,0.5);color:#fff;border:none;font-size:18px;cursor:pointer;}
+#camShotBtn{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);
+  width:70px;height:70px;border-radius:50%;background:#fff;border:5px solid rgba(255,255,255,0.5);cursor:pointer;}
 .sbtn{width:100%;padding:11px;border:none;border-radius:10px;font-size:15px;
   font-weight:800;cursor:pointer;margin-top:8px;}
 .sbtn-send{background:linear-gradient(135deg,#2980B9,#1A5276);color:#fff;}
@@ -192,6 +198,13 @@ textarea.f{resize:none;height:48px;}
   <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none"/>
 </div>
 
+<!-- 후면 카메라 실시간 촬영 -->
+<div id="camModal">
+  <video id="camVideo" autoplay playsinline muted></video>
+  <button id="camCloseBtn" onclick="closeCamera()">&#10005;</button>
+  <button id="camShotBtn" onclick="captureShot()"></button>
+</div>
+
 <!-- 저장된 사진 목록 -->
 <div class="card" id="listCard" style="display:none;">
   <div class="list-header">
@@ -326,10 +339,10 @@ function resetApp(){
   document.getElementById('inTag').value='';
   document.getElementById('inNote').value='';
   document.getElementById('wtNew').checked=true;
-  document.getElementById('inCat').value='Field Instrument';
   document.getElementById('inLoc').value='SCC';
   updateList();
   resetCam();
+  dbClearAll().catch(function(e){console.error("저장소 초기화 실패",e);});
 }
 
 function downloadAll(photos){
@@ -353,15 +366,124 @@ var CC={
 
 var savedPhotos=[], lockedInfo=null;
 
+// ── 미전송 사진 보존 (IndexedDB) ───────────────────────
+var DB_NAME="work-photo-db", DB_VERSION=1, STORE_NAME="photos", dbPromise=null;
+function openDB(){
+  if(dbPromise)return dbPromise;
+  dbPromise=new Promise(function(resolve,reject){
+    var req=indexedDB.open(DB_NAME,DB_VERSION);
+    req.onupgradeneeded=function(){req.result.createObjectStore(STORE_NAME,{keyPath:"id",autoIncrement:true});};
+    req.onsuccess=function(){resolve(req.result);};
+    req.onerror=function(){reject(req.error);};
+  });
+  return dbPromise;
+}
+async function dbAddPhoto(p){
+  var db=await openDB();
+  return new Promise(function(resolve,reject){
+    var tx=db.transaction(STORE_NAME,"readwrite");
+    var req=tx.objectStore(STORE_NAME).add({filename:p.filename,blob:p.blob,info:p.info});
+    req.onsuccess=function(){resolve(req.result);};
+    req.onerror=function(){reject(req.error);};
+  });
+}
+async function dbDeletePhoto(id){
+  if(id==null)return;
+  var db=await openDB();
+  return new Promise(function(resolve,reject){
+    var tx=db.transaction(STORE_NAME,"readwrite");
+    tx.objectStore(STORE_NAME).delete(id);
+    tx.oncomplete=function(){resolve();};
+    tx.onerror=function(){reject(tx.error);};
+  });
+}
+async function dbClearAll(){
+  var db=await openDB();
+  return new Promise(function(resolve,reject){
+    var tx=db.transaction(STORE_NAME,"readwrite");
+    tx.objectStore(STORE_NAME).clear();
+    tx.oncomplete=function(){resolve();};
+    tx.onerror=function(){reject(tx.error);};
+  });
+}
+async function restoreSavedPhotos(){
+  try{
+    var db=await openDB();
+    var rows=await new Promise(function(resolve,reject){
+      var tx=db.transaction(STORE_NAME,"readonly");
+      var req=tx.objectStore(STORE_NAME).getAll();
+      req.onsuccess=function(){resolve(req.result);};
+      req.onerror=function(){reject(req.error);};
+    });
+    if(!rows.length)return;
+    savedPhotos=rows.map(function(r){
+      return {dataUrl:URL.createObjectURL(r.blob),filename:r.filename,blob:r.blob,info:r.info,dbId:r.id};
+    });
+    updateList();
+    showT("미전송 사진 "+savedPhotos.length+"장 복원됨");
+  }catch(e){console.error("사진 복원 실패",e);}
+}
+restoreSavedPhotos();
+
+(function(){
+  var initCat=localStorage.getItem("last_category")||localStorage.getItem("member_category");
+  if(!initCat)return;
+  var el=document.getElementById("inCat");
+  var valid=Array.prototype.some.call(el.options,function(o){return o.value===initCat;});
+  if(valid)el.value=initCat;
+})();
+
 updCat();
 
-document.getElementById("camBox").addEventListener("click",function(){document.getElementById("fileInput").click();});
+document.getElementById("camBox").addEventListener("click",openCamera);
 document.getElementById("fileInput").addEventListener("change",loadImg);
+
+// ── 후면 카메라 실시간 촬영 ───────────────────────────
+var camStream=null;
+async function openCamera(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    document.getElementById("fileInput").click();
+    return;
+  }
+  var stream=null;
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{exact:"environment"}},audio:false});
+  }catch(e1){
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false});
+    }catch(e2){
+      try{
+        stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+      }catch(e3){
+        document.getElementById("fileInput").click();
+        return;
+      }
+    }
+  }
+  camStream=stream;
+  document.getElementById("camVideo").srcObject=stream;
+  document.getElementById("camModal").style.display="block";
+}
+function closeCamera(){
+  if(camStream){camStream.getTracks().forEach(function(t){t.stop();});camStream=null;}
+  document.getElementById("camModal").style.display="none";
+}
+function captureShot(){
+  var video=document.getElementById("camVideo");
+  if(!video.videoWidth)return;
+  var cv=document.createElement("canvas");
+  cv.width=video.videoWidth;cv.height=video.videoHeight;
+  cv.getContext("2d").drawImage(video,0,0,cv.width,cv.height);
+  closeCamera();
+  var now=new Date();
+  processCapturedFrame(cv,now.toISOString().slice(0,10),now.toTimeString().slice(0,5));
+}
 document.getElementById("inCat").addEventListener("change",updCat);
 
 function updCat(){
   var v=document.getElementById("inCat").value;
   document.getElementById("catBar").style.background=CC[v]||"#7F8C8D";
+  localStorage.setItem("last_category",v);
 }
 
 function getWorkLabel(){
@@ -398,30 +520,32 @@ function loadImg(e){
       autoTime=now.toTimeString().slice(0,5);
     }
     var img=new Image();
-    img.onload=function(){
-      var loadedImg=crop34(img);
-      var catEl=document.getElementById("inCat");
-      lockedInfo={
-        date:autoDate, time:autoTime,
-        tag:document.getElementById("inTag").value.trim(),
-        cat:catEl.options[catEl.selectedIndex].text,
-        loc:document.getElementById("inLoc").value,
-        note:document.getElementById("inNote").value.trim()||"-",
-        wt:getWorkLabel()
-      };
-      // 캠박스에 촬영된 이미지 표시
-      document.getElementById("camBox").innerHTML=
-        '<img src="'+loadedImg.toDataURL()+'" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"/>'
-        +'<div class="corner tl"></div><div class="corner tr"></div>'
-        +'<div class="corner bl"></div><div class="corner br"></div>';
-
-      // 바로 목록에 추가
-      autoAddPhoto(loadedImg);
-    };
+    img.onload=function(){processCapturedFrame(img,autoDate,autoTime);};
     img.src=ev.target.result;
   };
   reader.readAsDataURL(file);
   e.target.value="";
+}
+
+function processCapturedFrame(source,autoDate,autoTime){
+  var loadedImg=crop34(source);
+  var catEl=document.getElementById("inCat");
+  lockedInfo={
+    date:autoDate, time:autoTime,
+    tag:document.getElementById("inTag").value.trim(),
+    cat:catEl.options[catEl.selectedIndex].text,
+    loc:document.getElementById("inLoc").value,
+    note:document.getElementById("inNote").value.trim()||"-",
+    wt:getWorkLabel()
+  };
+  // 캠박스에 촬영된 이미지 표시
+  document.getElementById("camBox").innerHTML=
+    '<img src="'+loadedImg.toDataURL()+'" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"/>'
+    +'<div class="corner tl"></div><div class="corner tr"></div>'
+    +'<div class="corner bl"></div><div class="corner br"></div>';
+
+  // 바로 목록에 추가
+  autoAddPhoto(loadedImg);
 }
 
 function renderCanvas(loadedImg){
@@ -529,10 +653,12 @@ function autoAddPhoto(loadedImg){
   var ia=new Uint8Array(ab);
   for(var i=0;i<byteStr.length;i++)ia[i]=byteStr.charCodeAt(i);
   var blob=new Blob([ab],{type:"image/jpeg"});
-  savedPhotos.push({dataUrl:dataUrl,filename:fname,blob:blob,info:info});
+  var photo={dataUrl:dataUrl,filename:fname,blob:blob,info:info};
+  savedPhotos.push(photo);
   updateList();
   showT("추가 완료! 총 "+savedPhotos.length+"장");
   setTimeout(resetCam,800);
+  dbAddPhoto(photo).then(function(id){photo.dbId=id;}).catch(function(e){console.error("사진 저장 실패",e);});
 }
 
 function updateList(){
@@ -551,7 +677,12 @@ function updateList(){
   list.innerHTML=html||'<div style="grid-column:span 4;text-align:center;padding:12px;color:#A0BBD4;font-size:13px;">촬영된 사진이 없습니다</div>';
 }
 
-window.removePhoto=function(idx){savedPhotos.splice(idx,1);updateList();};
+window.removePhoto=function(idx){
+  var p=savedPhotos[idx];
+  savedPhotos.splice(idx,1);
+  updateList();
+  if(p&&p.dbId!=null)dbDeletePhoto(p.dbId).catch(function(e){console.error("사진 삭제 실패",e);});
+};
 
 function resetCam(){
   lockedInfo=null;

@@ -63,13 +63,38 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
     <!-- 회원가입 -->
     <div id="panelSignup" style="display:none;">
       <div class="flbl">회사명</div>
-      <input type="text" id="regCompany" class="f" placeholder="(주)OOO건설"/>
+      <input type="text" id="regCompany" class="f" placeholder="(주)OOO건설" list="companyList" autocomplete="off"/>
+      <datalist id="companyList"></datalist>
       <div class="flbl">프로젝트명</div>
-      <input type="text" id="regProject" class="f" placeholder="OOO 플랜트 공사"/>
+      <input type="text" id="regProject" class="f" placeholder="OOO 플랜트 공사" list="projectList" autocomplete="off"/>
+      <datalist id="projectList"></datalist>
       <div class="flbl">이름</div>
       <input type="text" id="regName" class="f" placeholder="홍길동"/>
       <div class="flbl">전화번호</div>
       <input type="tel" id="regPhone" class="f" placeholder="01012345678"/>
+      <div class="flbl">작업 분류</div>
+      <select id="regCategory" class="f">
+        <option value="DCS Panel">DCS Panel</option>
+        <option value="LCP">LCP</option>
+        <option value="Junction Box">Junction Box</option>
+        <option value="Field Instrument" selected>Field Instrument</option>
+        <option value="Cable Duct">Cable Duct</option>
+        <option value="Cable Tray">Cable Tray</option>
+        <option value="Conduit Pipe">Conduit Pipe</option>
+        <option value="Air Pipe">Air Pipe</option>
+        <option value="Hook Up">Hook Up</option>
+        <option value="Stanchion">Stanchion</option>
+        <option value="Support">Support</option>
+        <option value="Connection">Connection</option>
+        <option value="Line Check">Line Check</option>
+        <option value="Loop Test">Loop Test</option>
+        <option value="Leak Test">Leak Test</option>
+        <option value="Instrument Calibration">Instrument Calibration</option>
+        <option value="Steam Tracing Tube">Steam Tracing Tube</option>
+        <option value="Steam Tracing Insulation">Steam Tracing Insulation</option>
+        <option value="Scaffolding">Scaffolding</option>
+        <option value="Others">Others</option>
+      </select>
       <button class="sbtn" onclick="doSignup()">가입하기</button>
     </div>
   </div>
@@ -85,6 +110,25 @@ var sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 // 이미 로그인된 경우 바로 이동
 if(localStorage.getItem('member_id')){location.href='index.html';}
+
+async function loadSignupOptions(){
+  try{
+    var res=await sbClient.from('members').select('company,project');
+    if(res.error||!res.data)return;
+    var companies=Array.from(new Set(res.data.map(function(r){return r.company;}).filter(Boolean)));
+    var projects=Array.from(new Set(res.data.map(function(r){return r.project;}).filter(Boolean)));
+    function toOptions(list){
+      return list.map(function(v){
+        var o=document.createElement('option');
+        o.value=v;
+        return o.outerHTML;
+      }).join('');
+    }
+    document.getElementById('companyList').innerHTML=toOptions(companies);
+    document.getElementById('projectList').innerHTML=toOptions(projects);
+  }catch(e){console.error('가입 옵션 로드 실패',e);}
+}
+loadSignupOptions();
 
 function switchTab(t){
   document.getElementById('panelLogin').style.display=t==='login'?'':'none';
@@ -111,14 +155,24 @@ async function doSignup(){
   var project=document.getElementById('regProject').value.trim();
   var name=document.getElementById('regName').value.trim();
   var phone=normPhone(document.getElementById('regPhone').value.trim());
+  var category=document.getElementById('regCategory').value;
   if(!company||!project||!name||phone.length<10){showTE('모든 항목을 입력해 주세요.');return;}
   showT('가입 중...');
-  var res=await sbClient.from('members').insert({company:company,project:project,name:name,phone:phone}).select().single();
+  var insertData={company:company,project:project,name:name,phone:phone,category:category};
+  var res=await sbClient.from('members').insert(insertData).select().single();
   if(res.error){
     var msg=res.error.message||'';
-    if(msg.includes('unique')||msg.includes('duplicate')){showTE('이미 등록된 전화번호입니다.');}
-    else{showTE('가입 실패: '+msg);}
-    return;
+    if(msg.toLowerCase().includes('category')){
+      var d2=Object.assign({},insertData); delete d2.category;
+      res=await sbClient.from('members').insert(d2).select().single();
+      if(res.data) res.data.category=category;
+    }
+    if(res.error){
+      var msg2=res.error.message||'';
+      if(msg2.includes('unique')||msg2.includes('duplicate')){showTE('이미 등록된 전화번호입니다.');}
+      else{showTE('가입 실패: '+msg2);}
+      return;
+    }
   }
   saveSession(res.data);
   showT('가입 완료! 환영합니다, '+res.data.name+'님!');
@@ -132,6 +186,7 @@ function saveSession(m){
   localStorage.setItem('member_project',m.project);
   localStorage.setItem('member_phone',m.phone);
   localStorage.setItem('senderName',m.name);
+  if(m.category) localStorage.setItem('member_category',m.category);
 }
 
 function showT(m){var t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none';},2500);}
