@@ -100,6 +100,7 @@ textarea.f{resize:none;height:48px;}
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
       <button onclick="logout()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer;">로그아웃</button>
+      <button onclick="withdrawMember()" style="background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.5);color:#fff;border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer;">회원탈퇴</button>
       <button id="folderBtn" onclick="pickSaveFolder()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;">📁 폴더설정</button>
     </div>
   </div>
@@ -229,11 +230,17 @@ textarea.f{resize:none;height:48px;}
   var c=localStorage.getItem('member_company')||'';
   if(n||c) document.getElementById('hdrUser').textContent=(n||'')+(c?' · '+c:'');
 })();
-async function logout(){
+function logout(){
+  ['member_id','member_name','member_company','member_project','member_phone','member_category','senderName'].forEach(function(k){localStorage.removeItem(k);});
+  location.href='login.html';
+}
+
+async function withdrawMember(){
+  if(!confirm('정말 회원 탈퇴하시겠습니까? 계정 정보가 삭제되며 되돌릴 수 없습니다.'))return;
   var memberId=localStorage.getItem('member_id');
   if(memberId&&sbClient){
     try{ await sbClient.from('members').delete().eq('id',memberId); }
-    catch(e){ console.error('회원 탈퇴 실패',e); }
+    catch(e){ console.error('회원 탈퇴 실패',e); showTE('회원 탈퇴 실패: '+(e.message||e)); return; }
   }
   ['member_id','member_name','member_company','member_project','member_phone','member_category','senderName'].forEach(function(k){localStorage.removeItem(k);});
   location.href='login.html';
