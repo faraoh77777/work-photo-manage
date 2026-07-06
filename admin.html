@@ -322,9 +322,9 @@ function renderCanvas(){
     lockedInfo.date
   ];
 
-  var fs=Math.max(11,Math.round(W*0.022));
-  var maxBoxW=Math.round(W*0.55);
-  var padX=Math.round(W*0.025);
+  var fs=Math.max(20,Math.round(W*0.036));
+  var maxBoxW=Math.round(W*0.72);
+  var padX=Math.round(W*0.028);
   var padY=Math.round(fs*0.45);
 
   ctx.textBaseline="top";
@@ -333,7 +333,7 @@ function renderCanvas(){
   lines.forEach(function(l){
     var tfs=fs;
     ctx.font="bold "+tfs+"px Arial,sans-serif";
-    while(ctx.measureText(l).width>maxBoxW-padX*2&&tfs>10){
+    while(ctx.measureText(l).width>maxBoxW-padX*2&&tfs>16){
       tfs--;ctx.font="bold "+tfs+"px Arial,sans-serif";
     }
     if(tfs<fs)fs=tfs;
