@@ -28,6 +28,9 @@ textarea.f{resize:none;height:70px;}
 .cam-box{width:100%;aspect-ratio:4/3;background:#EAF0F8;border:2px dashed #A0BBD4;
   border-radius:14px;display:flex;flex-direction:column;align-items:center;
   justify-content:center;cursor:pointer;position:relative;overflow:hidden;margin-bottom:12px;}
+.ratio-btn{border:1.5px solid #C8D8E8;background:#F7FAFC;color:#5A7A9A;border-radius:6px;
+  padding:4px 12px;font-size:12px;font-weight:800;cursor:pointer;}
+.ratio-btn.active{background:#2E5F9E;border-color:#2E5F9E;color:#fff;}
 .cam-placeholder p{font-size:15px;color:#7A9AB8;margin-top:8px;}
 .cam-placeholder .icon{font-size:52px;}
 .corner{position:absolute;width:22px;height:22px;}
@@ -164,11 +167,17 @@ canvas{width:100%;border-radius:12px;display:block;}
 
 <!-- 카메라 -->
 <div class="card" id="camCard">
-  <div class="flbl">사진 촬영 (4:3)</div>
+  <div class="flbl" style="display:flex;justify-content:space-between;align-items:center;">
+    <span>사진 촬영</span>
+    <div style="display:flex;gap:4px;">
+      <button type="button" id="ratioBtn34" class="ratio-btn" onclick="setCaptureRatio('3:4')">3:4</button>
+      <button type="button" id="ratioBtn43" class="ratio-btn" onclick="setCaptureRatio('4:3')">4:3</button>
+    </div>
+  </div>
   <div class="cam-box" id="camBox">
     <div class="cam-placeholder" style="text-align:center;pointer-events:none;">
       <div class="icon">&#128247;</div>
-      <p>탭하여 사진 촬영 (4:3)</p>
+      <p id="camPlaceholderTxt">탭하여 사진 촬영</p>
     </div>
     <div class="corner tl"></div><div class="corner tr"></div>
     <div class="corner bl"></div><div class="corner br"></div>
@@ -214,6 +223,23 @@ document.getElementById("inTime").value=now.toTimeString().slice(0,5);
 updCat();
 togglePhaseRow();
 
+// ── 촬영 비율 선택 (모바일 앱과 설정 공유) ─────────────
+var captureRatio=(localStorage.getItem("capture_ratio")==="4:3")?4/3:3/4;
+function updateRatioUI(){
+  var mode=(localStorage.getItem("capture_ratio")==="4:3")?"4:3":"3:4";
+  document.getElementById("ratioBtn34").classList.toggle("active",mode!=="4:3");
+  document.getElementById("ratioBtn43").classList.toggle("active",mode==="4:3");
+  document.getElementById("camBox").style.aspectRatio=(mode==="4:3")?"4/3":"3/4";
+  var txt=document.getElementById("camPlaceholderTxt");
+  if(txt)txt.textContent="탭하여 사진 촬영 ("+mode+")";
+}
+function setCaptureRatio(mode){
+  captureRatio=(mode==="4:3")?4/3:3/4;
+  localStorage.setItem("capture_ratio",mode==="4:3"?"4:3":"3:4");
+  updateRatioUI();
+}
+updateRatioUI();
+
 document.getElementById("camBox").addEventListener("click",function(){document.getElementById("fileInput").click();});
 document.getElementById("fileInput").addEventListener("change",loadImg);
 document.getElementById("inCat").addEventListener("change",updCat);
@@ -242,7 +268,7 @@ function getWorkLabel(){
 }
 
 function crop43(img){
-  var sW=img.width,sH=img.height,r=4/3,cW,cH,ox=0,oy=0;
+  var sW=img.width,sH=img.height,r=captureRatio,cW,cH,ox=0,oy=0;
   if(sW/sH>r){cH=sH;cW=Math.round(sH*r);ox=Math.round((sW-cW)/2);}
   else{cW=sW;cH=Math.round(sW/r);oy=Math.round((sH-cH)/2);}
   var c=document.createElement("canvas");
@@ -486,14 +512,16 @@ function shareOneByOne(idx,files,txt){
 function resetCam(){
   loadedImg=null;lockedInfo=null;
   document.getElementById("fileInput").value="";
+  var mode=(localStorage.getItem("capture_ratio")==="4:3")?"4:3":"3:4";
   document.getElementById("camBox").innerHTML=
     '<div class="cam-placeholder" style="text-align:center;pointer-events:none;">'
     +'<div class="icon">&#128247;</div>'
-    +'<p>탭하여 사진 촬영 (4:3)</p>'
+    +'<p id="camPlaceholderTxt">탭하여 사진 촬영 ('+mode+')</p>'
     +'<p style="font-size:14px;color:#2E5F9E;margin-top:6px;font-weight:700;">저장된 사진: '+savedPhotos.length+'장</p>'
     +'</div>'
     +'<div class="corner tl"></div><div class="corner tr"></div>'
     +'<div class="corner bl"></div><div class="corner br"></div>';
+  document.getElementById("camBox").style.aspectRatio=(mode==="4:3")?"4/3":"3/4";
   document.getElementById("inTime").value=new Date().toTimeString().slice(0,5);
   document.getElementById("camCard").scrollIntoView({behavior:"smooth"});
 }
