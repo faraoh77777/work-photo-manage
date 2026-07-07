@@ -266,9 +266,9 @@ textarea.f{resize:none;height:48px;}
 // ── 인증 체크 ─────────────────────────────────────────
 (function(){
   if(!localStorage.getItem('member_id')){location.href='login.html';return;}
-  var n=localStorage.getItem('member_name')||'';
+  var p=localStorage.getItem('member_project')||'';
   var c=localStorage.getItem('member_company')||'';
-  if(n||c) document.getElementById('hdrUser').textContent=(n||'')+(c?' · '+c:'');
+  if(p||c) document.getElementById('hdrUser').textContent=(p||'')+(c?' · '+c:'');
 })();
 function logout(){
   ['member_id','member_name','member_company','member_project','member_phone','member_category','senderName'].forEach(function(k){localStorage.removeItem(k);});
