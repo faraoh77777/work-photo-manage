@@ -121,13 +121,13 @@ textarea.f{resize:none;height:48px;}
 
 <div class="app-header">
   <div style="display:flex;justify-content:space-between;align-items:center;">
-    <div>
+    <div style="min-width:0;flex:1;">
       <div class="app-title"><img src="Work%20photo_icon/icon-192.png" alt=""/> 작업 사진</div>
-      <div class="app-sub" id="hdrUser">계장 &amp; 전기 공사</div>
+      <div class="app-sub" id="hdrProject" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">계장 &amp; 전기 공사</div>
+      <div class="app-sub" id="hdrCompany" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
       <button onclick="logout()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer;">로그아웃</button>
-      <button onclick="withdrawMember()" style="background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.5);color:#fff;border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer;">회원탈퇴</button>
       <button onclick="openSettings()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;">⚙️ 설정</button>
       <button id="folderBtn" onclick="pickSaveFolder()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;">📁 폴더설정</button>
     </div>
@@ -243,6 +243,10 @@ textarea.f{resize:none;height:48px;}
         <button onclick="addArea()">추가</button>
       </div>
     </div>
+    <div class="set-section">
+      <div class="set-title">계정</div>
+      <button onclick="withdrawMember()" style="width:100%;background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.5);color:#E74C3C;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">회원탈퇴</button>
+    </div>
   </div>
 </div>
 
@@ -268,7 +272,8 @@ textarea.f{resize:none;height:48px;}
   if(!localStorage.getItem('member_id')){location.href='login.html';return;}
   var p=localStorage.getItem('member_project')||'';
   var c=localStorage.getItem('member_company')||'';
-  if(p||c) document.getElementById('hdrUser').textContent=(p||'')+(c?' · '+c:'');
+  if(p) document.getElementById('hdrProject').textContent=p;
+  if(c) document.getElementById('hdrCompany').textContent=c;
 })();
 function logout(){
   ['member_id','member_name','member_company','member_project','member_phone','member_category','senderName'].forEach(function(k){localStorage.removeItem(k);});
