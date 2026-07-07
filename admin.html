@@ -135,22 +135,10 @@ canvas{width:100%;border-radius:12px;display:block;}
     </label>
   </div>
 
-  <div id="phaseRow" style="display:none;gap:10px;margin-top:8px;">
-    <label style="flex:1;display:flex;align-items:center;gap:8px;background:#F7FAFC;
-      border:1.5px solid #C8D8E8;border-radius:10px;padding:13px 14px;cursor:pointer;
-      font-size:16px;font-weight:700;color:#7F8C8D;">
-      <input type="radio" name="workPhase" id="phBefore" value="작업전" checked
-        style="width:18px;height:18px;accent-color:#7F8C8D;"/>
-      &#128247; 작업전
-    </label>
-    <label style="flex:1;display:flex;align-items:center;gap:8px;background:#F7FAFC;
-      border:1.5px solid #C8D8E8;border-radius:10px;padding:13px 14px;cursor:pointer;
-      font-size:16px;font-weight:700;color:#27AE60;">
-      <input type="radio" name="workPhase" id="phAfter" value="작업후"
-        style="width:18px;height:18px;accent-color:#27AE60;"/>
-      &#9989; 작업후
-    </label>
-  </div>
+  <select id="inPhase" class="f" style="display:none;margin-top:8px;">
+    <option value="변경전">변경전</option>
+    <option value="변경후">변경후</option>
+  </select>
 
   <div class="flbl">작업 분류</div>
   <select id="inCat" class="f"></select>
@@ -369,14 +357,13 @@ function updCat(){
 
 function togglePhaseRow(){
   var isMod=document.getElementById("wtMod").checked;
-  document.getElementById("phaseRow").style.display=isMod?"flex":"none";
+  document.getElementById("inPhase").style.display=isMod?"":"none";
 }
 
 function getWorkLabel(){
   var wt=document.querySelector('input[name="workType"]:checked').value;
   if(wt==="수정"){
-    var phaseEl=document.querySelector('input[name="workPhase"]:checked');
-    var phase=phaseEl?phaseEl.value:"작업전";
+    var phase=document.getElementById("inPhase").value||"변경전";
     return wt+"-"+phase;
   }
   return wt;

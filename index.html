@@ -143,7 +143,7 @@ textarea.f{resize:none;height:48px;}
   </div>
 
   <div class="flbl">작업 구분</div>
-  <div style="display:flex;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+  <div style="display:flex;gap:8px;margin-bottom:4px;">
     <label style="flex:1;min-width:80px;display:flex;align-items:center;gap:6px;background:#F7FAFC;
       border:1.5px solid #C8D8E8;border-radius:8px;padding:9px 10px;cursor:pointer;
       font-size:17px;font-weight:700;color:#2980B9;">
@@ -153,19 +153,16 @@ textarea.f{resize:none;height:48px;}
     </label>
     <label style="flex:1;min-width:80px;display:flex;align-items:center;gap:6px;background:#F7FAFC;
       border:1.5px solid #C8D8E8;border-radius:8px;padding:9px 10px;cursor:pointer;
-      font-size:17px;font-weight:700;color:#7F8C8D;">
-      <input type="radio" name="workType" id="wtBefore" value="작업전"
-        style="width:16px;height:16px;accent-color:#7F8C8D;"/>
-      작업전
-    </label>
-    <label style="flex:1;min-width:80px;display:flex;align-items:center;gap:6px;background:#F7FAFC;
-      border:1.5px solid #C8D8E8;border-radius:8px;padding:9px 10px;cursor:pointer;
-      font-size:17px;font-weight:700;color:#27AE60;">
-      <input type="radio" name="workType" id="wtAfter" value="작업후"
-        style="width:16px;height:16px;accent-color:#27AE60;"/>
-      작업후
+      font-size:17px;font-weight:700;color:#E67E22;">
+      <input type="radio" name="workType" id="wtMod" value="수정"
+        style="width:16px;height:16px;accent-color:#E67E22;"/>
+      수정
     </label>
   </div>
+  <select id="inPhase" class="f" style="display:none;margin-bottom:4px;">
+    <option value="변경전">변경전</option>
+    <option value="변경후">변경후</option>
+  </select>
 
   <div class="row2">
     <div>
@@ -393,6 +390,8 @@ function resetApp(){
   document.getElementById('inTag').value='';
   document.getElementById('inNote').value='';
   document.getElementById('wtNew').checked=true;
+  document.getElementById('inPhase').style.display='none';
+  document.getElementById('inPhase').value='변경전';
   if(customAreas.length)document.getElementById('inLoc').value=customAreas[0];
   updateList();
   resetCam();
@@ -690,8 +689,17 @@ function updCat(){
 
 function getWorkLabel(){
   var wt=document.querySelector('input[name="workType"]:checked');
-  return wt?wt.value:'신규';
+  var v=wt?wt.value:'신규';
+  if(v==='수정')return document.getElementById('inPhase').value||'변경전';
+  return v;
 }
+function togglePhaseSelect(){
+  var isMod=document.getElementById('wtMod').checked;
+  document.getElementById('inPhase').style.display=isMod?'':'none';
+}
+document.querySelectorAll('input[name="workType"]').forEach(function(r){
+  r.addEventListener('change',togglePhaseSelect);
+});
 
 var CROP_TARGET_W=1600;
 function crop34(img){
@@ -803,7 +811,7 @@ function sanitizeForFilename(str){
     .slice(0,30):"";
 }
 
-var WT_EN={'신규':'new','작업전':'mod-before','작업후':'mod-after'};
+var WT_EN={'신규':'new','변경전':'mod-before','변경후':'mod-after'};
 
 function buildFileName(idx){
   var wt=WT_EN[lockedInfo.wt]||sanitizeForFilename(lockedInfo.wt)||'work';
