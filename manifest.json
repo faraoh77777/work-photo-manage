@@ -4,7 +4,7 @@
   "description": "현장 작업 사진 관리 앱",
   "start_url": "./index.html",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#F0F4F8",
   "theme_color": "#1E3A5F",
   "icons": [

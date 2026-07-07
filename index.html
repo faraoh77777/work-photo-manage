@@ -205,7 +205,6 @@ textarea.f{resize:none;height:48px;}
     <div style="display:flex;gap:4px;">
       <button type="button" id="ratioBtn67" class="ratio-btn" onclick="setCaptureRatio('6:7')">6:7</button>
       <button type="button" id="ratioBtn169" class="ratio-btn" onclick="setCaptureRatio('16:9')">16:9</button>
-      <button type="button" id="ratioBtn74" class="ratio-btn" onclick="setCaptureRatio('7:4')">7:4</button>
     </div>
   </div>
   <div class="cam-box" id="camBox">
@@ -481,8 +480,8 @@ document.getElementById("fileInput").addEventListener("change",loadImg);
 
 // ── 후면 카메라 실시간 촬영 (비율 선택 가능) ───────────
 var camStream=null,camTrack=null;
-var RATIO_VALUES={"6:7":6/7,"16:9":16/9,"7:4":7/4};
-var RATIO_BTN_IDS={"6:7":"ratioBtn67","16:9":"ratioBtn169","7:4":"ratioBtn74"};
+var RATIO_VALUES={"6:7":6/7,"16:9":16/9};
+var RATIO_BTN_IDS={"6:7":"ratioBtn67","16:9":"ratioBtn169"};
 function normRatioMode(mode){return RATIO_VALUES.hasOwnProperty(mode)?mode:"6:7";}
 var captureRatio=RATIO_VALUES[normRatioMode(localStorage.getItem("capture_ratio"))];
 function setCaptureRatio(mode){
@@ -511,6 +510,11 @@ function sizeCamViewport(){
 }
 window.addEventListener("resize",function(){
   if(document.getElementById("camModal").style.display==="flex")sizeCamViewport();
+});
+window.addEventListener("orientationchange",function(){
+  setTimeout(function(){
+    if(document.getElementById("camModal").style.display==="flex")sizeCamViewport();
+  },250);
 });
 async function openCamera(){
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
