@@ -659,7 +659,10 @@ function renderCanvas(loadedImg){
   ctx.drawImage(loadedImg,0,0);
 
   var label=lockedInfo.wt==="신규"?lockedInfo.cat:"["+lockedInfo.wt+"] "+lockedInfo.cat;
-  var lines=[label, lockedInfo.tag||"-", lockedInfo.loc, lockedInfo.date+"  "+lockedInfo.time];
+  var memberName=localStorage.getItem("member_name")||"";
+  var lines=[label, lockedInfo.tag||"-", lockedInfo.loc];
+  if(memberName) lines.push(memberName);
+  lines.push(lockedInfo.date+"  "+lockedInfo.time);
   if(lockedInfo.note&&lockedInfo.note!=="-") lines.push(lockedInfo.note);
 
   var fs=Math.max(20,Math.round(H*0.031));
@@ -671,7 +674,7 @@ function renderCanvas(loadedImg){
     fs--;ctx.font="bold "+fs+"px Arial,sans-serif";maxTxtW=0;
     lines.forEach(function(l){maxTxtW=Math.max(maxTxtW,ctx.measureText(l).width);});
   }
-  var lh=Math.round(fs*1.55);
+  var lh=Math.round(fs*1.3);
   padX=Math.round(W*0.022);padY=Math.round(fs*0.55);
   var boxW=maxTxtW+padX*2,boxH=lines.length*lh+padY*2;
   ctx.fillStyle="rgba(0,0,0,0.6)";
