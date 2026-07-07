@@ -31,6 +31,26 @@ textarea.f{resize:none;height:70px;}
 .ratio-btn{border:1.5px solid #C8D8E8;background:#F7FAFC;color:#5A7A9A;border-radius:6px;
   padding:4px 12px;font-size:12px;font-weight:800;cursor:pointer;}
 .ratio-btn.active{background:#2E5F9E;border-color:#2E5F9E;color:#fff;}
+#settingsOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);
+  z-index:9997;align-items:center;justify-content:center;padding:16px;}
+#settingsBox{background:#fff;border-radius:14px;width:100%;max-width:420px;
+  max-height:86vh;overflow-y:auto;padding:16px;}
+.set-header{display:flex;justify-content:space-between;align-items:center;
+  font-size:16px;font-weight:800;color:#1A2332;margin-bottom:10px;}
+.set-header button{background:none;border:none;font-size:16px;color:#7A9AB8;cursor:pointer;}
+.set-section{margin-top:14px;padding-top:14px;border-top:1px solid #E8EEF4;}
+.set-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
+.set-title{font-size:12px;font-weight:800;color:#5A7A9A;text-transform:uppercase;
+  letter-spacing:0.5px;margin-bottom:8px;}
+.chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+.chip{display:flex;align-items:center;gap:5px;background:#F7FAFC;border:1.5px solid #C8D8E8;
+  border-radius:14px;padding:4px 6px 4px 12px;font-size:13px;color:#1A2332;}
+.chip button{background:none;border:none;color:#A0BBD4;font-size:13px;cursor:pointer;padding:2px 6px;}
+.chip button:hover{color:#E74C3C;}
+.add-row{display:flex;gap:6px;}
+.add-row input{flex:1;}
+.add-row button{flex-shrink:0;background:#2E5F9E;color:#fff;border:none;border-radius:8px;
+  padding:0 16px;font-size:13px;font-weight:700;cursor:pointer;}
 .cam-placeholder p{font-size:15px;color:#7A9AB8;margin-top:8px;}
 .cam-placeholder .icon{font-size:52px;}
 .corner{position:absolute;width:22px;height:22px;}
@@ -77,8 +97,13 @@ canvas{width:100%;border-radius:12px;display:block;}
 <body>
 
 <div class="app-header">
-  <div class="app-title">&#128247; 작업 사진</div>
-  <div class="app-sub">계장 &amp; 전기 공사</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <div class="app-title">&#128247; 작업 사진</div>
+      <div class="app-sub">계장 &amp; 전기 공사</div>
+    </div>
+    <button onclick="openSettings()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;">⚙️ 설정</button>
+  </div>
 </div>
 
 <!-- 정보 입력 -->
@@ -128,35 +153,11 @@ canvas{width:100%;border-radius:12px;display:block;}
   </div>
 
   <div class="flbl">작업 분류</div>
-  <select id="inCat" class="f">
-    <option value="dcs">DCS Panel</option>
-    <option value="lcp">LCP</option>
-    <option value="jb">Junction Box</option>
-    <option value="fi" selected>Field Instrument</option>
-    <option value="duct">Cable Duct</option>
-    <option value="tray">Cable Tray</option>
-    <option value="conduit">Conduit Pipe</option>
-    <option value="airpipe">Air Pipe</option>
-    <option value="hookup">Hook Up</option>
-    <option value="stanchion">Stanchion</option>
-    <option value="support">Support</option>
-    <option value="conn">Connection</option>
-    <option value="linecheck">Line Check</option>
-    <option value="looptest">Loop Test</option>
-    <option value="leaktest">Leak Test</option>
-    <option value="calib">Instrument Calibration</option>
-    <option value="steamtube">Steam Tracing Tube</option>
-    <option value="steamins">Steam Tracing Insulation</option>
-    <option value="scaffold">Scaffolding</option>
-    <option value="etc">Others</option>
-  </select>
+  <select id="inCat" class="f"></select>
   <div class="cat-bar" id="catBar"></div>
 
   <div class="flbl">작업 구역</div>
-  <select id="inLoc" class="f">
-    <option>SCC</option>
-    <option>U&amp;O</option>
-  </select>
+  <select id="inLoc" class="f"></select>
 
   <div class="flbl">팀 이름</div>
   <input type="text" id="inLeader" class="f" placeholder="팀 이름 입력"/>
@@ -187,6 +188,32 @@ canvas{width:100%;border-radius:12px;display:block;}
 
 <canvas id="canvas" style="display:none;"></canvas>
 
+<!-- 설정 -->
+<div id="settingsOverlay">
+  <div id="settingsBox">
+    <div class="set-header">
+      <span>⚙️ 설정</span>
+      <button onclick="closeSettings()">&#10005;</button>
+    </div>
+    <div class="set-section">
+      <div class="set-title">작업 분류 관리</div>
+      <div class="chip-row" id="catChips"></div>
+      <div class="add-row">
+        <input type="text" id="newCatInput" class="f" placeholder="새 분류 이름"/>
+        <button onclick="addCategory()">추가</button>
+      </div>
+    </div>
+    <div class="set-section">
+      <div class="set-title">작업 구역 관리</div>
+      <div class="chip-row" id="areaChips"></div>
+      <div class="add-row">
+        <input type="text" id="newAreaInput" class="f" placeholder="새 구역 이름"/>
+        <button onclick="addArea()">추가</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- 저장된 사진 목록 -->
 <div class="card">
   <div class="list-header">
@@ -208,19 +235,102 @@ canvas{width:100%;border-radius:12px;display:block;}
 
 <script>
 var CC={
-  dcs:"#E67E22",lcp:"#E74C3C",jb:"#F39C12",fi:"#2980B9",duct:"#16A085",
-  tray:"#8E44AD",conduit:"#C0392B",airpipe:"#27AE60",hookup:"#2E86AB",
-  stanchion:"#5D6D7E",support:"#A569BD",conn:"#E74C3C",linecheck:"#1ABC9C",
-  looptest:"#3498DB",leaktest:"#1A5276",calib:"#D35400",steamtube:"#C0392B",steamins:"#922B21",
-  scaffold:"#7F8C8D",etc:"#95A5A6"
+  'DCS Panel':"#E67E22",'LCP':"#E74C3C",'Junction Box':"#F39C12",'Field Instrument':"#2980B9",'Cable Duct':"#16A085",
+  'Cable Tray':"#8E44AD",'Conduit Pipe':"#C0392B",'Air Pipe':"#27AE60",'Hook Up':"#2E86AB",
+  'Stanchion':"#5D6D7E",'Support':"#A569BD",'Connection':"#E74C3C",'Line Check':"#1ABC9C",
+  'Loop Test':"#3498DB",'Leak Test':"#1A5276",'Instrument Calibration':"#D35400",'Steam Tracing Tube':"#C0392B",'Steam Tracing Insulation':"#922B21",
+  'Scaffolding':"#7F8C8D",'Others':"#95A5A6",'관리자':"#34495E"
 };
+var DEFAULT_CATS=["DCS Panel","LCP","Junction Box","Field Instrument","Cable Duct","Cable Tray",
+  "Conduit Pipe","Air Pipe","Hook Up","Stanchion","Support","Connection","Line Check","Loop Test",
+  "Leak Test","Instrument Calibration","Steam Tracing Tube","Steam Tracing Insulation","Scaffolding","Others","관리자"];
+var DEFAULT_AREAS=["SCC","U&O"];
+function loadList(key,def){
+  try{
+    var v=JSON.parse(localStorage.getItem(key));
+    return (Array.isArray(v)&&v.length)?v:def.slice();
+  }catch(e){ return def.slice(); }
+}
+function saveList(key,list){ localStorage.setItem(key,JSON.stringify(list)); }
+var customCats=loadList("custom_categories",DEFAULT_CATS);
+var customAreas=loadList("custom_areas",DEFAULT_AREAS);
+function optionHtml(v){
+  var esc=String(v).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+  return '<option value="'+esc+'">'+esc+'</option>';
+}
+function populateCatSelect(preserve){
+  var el=document.getElementById("inCat");
+  var prev=preserve?el.value:null;
+  el.innerHTML=customCats.map(optionHtml).join('');
+  if(prev&&customCats.indexOf(prev)!==-1) el.value=prev;
+  updCat();
+}
+function populateAreaSelect(preserve){
+  var el=document.getElementById("inLoc");
+  var prev=preserve?el.value:null;
+  el.innerHTML=customAreas.map(optionHtml).join('');
+  if(prev&&customAreas.indexOf(prev)!==-1) el.value=prev;
+}
+function openSettings(){
+  renderCatChips();
+  renderAreaChips();
+  document.getElementById("settingsOverlay").style.display="flex";
+}
+function closeSettings(){
+  document.getElementById("settingsOverlay").style.display="none";
+}
+function renderCatChips(){
+  document.getElementById("catChips").innerHTML=customCats.map(function(c,i){
+    return '<span class="chip">'+c+'<button onclick="removeCategory('+i+')" title="삭제">&#10005;</button></span>';
+  }).join('');
+}
+function addCategory(){
+  var inp=document.getElementById("newCatInput");
+  var v=inp.value.trim();
+  if(!v||customCats.indexOf(v)!==-1)return;
+  customCats.push(v);
+  saveList("custom_categories",customCats);
+  inp.value="";
+  renderCatChips();
+  populateCatSelect(true);
+}
+function removeCategory(i){
+  if(customCats.length<=1)return;
+  customCats.splice(i,1);
+  saveList("custom_categories",customCats);
+  renderCatChips();
+  populateCatSelect(true);
+}
+function renderAreaChips(){
+  document.getElementById("areaChips").innerHTML=customAreas.map(function(a,i){
+    return '<span class="chip">'+a+'<button onclick="removeArea('+i+')" title="삭제">&#10005;</button></span>';
+  }).join('');
+}
+function addArea(){
+  var inp=document.getElementById("newAreaInput");
+  var v=inp.value.trim();
+  if(!v||customAreas.indexOf(v)!==-1)return;
+  customAreas.push(v);
+  saveList("custom_areas",customAreas);
+  inp.value="";
+  renderAreaChips();
+  populateAreaSelect(true);
+}
+function removeArea(i){
+  if(customAreas.length<=1)return;
+  customAreas.splice(i,1);
+  saveList("custom_areas",customAreas);
+  renderAreaChips();
+  populateAreaSelect(true);
+}
 
 var loadedImg=null, savedPhotos=[], lockedInfo=null;
 
 var now=new Date();
 document.getElementById("inDate").value=now.toISOString().slice(0,10);
 document.getElementById("inTime").value=now.toTimeString().slice(0,5);
-updCat();
+populateAreaSelect();
+populateCatSelect();
 togglePhaseRow();
 
 // ── 촬영 비율 선택 (모바일 앱과 설정 공유) ─────────────
