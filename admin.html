@@ -170,9 +170,9 @@ canvas{width:100%;border-radius:12px;display:block;}
   <div class="flbl" style="display:flex;justify-content:space-between;align-items:center;">
     <span>사진 촬영</span>
     <div style="display:flex;gap:4px;">
-      <button type="button" id="ratioBtn34" class="ratio-btn" onclick="setCaptureRatio('3:4')">3:4</button>
-      <button type="button" id="ratioBtn43" class="ratio-btn" onclick="setCaptureRatio('4:3')">4:3</button>
       <button type="button" id="ratioBtn67" class="ratio-btn" onclick="setCaptureRatio('6:7')">6:7</button>
+      <button type="button" id="ratioBtn169" class="ratio-btn" onclick="setCaptureRatio('16:9')">16:9</button>
+      <button type="button" id="ratioBtn74" class="ratio-btn" onclick="setCaptureRatio('7:4')">7:4</button>
     </div>
   </div>
   <div class="cam-box" id="camBox">
@@ -225,9 +225,9 @@ updCat();
 togglePhaseRow();
 
 // ── 촬영 비율 선택 (모바일 앱과 설정 공유) ─────────────
-var RATIO_VALUES={"3:4":3/4,"4:3":4/3,"6:7":6/7};
-var RATIO_BTN_IDS={"3:4":"ratioBtn34","4:3":"ratioBtn43","6:7":"ratioBtn67"};
-function normRatioMode(mode){return RATIO_VALUES.hasOwnProperty(mode)?mode:"3:4";}
+var RATIO_VALUES={"6:7":6/7,"16:9":16/9,"7:4":7/4};
+var RATIO_BTN_IDS={"6:7":"ratioBtn67","16:9":"ratioBtn169","7:4":"ratioBtn74"};
+function normRatioMode(mode){return RATIO_VALUES.hasOwnProperty(mode)?mode:"6:7";}
 var captureRatio=RATIO_VALUES[normRatioMode(localStorage.getItem("capture_ratio"))];
 function updateRatioUI(){
   var mode=normRatioMode(localStorage.getItem("capture_ratio"));
