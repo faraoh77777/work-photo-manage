@@ -272,13 +272,15 @@ function getWorkLabel(){
   return wt;
 }
 
+var CROP_TARGET_W=1600;
 function crop43(img){
   var sW=img.width,sH=img.height,r=captureRatio,cW,cH,ox=0,oy=0;
   if(sW/sH>r){cH=sH;cW=Math.round(sH*r);ox=Math.round((sW-cW)/2);}
   else{cW=sW;cH=Math.round(sW/r);oy=Math.round((sH-cH)/2);}
+  var outW=CROP_TARGET_W,outH=Math.round(outW/r);
   var c=document.createElement("canvas");
-  c.width=cW;c.height=cH;c._w=cW;c._h=cH;
-  c.getContext("2d").drawImage(img,ox,oy,cW,cH,0,0,cW,cH);
+  c.width=outW;c.height=outH;c._w=outW;c._h=outH;
+  c.getContext("2d").drawImage(img,ox,oy,cW,cH,0,0,outW,outH);
   return c;
 }
 
