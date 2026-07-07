@@ -205,6 +205,7 @@ textarea.f{resize:none;height:48px;}
     <div style="display:flex;gap:4px;">
       <button type="button" id="ratioBtn34" class="ratio-btn" onclick="setCaptureRatio('3:4')">3:4</button>
       <button type="button" id="ratioBtn43" class="ratio-btn" onclick="setCaptureRatio('4:3')">4:3</button>
+      <button type="button" id="ratioBtn67" class="ratio-btn" onclick="setCaptureRatio('6:7')">6:7</button>
     </div>
   </div>
   <div class="cam-box" id="camBox">
@@ -480,18 +481,24 @@ document.getElementById("fileInput").addEventListener("change",loadImg);
 
 // ── 후면 카메라 실시간 촬영 (비율 선택 가능) ───────────
 var camStream=null,camTrack=null;
-var captureRatio=(localStorage.getItem("capture_ratio")==="4:3")?4/3:3/4;
+var RATIO_VALUES={"3:4":3/4,"4:3":4/3,"6:7":6/7};
+var RATIO_BTN_IDS={"3:4":"ratioBtn34","4:3":"ratioBtn43","6:7":"ratioBtn67"};
+function normRatioMode(mode){return RATIO_VALUES.hasOwnProperty(mode)?mode:"3:4";}
+var captureRatio=RATIO_VALUES[normRatioMode(localStorage.getItem("capture_ratio"))];
 function setCaptureRatio(mode){
-  captureRatio=(mode==="4:3")?4/3:3/4;
-  localStorage.setItem("capture_ratio",mode==="4:3"?"4:3":"3:4");
-  document.getElementById("ratioBtn34").classList.toggle("active",mode!=="4:3");
-  document.getElementById("ratioBtn43").classList.toggle("active",mode==="4:3");
+  mode=normRatioMode(mode);
+  captureRatio=RATIO_VALUES[mode];
+  localStorage.setItem("capture_ratio",mode);
+  Object.keys(RATIO_BTN_IDS).forEach(function(m){
+    document.getElementById(RATIO_BTN_IDS[m]).classList.toggle("active",m===mode);
+  });
   if(document.getElementById("camModal").style.display==="flex")sizeCamViewport();
 }
 (function(){
-  var mode=localStorage.getItem("capture_ratio")==="4:3"?"4:3":"3:4";
-  document.getElementById("ratioBtn34").classList.toggle("active",mode!=="4:3");
-  document.getElementById("ratioBtn43").classList.toggle("active",mode==="4:3");
+  var mode=normRatioMode(localStorage.getItem("capture_ratio"));
+  Object.keys(RATIO_BTN_IDS).forEach(function(m){
+    document.getElementById(RATIO_BTN_IDS[m]).classList.toggle("active",m===mode);
+  });
 })();
 function sizeCamViewport(){
   var vw=window.innerWidth,vh=window.innerHeight;
@@ -530,7 +537,7 @@ async function openCamera(){
   camStream=stream;
   camTrack=stream.getVideoTracks()[0]||null;
   document.getElementById("camVideo").srcObject=stream;
-  document.getElementById("camRatioBadge").textContent=(captureRatio===4/3)?"4:3":"3:4";
+  document.getElementById("camRatioBadge").textContent=normRatioMode(localStorage.getItem("capture_ratio"));
   sizeCamViewport();
   document.getElementById("camModal").style.display="flex";
 }
