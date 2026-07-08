@@ -155,28 +155,28 @@ textarea.f{resize:none;height:48px;}
 
 <!-- 정보 입력 -->
 <div class="card">
-  <div class="flbl">기기번호</div>
+  <div class="flbl" id="lblTag">기기번호</div>
   <div class="mic-row">
     <input type="text" id="inTag" class="f" placeholder="PT-2101, EQ-001 등"
       oninput="this.value=this.value.toUpperCase()"/>
     <button class="mic-btn" id="micTag" onclick="startSTT('inTag','micTag')" title="음성 입력">&#127908;</button>
   </div>
 
-  <div class="flbl">작업 구분</div>
+  <div class="flbl" id="lblWorkType">작업 구분</div>
   <div style="display:flex;gap:8px;margin-bottom:4px;">
     <label style="flex:1;min-width:80px;display:flex;align-items:center;gap:6px;background:#F7FAFC;
       border:1.5px solid #C8D8E8;border-radius:8px;padding:9px 10px;cursor:pointer;
       font-size:17px;font-weight:700;color:#2980B9;">
       <input type="radio" name="workType" id="wtNew" value="신규" checked
         style="width:16px;height:16px;accent-color:#2980B9;"/>
-      신규
+      <span id="wtNewLabel">신규</span>
     </label>
     <label style="flex:1;min-width:80px;display:flex;align-items:center;gap:6px;background:#F7FAFC;
       border:1.5px solid #C8D8E8;border-radius:8px;padding:9px 10px;cursor:pointer;
       font-size:17px;font-weight:700;color:#E67E22;">
       <input type="radio" name="workType" id="wtMod" value="수정"
         style="width:16px;height:16px;accent-color:#E67E22;"/>
-      수정
+      <span id="wtModLabel">수정</span>
     </label>
   </div>
   <select id="inPhase" class="f" style="display:none;margin-bottom:4px;">
@@ -191,7 +191,7 @@ textarea.f{resize:none;height:48px;}
       <div class="cat-bar" id="catBar"></div>
     </div>
     <div>
-      <div class="flbl">작업 구역</div>
+      <div class="flbl" id="lblLoc">작업 구역</div>
       <select id="inLoc" class="f"></select>
     </div>
   </div>
@@ -490,6 +490,19 @@ var activeMenu=(MENUS.indexOf(localStorage.getItem("active_menu"))!==-1)?localSt
 var customCats=catsByMenu[activeMenu];
 var customAreas=loadList("custom_areas",DEFAULT_AREAS);
 
+var LABELS_BY_MENU={
+  "자재":{tag:"자재품명",workType:"자재구분",wtNew:"도급",wtMod:"사급",loc:"자재보관장소"}
+};
+function applyMenuLabels(menu){
+  var d=LABELS_BY_MENU[menu];
+  document.getElementById("lblTag").textContent=d?d.tag:"기기번호";
+  document.getElementById("lblWorkType").textContent=d?d.workType:"작업 구분";
+  document.getElementById("wtNewLabel").textContent=d?d.wtNew:"신규";
+  document.getElementById("wtModLabel").textContent=d?d.wtMod:"수정";
+  document.getElementById("lblLoc").textContent=d?d.loc:"작업 구역";
+  document.getElementById("wtNew").value=d?d.wtNew:"신규";
+  document.getElementById("wtMod").value=d?d.wtMod:"수정";
+}
 function setActiveMenu(menu){
   if(MENUS.indexOf(menu)===-1)return;
   activeMenu=menu;
@@ -498,11 +511,14 @@ function setActiveMenu(menu){
   document.querySelectorAll(".menu-tab").forEach(function(btn){
     btn.classList.toggle("active",btn.getAttribute("data-menu")===menu);
   });
+  applyMenuLabels(activeMenu);
+  togglePhaseSelect();
   populateCatSelect();
 }
 document.querySelectorAll(".menu-tab").forEach(function(btn){
   btn.classList.toggle("active",btn.getAttribute("data-menu")===activeMenu);
 });
+applyMenuLabels(activeMenu);
 
 function optionHtml(v){
   var esc=String(v).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
@@ -815,7 +831,8 @@ function getWorkLabel(){
 }
 function togglePhaseSelect(){
   var isMod=document.getElementById('wtMod').checked;
-  document.getElementById('inPhase').style.display=isMod?'':'none';
+  var show=isMod&&!LABELS_BY_MENU[activeMenu];
+  document.getElementById('inPhase').style.display=show?'':'none';
 }
 document.querySelectorAll('input[name="workType"]').forEach(function(r){
   r.addEventListener('change',togglePhaseSelect);
@@ -932,7 +949,7 @@ function sanitizeForFilename(str){
     .slice(0,30):"";
 }
 
-var WT_EN={'신규':'new','변경전':'mod-before','변경후':'mod-after'};
+var WT_EN={'신규':'new','변경전':'mod-before','변경후':'mod-after','도급':'contract','사급':'owner-supply'};
 
 function buildFileName(idx){
   var wt=WT_EN[lockedInfo.wt]||sanitizeForFilename(lockedInfo.wt)||'work';
