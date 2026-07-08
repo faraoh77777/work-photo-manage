@@ -607,6 +607,43 @@ async function pushSettingsToSupabase(){
   }catch(e){console.error("설정 클라우드 동기화 실패",e);}
 }
 
+// 원격(갤러리 등)에서 받아온 설정 반영 — 로컬 저장만 하고 다시 업로드하지 않음(무한루프 방지)
+function applyRemoteSettings(data){
+  var changed=false;
+  if(data.cats_by_menu){
+    MENUS.forEach(function(m){
+      if(Array.isArray(data.cats_by_menu[m])&&data.cats_by_menu[m].length){
+        catsByMenu[m]=data.cats_by_menu[m];
+        changed=true;
+      }
+    });
+  }
+  if(Array.isArray(data.areas)&&data.areas.length){ customAreas=data.areas; changed=true; }
+  if(changed){
+    customCats=catsByMenu[activeMenu];
+    saveCatsByMenu();
+    saveList("custom_areas",customAreas);
+    populateCatSelect(true);
+    populateAreaSelect(true);
+  }
+}
+async function fetchSettingsFromSupabase(){
+  if(!sbClient)return;
+  try{
+    var res=await sbClient.from('app_settings').select('*').eq('id','global').single();
+    if(res.error||!res.data)return;
+    applyRemoteSettings(res.data);
+  }catch(e){console.error("설정 클라우드 불러오기 실패",e);}
+}
+function subscribeSettingsRealtime(){
+  if(!sbClient||!sbClient.channel)return;
+  sbClient.channel('app_settings_changes_manage')
+    .on('postgres_changes',{event:'*',schema:'public',table:'app_settings',filter:'id=eq.global'},function(payload){
+      if(payload.new) applyRemoteSettings(payload.new);
+    })
+    .subscribe();
+}
+
 function saveSettingsChanges(){
   if(!tempCats||!tempAreas)return;
   catsByMenu[activeMenu]=tempCats;
@@ -721,6 +758,8 @@ restoreSavedPhotos();
 
 populateAreaSelect();
 populateCatSelect();
+fetchSettingsFromSupabase();
+subscribeSettingsRealtime();
 
 document.getElementById("camBox").addEventListener("click",openCamera);
 document.getElementById("fileInput").addEventListener("change",loadImg);
