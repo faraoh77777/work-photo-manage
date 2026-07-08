@@ -415,7 +415,14 @@ async function autoSaveToDevice(photos){
           var fr=new FileReader();fr.onload=function(e){res(e.target.result);};fr.onerror=rej;
           fr.readAsArrayBuffer(p.blob);
         });
-        var fh=await dirHandle.getFileHandle(p.filename,{create:true});
+        // 메뉴 > 작업구분 > 작업분류 순으로 하위폴더 생성 (없으면 생성, 있으면 기존 사용)
+        var menuFolder=sanitizeFolderName((p.info&&p.info.menu)||"시공");
+        var wtFolder=sanitizeFolderName(workTypeFolderName(p.info&&p.info.wt));
+        var catFolder=sanitizeFolderName(p.info&&p.info.cat);
+        var menuDir=await dirHandle.getDirectoryHandle(menuFolder,{create:true});
+        var wtDir=await menuDir.getDirectoryHandle(wtFolder,{create:true});
+        var catDir=await wtDir.getDirectoryHandle(catFolder,{create:true});
+        var fh=await catDir.getFileHandle(p.filename,{create:true});
         var w=await fh.createWritable();
         await w.write(new Uint8Array(ab));
         await w.close();
@@ -1027,6 +1034,17 @@ function sanitizeForFilename(str){
     .replace(/\s+/g,"_")
     .replace(/^[_\-]+|[_\-]+$/g,"")
     .slice(0,30):"";
+}
+
+// 폴더명은 한글을 유지해야 하므로 sanitizeForFilename과 별도로 예약문자만 치환
+function sanitizeFolderName(name){
+  var cleaned=String(name==null?"":name).replace(/[\\/:*?"<>|]/g,"_").trim();
+  return cleaned||"Others";
+}
+// 시공/품질은 수정 선택 시 변경전/변경후로 세분화되지만, 폴더는 "수정" 하나로 묶음
+function workTypeFolderName(wt){
+  if(wt==="변경전"||wt==="변경후")return "수정";
+  return wt||"기타";
 }
 
 var WT_EN={'신규':'new','변경전':'mod-before','변경후':'mod-after','도급':'contract','사급':'owner-supply','현장안전점검':'safety-check','안전용품':'safety-gear','화기감시자':'fire-watch','유도원':'guide'};
