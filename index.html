@@ -94,6 +94,10 @@ textarea.f{resize:none;height:48px;}
 .ratio-btn{border:1.5px solid #C8D8E8;background:#F7FAFC;color:#5A7A9A;border-radius:6px;
   padding:3px 10px;font-size:11px;font-weight:800;cursor:pointer;}
 .ratio-btn.active{background:#2E5F9E;border-color:#2E5F9E;color:#fff;}
+.menu-tabs{display:flex;gap:6px;}
+.menu-tab{flex:1;border:1.5px solid #C8D8E8;background:#F7FAFC;color:#5A7A9A;
+  border-radius:8px;padding:9px 4px;font-size:14px;font-weight:700;cursor:pointer;}
+.menu-tab.active{background:#2E5F9E;border-color:#2E5F9E;color:#fff;}
 #settingsOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);
   z-index:9997;align-items:center;justify-content:center;padding:16px;}
 #settingsBox{background:#fff;border-radius:14px;width:100%;max-width:420px;
@@ -136,6 +140,16 @@ textarea.f{resize:none;height:48px;}
       <button onclick="openSettings()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;">⚙️ 설정</button>
       <button id="folderBtn" onclick="pickSaveFolder()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;">📁 폴더설정</button>
     </div>
+  </div>
+</div>
+
+<!-- 상위 메뉴 -->
+<div class="card" style="padding:8px;">
+  <div class="menu-tabs" id="menuTabs">
+    <button type="button" class="menu-tab" data-menu="시공" onclick="setActiveMenu('시공')">시공</button>
+    <button type="button" class="menu-tab" data-menu="자재" onclick="setActiveMenu('자재')">자재</button>
+    <button type="button" class="menu-tab" data-menu="안전" onclick="setActiveMenu('안전')">안전</button>
+    <button type="button" class="menu-tab" data-menu="기타" onclick="setActiveMenu('기타')">기타</button>
   </div>
 </div>
 
@@ -237,7 +251,7 @@ textarea.f{resize:none;height:48px;}
       <button onclick="closeSettings()">&#10005;</button>
     </div>
     <div class="set-section">
-      <div class="set-title">작업 분류 관리</div>
+      <div class="set-title" id="catSectionTitle">작업 분류 관리</div>
       <div class="chip-row" id="catChips"></div>
       <div class="add-row">
         <input type="text" id="newCatInput" class="f" placeholder="새 분류 이름"/>
@@ -325,17 +339,25 @@ async function sendToSupabase(){
         date:p.info.date||'', time:p.info.time||'', tag:p.info.tag||'',
         cat:p.info.cat||'', loc:p.info.loc||'', work_type:p.info.wt||'',
         note:p.info.note||'', photo_url:photoUrl,
-        sender:localStorage.getItem('member_name')||localStorage.getItem('senderName')||''
+        sender:localStorage.getItem('member_name')||localStorage.getItem('senderName')||'',
+        menu:p.info.menu||''
       };
+      // sender/menu 컬럼이 DB에 없으면 해당 필드만 제거하고 재시도
+      var OPTIONAL_COLS=['sender','menu'];
       var dbRes=await sbClient.from('work_photos').insert(insertData);
-      if(dbRes.error){
-        // sender 컬럼 미존재 시 sender 없이 재시도
-        if(dbRes.error.message&&dbRes.error.message.toLowerCase().includes('sender')){
-          var d2=Object.assign({},insertData); delete d2.sender;
-          var dbRes2=await sbClient.from('work_photos').insert(d2);
-          if(dbRes2.error){ lastErr='[DB] '+dbRes2.error.message; continue; }
-        } else { lastErr='[DB] '+dbRes.error.message; continue; }
+      var attempts=0;
+      while(dbRes.error&&attempts<OPTIONAL_COLS.length){
+        var msg=(dbRes.error.message||'').toLowerCase();
+        var stripped=false;
+        for(var k=0;k<OPTIONAL_COLS.length;k++){
+          var col=OPTIONAL_COLS[k];
+          if((col in insertData)&&msg.includes(col)){ delete insertData[col]; stripped=true; break; }
+        }
+        if(!stripped)break;
+        dbRes=await sbClient.from('work_photos').insert(insertData);
+        attempts++;
       }
+      if(dbRes.error){ lastErr='[DB] '+dbRes.error.message; continue; }
       success++;
     }catch(e){ lastErr=e.message||String(e); }
   }
@@ -432,10 +454,12 @@ var CC={
   'Scaffolding':"#7F8C8D",'Others':"#95A5A6",'관리자':"#34495E"
 };
 
-// ── 작업 분류 / 작업 구역 목록 (설정에서 변경 가능) ─────
-var DEFAULT_CATS=["DCS Panel","LCP","Junction Box","Field Instrument","Cable Duct","Cable Tray",
+// ── 상위 메뉴 (시공/자재/안전/기타) + 메뉴별 작업 분류 ────
+var MENUS=["시공","자재","안전","기타"];
+var DEFAULT_CATS_시공=["DCS Panel","LCP","Junction Box","Field Instrument","Cable Duct","Cable Tray",
   "Conduit Pipe","Air Pipe","Hook Up","Stanchion","Support","Connection","Line Check","Loop Test",
   "Leak Test","Instrument Calibration","Steam Tracing Tube","Steam Tracing Insulation","Scaffolding","Others","관리자"];
+var DEFAULT_CATS_BY_MENU={"시공":DEFAULT_CATS_시공,"자재":["기타"],"안전":["기타"],"기타":["기타"]};
 var DEFAULT_AREAS=["SCC","U&O"];
 function loadList(key,def){
   try{
@@ -444,8 +468,41 @@ function loadList(key,def){
   }catch(e){ return def.slice(); }
 }
 function saveList(key,list){ localStorage.setItem(key,JSON.stringify(list)); }
-var customCats=loadList("custom_categories",DEFAULT_CATS);
+
+function loadCatsByMenu(){
+  try{
+    var v=JSON.parse(localStorage.getItem("custom_categories_by_menu"));
+    if(v&&typeof v==="object"){
+      MENUS.forEach(function(m){ if(!Array.isArray(v[m])||!v[m].length) v[m]=DEFAULT_CATS_BY_MENU[m].slice(); });
+      return v;
+    }
+  }catch(e){}
+  // 메뉴 구분이 없던 이전 버전의 custom_categories가 있으면 "시공" 목록으로 이어받음
+  var legacy=loadList("custom_categories",DEFAULT_CATS_BY_MENU["시공"]);
+  var obj={};
+  MENUS.forEach(function(m){ obj[m]=(m==="시공")?legacy:DEFAULT_CATS_BY_MENU[m].slice(); });
+  return obj;
+}
+function saveCatsByMenu(){ localStorage.setItem("custom_categories_by_menu",JSON.stringify(catsByMenu)); }
+
+var catsByMenu=loadCatsByMenu();
+var activeMenu=(MENUS.indexOf(localStorage.getItem("active_menu"))!==-1)?localStorage.getItem("active_menu"):"시공";
+var customCats=catsByMenu[activeMenu];
 var customAreas=loadList("custom_areas",DEFAULT_AREAS);
+
+function setActiveMenu(menu){
+  if(MENUS.indexOf(menu)===-1)return;
+  activeMenu=menu;
+  customCats=catsByMenu[activeMenu];
+  localStorage.setItem("active_menu",menu);
+  document.querySelectorAll(".menu-tab").forEach(function(btn){
+    btn.classList.toggle("active",btn.getAttribute("data-menu")===menu);
+  });
+  populateCatSelect();
+}
+document.querySelectorAll(".menu-tab").forEach(function(btn){
+  btn.classList.toggle("active",btn.getAttribute("data-menu")===activeMenu);
+});
 
 function optionHtml(v){
   var esc=String(v).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
@@ -466,6 +523,8 @@ function populateAreaSelect(preserve){
 }
 
 function openSettings(){
+  var lbl=document.getElementById("catSectionTitle");
+  if(lbl) lbl.textContent="작업 분류 관리 ("+activeMenu+")";
   renderCatChips();
   renderAreaChips();
   document.getElementById("settingsOverlay").style.display="flex";
@@ -483,7 +542,7 @@ function addCategory(){
   var v=inp.value.trim();
   if(!v||customCats.indexOf(v)!==-1)return;
   customCats.push(v);
-  saveList("custom_categories",customCats);
+  saveCatsByMenu();
   inp.value="";
   renderCatChips();
   populateCatSelect(true);
@@ -491,7 +550,7 @@ function addCategory(){
 function removeCategory(i){
   if(customCats.length<=1)return;
   customCats.splice(i,1);
-  saveList("custom_categories",customCats);
+  saveCatsByMenu();
   renderCatChips();
   populateCatSelect(true);
 }
@@ -809,7 +868,8 @@ function processCapturedFrame(source,autoDate,autoTime){
     cat:catEl.options[catEl.selectedIndex].text,
     loc:document.getElementById("inLoc").value,
     note:document.getElementById("inNote").value.trim()||"-",
-    wt:getWorkLabel()
+    wt:getWorkLabel(),
+    menu:activeMenu
   };
   // 캠박스에 촬영된 이미지 표시
   document.getElementById("camBox").innerHTML=
@@ -929,7 +989,8 @@ function autoAddPhoto(loadedImg){
   var info={
     date:lockedInfo.date,time:lockedInfo.time,
     tag:lockedInfo.tag||"-",cat:lockedInfo.cat,
-    loc:lockedInfo.loc,note:lockedInfo.note,wt:lockedInfo.wt
+    loc:lockedInfo.loc,note:lockedInfo.note,wt:lockedInfo.wt,
+    menu:lockedInfo.menu
   };
   var dataUrl=embedExif(rawDataUrl,info);
   var byteStr=atob(dataUrl.split(",")[1]);
