@@ -24,6 +24,12 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
 .app-title{font-size:26px;font-weight:800;letter-spacing:1px;display:flex;align-items:center;gap:8px;}
 .app-title img{width:48px;height:48px;border-radius:8px;}
 .app-sub{font-size:11px;opacity:0.75;margin-top:1px;}
+.icon-wrap{position:relative;display:inline-flex;flex:none;cursor:pointer;}
+.icon-flash{position:absolute;inset:0;border-radius:8px;background:#fff;opacity:0;pointer-events:none;}
+.icon-wrap.fire img{animation:wp-icon-pop .45s ease;}
+.icon-wrap.fire .icon-flash{animation:wp-icon-flash .45s ease;}
+@keyframes wp-icon-pop{0%{transform:scale(1);}30%{transform:scale(1.22);}55%{transform:scale(.94);}100%{transform:scale(1);}}
+@keyframes wp-icon-flash{0%{opacity:0;}15%{opacity:.85;}100%{opacity:0;}}
 .card{background:#fff;border:1px solid #D1DCE8;border-radius:12px;
   padding:10px 12px;margin-bottom:8px;box-shadow:0 2px 6px rgba(0,0,0,0.06);}
 .flbl{font-size:11px;font-weight:700;color:#5A7A9A;letter-spacing:0.5px;
@@ -141,7 +147,7 @@ textarea.f{resize:none;height:48px;}
 <div class="app-header">
   <div style="display:flex;justify-content:space-between;align-items:center;">
     <div style="min-width:0;flex:1;">
-      <div class="app-title"><img src="Work%20photo_icon/icon-192.png" alt=""/> 작업 사진</div>
+      <div class="app-title"><span class="icon-wrap" onclick="fireIconEffect(this)"><img src="Work%20photo_icon/icon-192.png" alt=""/><span class="icon-flash"></span></span> 작업 사진</div>
       <div class="app-sub" id="hdrProject" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">계장 &amp; 전기 공사</div>
       <div class="app-sub" id="hdrCompany" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
     </div>
@@ -314,6 +320,12 @@ textarea.f{resize:none;height:48px;}
 function logout(){
   ['member_id','member_name','member_company','member_project','member_phone','member_category','senderName'].forEach(function(k){localStorage.removeItem(k);});
   location.href='login.html';
+}
+function fireIconEffect(el){
+  el.classList.remove('fire');
+  void el.offsetWidth;
+  el.classList.add('fire');
+  setTimeout(function(){el.classList.remove('fire');},450);
 }
 
 async function withdrawMember(){
