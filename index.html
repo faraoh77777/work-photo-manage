@@ -594,6 +594,19 @@ function closeSettings(){
   tempCats=null; tempAreas=null;
   document.getElementById("settingsOverlay").style.display="none";
 }
+async function pushSettingsToSupabase(){
+  if(!sbClient)return;
+  try{
+    var res=await sbClient.from('app_settings').upsert({
+      id:'global',
+      cats_by_menu:catsByMenu,
+      areas:customAreas,
+      updated_at:new Date().toISOString()
+    });
+    if(res.error) console.error("설정 클라우드 동기화 실패",res.error.message);
+  }catch(e){console.error("설정 클라우드 동기화 실패",e);}
+}
+
 function saveSettingsChanges(){
   if(!tempCats||!tempAreas)return;
   catsByMenu[activeMenu]=tempCats;
@@ -606,6 +619,7 @@ function saveSettingsChanges(){
   tempCats=null; tempAreas=null;
   document.getElementById("settingsOverlay").style.display="none";
   showT("설정이 저장되었습니다");
+  pushSettingsToSupabase();
 }
 function renderCatChips(){
   document.getElementById("catChips").innerHTML=tempCats.map(function(c,i){
