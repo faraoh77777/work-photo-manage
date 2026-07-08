@@ -98,6 +98,14 @@ textarea.f{resize:none;height:48px;}
 .menu-tab{flex:1;border:1.5px solid #C8D8E8;background:#F7FAFC;color:#5A7A9A;
   border-radius:8px;padding:9px 4px;font-size:14px;font-weight:700;cursor:pointer;}
 .menu-tab.active{background:#2E5F9E;border-color:#2E5F9E;color:#fff;}
+.menu-tab[data-menu="자재"]{border-color:#D6B98C;color:#8B5E3C;}
+.menu-tab[data-menu="안전"]{border-color:#F8D386;color:#B9770E;}
+.menu-tab[data-menu="품질"]{border-color:#A3E4C1;color:#1E8449;}
+.menu-tab[data-menu="기타"]{border-color:#C8CDD1;color:#6C7A80;}
+.menu-tab.active[data-menu="자재"]{background:#A0703A;border-color:#A0703A;color:#fff;}
+.menu-tab.active[data-menu="안전"]{background:#F39C12;border-color:#F39C12;color:#fff;}
+.menu-tab.active[data-menu="품질"]{background:#27AE60;border-color:#27AE60;color:#fff;}
+.menu-tab.active[data-menu="기타"]{background:#7F8C8D;border-color:#7F8C8D;color:#fff;}
 #settingsOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);
   z-index:9997;align-items:center;justify-content:center;padding:16px;}
 #settingsBox{background:#fff;border-radius:14px;width:100%;max-width:420px;
@@ -149,6 +157,7 @@ textarea.f{resize:none;height:48px;}
     <button type="button" class="menu-tab" data-menu="시공" onclick="setActiveMenu('시공')">시공</button>
     <button type="button" class="menu-tab" data-menu="자재" onclick="setActiveMenu('자재')">자재</button>
     <button type="button" class="menu-tab" data-menu="안전" onclick="setActiveMenu('안전')">안전</button>
+    <button type="button" class="menu-tab" data-menu="품질" onclick="setActiveMenu('품질')">품질</button>
     <button type="button" class="menu-tab" data-menu="기타" onclick="setActiveMenu('기타')">기타</button>
   </div>
 </div>
@@ -455,11 +464,11 @@ var CC={
 };
 
 // ── 상위 메뉴 (시공/자재/안전/기타) + 메뉴별 작업 분류 ────
-var MENUS=["시공","자재","안전","기타"];
+var MENUS=["시공","자재","안전","품질","기타"];
 var DEFAULT_CATS_시공=["DCS Panel","LCP","Junction Box","Field Instrument","Cable Duct","Cable Tray",
   "Conduit Pipe","Air Pipe","Hook Up","Stanchion","Support","Connection","Line Check","Loop Test",
   "Leak Test","Instrument Calibration","Steam Tracing Tube","Steam Tracing Insulation","Scaffolding","Others","관리자"];
-var DEFAULT_CATS_BY_MENU={"시공":DEFAULT_CATS_시공,"자재":["기타"],"안전":["기타"],"기타":["기타"]};
+var DEFAULT_CATS_BY_MENU={"시공":DEFAULT_CATS_시공,"자재":["기타"],"안전":["기타"],"품질":DEFAULT_CATS_시공,"기타":["기타"]};
 var DEFAULT_AREAS=["SCC","U&O"];
 function loadList(key,def){
   try{
