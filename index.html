@@ -484,7 +484,7 @@ function applyMenuTheme(menu){
 var DEFAULT_CATS_시공=["DCS Panel","LCP","Junction Box","Field Instrument","Cable Duct","Cable Tray",
   "Conduit Pipe","Air Pipe","Hook Up","Stanchion","Support","Connection","Line Check","Loop Test",
   "Leak Test","Instrument Calibration","Steam Tracing Tube","Steam Tracing Insulation","Scaffolding","Others","관리자"];
-var DEFAULT_CATS_BY_MENU={"시공":DEFAULT_CATS_시공,"자재":["기타"],"안전":["기타"],"품질":DEFAULT_CATS_시공,"화기/유도":["기타"]};
+var DEFAULT_CATS_BY_MENU={"시공":DEFAULT_CATS_시공,"자재":["기타"],"안전":["기타"],"품질":DEFAULT_CATS_시공,"화기/유도":DEFAULT_CATS_시공};
 var DEFAULT_AREAS=["SCC","U&O"];
 function loadList(key,def){
   try{
@@ -517,18 +517,19 @@ var customAreas=loadList("custom_areas",DEFAULT_AREAS);
 
 var LABELS_BY_MENU={
   "자재":{tag:"검수번호/Packing NO.",cat:"자재품명",workType:"자재구분",wtNew:"도급",wtMod:"사급",loc:"자재보관장소"},
-  "안전":{tag:"사진제목",cat:"사진내용",workType:"현장안전점검",wtNew:"현장안전점검",wtMod:"안전용품",loc:"장소"}
+  "안전":{tag:"사진제목",cat:"사진내용",workType:"현장안전점검",wtNew:"현장안전점검",wtMod:"안전용품",loc:"장소"},
+  "화기/유도":{tag:"화기/유도원 이름",wtNew:"화기감시자",wtMod:"유도원"}
 };
 function applyMenuLabels(menu){
-  var d=LABELS_BY_MENU[menu];
-  document.getElementById("lblTag").textContent=d?d.tag:"기기번호";
-  document.getElementById("lblCat").textContent=d?d.cat:"작업 분류";
-  document.getElementById("lblWorkType").textContent=d?d.workType:"작업 구분";
-  document.getElementById("wtNewLabel").textContent=d?d.wtNew:"신규";
-  document.getElementById("wtModLabel").textContent=d?d.wtMod:"수정";
-  document.getElementById("lblLoc").textContent=d?d.loc:"작업 구역";
-  document.getElementById("wtNew").value=d?d.wtNew:"신규";
-  document.getElementById("wtMod").value=d?d.wtMod:"수정";
+  var d=LABELS_BY_MENU[menu]||{};
+  document.getElementById("lblTag").textContent=d.tag||"기기번호";
+  document.getElementById("lblCat").textContent=d.cat||"작업 분류";
+  document.getElementById("lblWorkType").textContent=d.workType||"작업 구분";
+  document.getElementById("wtNewLabel").textContent=d.wtNew||"신규";
+  document.getElementById("wtModLabel").textContent=d.wtMod||"수정";
+  document.getElementById("lblLoc").textContent=d.loc||"작업 구역";
+  document.getElementById("wtNew").value=d.wtNew||"신규";
+  document.getElementById("wtMod").value=d.wtMod||"수정";
 }
 function setActiveMenu(menu){
   if(MENUS.indexOf(menu)===-1)return;
@@ -569,8 +570,8 @@ function populateAreaSelect(preserve){
 
 function openSettings(){
   var lbl=document.getElementById("catSectionTitle");
-  var d=LABELS_BY_MENU[activeMenu];
-  if(lbl) lbl.textContent=(d?d.cat:"작업 분류")+" 관리 ("+activeMenu+")";
+  var d=LABELS_BY_MENU[activeMenu]||{};
+  if(lbl) lbl.textContent=(d.cat||"작업 분류")+" 관리 ("+activeMenu+")";
   renderCatChips();
   renderAreaChips();
   document.getElementById("settingsOverlay").style.display="flex";
@@ -979,7 +980,7 @@ function sanitizeForFilename(str){
     .slice(0,30):"";
 }
 
-var WT_EN={'신규':'new','변경전':'mod-before','변경후':'mod-after','도급':'contract','사급':'owner-supply','현장안전점검':'safety-check','안전용품':'safety-gear'};
+var WT_EN={'신규':'new','변경전':'mod-before','변경후':'mod-after','도급':'contract','사급':'owner-supply','현장안전점검':'safety-check','안전용품':'safety-gear','화기감시자':'fire-watch','유도원':'guide'};
 
 function buildFileName(idx){
   var wt=WT_EN[lockedInfo.wt]||sanitizeForFilename(lockedInfo.wt)||'work';
