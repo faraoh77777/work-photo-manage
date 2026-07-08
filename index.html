@@ -15,11 +15,12 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/piexifjs/2.0.0-beta.8/piexif.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
+:root{--brand-1:#1E3A5F;--brand-2:#2E5F9E;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:100vh;
   padding:8px;font-size:17px;}
-.app-header{background:linear-gradient(135deg,#1E3A5F,#2E5F9E);border-radius:12px;
-  padding:10px 14px;margin-bottom:8px;color:#fff;}
+.app-header{background:linear-gradient(135deg,var(--brand-1),var(--brand-2));border-radius:12px;
+  padding:10px 14px;margin-bottom:8px;color:#fff;transition:background 0.25s;}
 .app-title{font-size:26px;font-weight:800;letter-spacing:1px;display:flex;align-items:center;gap:8px;}
 .app-title img{width:48px;height:48px;border-radius:8px;}
 .app-sub{font-size:11px;opacity:0.75;margin-top:1px;}
@@ -31,7 +32,7 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
 .f{width:100%;background:#F7FAFC;border:1.5px solid #C8D8E8;border-radius:8px;
   padding:9px 11px;color:#1A2332;font-size:17px;outline:none;font-family:Arial;
   transition:border-color 0.2s;}
-.f:focus{border-color:#2E5F9E;background:#fff;}
+.f:focus{border-color:var(--brand-2);background:#fff;}
 select.f option{background:#fff;color:#1A2332;}
 textarea.f{resize:none;height:48px;}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
@@ -68,7 +69,7 @@ textarea.f{resize:none;height:48px;}
 #camViewport .corner{border-color:#fff;filter:drop-shadow(0 0 2px rgba(0,0,0,0.8));}
 .sbtn{width:100%;padding:11px;border:none;border-radius:10px;font-size:15px;
   font-weight:800;cursor:pointer;margin-top:8px;}
-.sbtn-send{background:linear-gradient(135deg,#2980B9,#1A5276);color:#fff;}
+.sbtn-send{background:linear-gradient(135deg,var(--brand-2),var(--brand-1));color:#fff;transition:background 0.25s;}
 .sbtn-send:disabled{background:#BDC3C7;color:#fff;cursor:not-allowed;}
 .list-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
 .list-title{font-size:13px;font-weight:700;color:#1A2332;}
@@ -155,9 +156,9 @@ textarea.f{resize:none;height:48px;}
 <div class="card" style="padding:8px;">
   <div class="menu-tabs" id="menuTabs">
     <button type="button" class="menu-tab" data-menu="시공" onclick="setActiveMenu('시공')">시공</button>
+    <button type="button" class="menu-tab" data-menu="품질" onclick="setActiveMenu('품질')">품질</button>
     <button type="button" class="menu-tab" data-menu="자재" onclick="setActiveMenu('자재')">자재</button>
     <button type="button" class="menu-tab" data-menu="안전" onclick="setActiveMenu('안전')">안전</button>
-    <button type="button" class="menu-tab" data-menu="품질" onclick="setActiveMenu('품질')">품질</button>
     <button type="button" class="menu-tab" data-menu="기타" onclick="setActiveMenu('기타')">기타</button>
   </div>
 </div>
@@ -175,9 +176,9 @@ textarea.f{resize:none;height:48px;}
   <div style="display:flex;gap:8px;margin-bottom:4px;">
     <label style="flex:1;min-width:80px;display:flex;align-items:center;gap:6px;background:#F7FAFC;
       border:1.5px solid #C8D8E8;border-radius:8px;padding:9px 10px;cursor:pointer;
-      font-size:17px;font-weight:700;color:#2980B9;">
+      font-size:17px;font-weight:700;color:var(--brand-2);">
       <input type="radio" name="workType" id="wtNew" value="신규" checked
-        style="width:16px;height:16px;accent-color:#2980B9;"/>
+        style="width:16px;height:16px;accent-color:var(--brand-2);"/>
       <span id="wtNewLabel">신규</span>
     </label>
     <label style="flex:1;min-width:80px;display:flex;align-items:center;gap:6px;background:#F7FAFC;
@@ -464,7 +465,21 @@ var CC={
 };
 
 // ── 상위 메뉴 (시공/자재/안전/기타) + 메뉴별 작업 분류 ────
-var MENUS=["시공","자재","안전","품질","기타"];
+var MENUS=["시공","품질","자재","안전","기타"];
+var MENU_THEMES={
+  "시공":["#1E3A5F","#2E5F9E"],
+  "품질":["#145A32","#27AE60"],
+  "자재":["#5C3A1E","#A0703A"],
+  "안전":["#7A4A00","#F39C12"],
+  "기타":["#3F4A50","#7F8C8D"]
+};
+function applyMenuTheme(menu){
+  var t=MENU_THEMES[menu]||MENU_THEMES["시공"];
+  document.documentElement.style.setProperty("--brand-1",t[0]);
+  document.documentElement.style.setProperty("--brand-2",t[1]);
+  var tc=document.querySelector('meta[name="theme-color"]');
+  if(tc) tc.setAttribute("content",t[0]);
+}
 var DEFAULT_CATS_시공=["DCS Panel","LCP","Junction Box","Field Instrument","Cable Duct","Cable Tray",
   "Conduit Pipe","Air Pipe","Hook Up","Stanchion","Support","Connection","Line Check","Loop Test",
   "Leak Test","Instrument Calibration","Steam Tracing Tube","Steam Tracing Insulation","Scaffolding","Others","관리자"];
@@ -523,6 +538,7 @@ function setActiveMenu(menu){
     btn.classList.toggle("active",btn.getAttribute("data-menu")===menu);
   });
   applyMenuLabels(activeMenu);
+  applyMenuTheme(activeMenu);
   togglePhaseSelect();
   populateCatSelect();
 }
@@ -530,6 +546,7 @@ document.querySelectorAll(".menu-tab").forEach(function(btn){
   btn.classList.toggle("active",btn.getAttribute("data-menu")===activeMenu);
 });
 applyMenuLabels(activeMenu);
+applyMenuTheme(activeMenu);
 
 function optionHtml(v){
   var esc=String(v).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
