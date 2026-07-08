@@ -186,7 +186,7 @@ textarea.f{resize:none;height:48px;}
 
   <div class="row2">
     <div>
-      <div class="flbl">작업 분류</div>
+      <div class="flbl" id="lblCat">작업 분류</div>
       <select id="inCat" class="f"></select>
       <div class="cat-bar" id="catBar"></div>
     </div>
@@ -491,11 +491,12 @@ var customCats=catsByMenu[activeMenu];
 var customAreas=loadList("custom_areas",DEFAULT_AREAS);
 
 var LABELS_BY_MENU={
-  "자재":{tag:"자재품명",workType:"자재구분",wtNew:"도급",wtMod:"사급",loc:"자재보관장소"}
+  "자재":{tag:"검수번호/Packing NO.",cat:"자재품명",workType:"자재구분",wtNew:"도급",wtMod:"사급",loc:"자재보관장소"}
 };
 function applyMenuLabels(menu){
   var d=LABELS_BY_MENU[menu];
   document.getElementById("lblTag").textContent=d?d.tag:"기기번호";
+  document.getElementById("lblCat").textContent=d?d.cat:"작업 분류";
   document.getElementById("lblWorkType").textContent=d?d.workType:"작업 구분";
   document.getElementById("wtNewLabel").textContent=d?d.wtNew:"신규";
   document.getElementById("wtModLabel").textContent=d?d.wtMod:"수정";
@@ -540,7 +541,8 @@ function populateAreaSelect(preserve){
 
 function openSettings(){
   var lbl=document.getElementById("catSectionTitle");
-  if(lbl) lbl.textContent="작업 분류 관리 ("+activeMenu+")";
+  var d=LABELS_BY_MENU[activeMenu];
+  if(lbl) lbl.textContent=(d?d.cat:"작업 분류")+" 관리 ("+activeMenu+")";
   renderCatChips();
   renderAreaChips();
   document.getElementById("settingsOverlay").style.display="flex";
