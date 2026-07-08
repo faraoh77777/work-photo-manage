@@ -49,11 +49,16 @@ textarea.f{resize:none;height:48px;}
 #camModal{display:none;position:fixed;inset:0;background:#000;z-index:9999;
   align-items:center;justify-content:center;}
 #camViewport{position:relative;overflow:hidden;background:#000;}
-#camVideo{width:100%;height:100%;object-fit:cover;display:block;}
+#camVideo{width:100%;height:100%;object-fit:cover;display:block;transform-origin:center center;}
 #camCloseBtn{position:absolute;top:14px;right:14px;width:38px;height:38px;border-radius:50%;
   background:rgba(0,0,0,0.5);color:#fff;border:none;font-size:18px;cursor:pointer;}
 #camShotBtn{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);
   width:70px;height:70px;border-radius:50%;background:#fff;border:5px solid rgba(255,255,255,0.5);cursor:pointer;}
+#camZoomWrap{position:absolute;bottom:114px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:8px;width:70%;max-width:260px;z-index:2;}
+#camZoomLabel{color:#fff;font-size:12px;font-weight:800;min-width:36px;text-align:right;
+  text-shadow:0 1px 2px rgba(0,0,0,0.8);}
+#camZoomSlider{flex:1;}
 #camRatioBadge{position:absolute;top:14px;left:50%;transform:translateX(-50%);
   background:rgba(0,0,0,0.55);color:#fff;font-size:13px;font-weight:800;
   padding:5px 14px;border-radius:20px;letter-spacing:0.5px;pointer-events:none;z-index:2;}
@@ -217,6 +222,10 @@ textarea.f{resize:none;height:48px;}
     <div id="camRatioBadge">3:4</div>
   </div>
   <button id="camCloseBtn" onclick="closeCamera()">&#10005;</button>
+  <div id="camZoomWrap">
+    <span id="camZoomLabel">1.0x</span>
+    <input type="range" id="camZoomSlider" min="1" max="3" step="0.1" value="1"/>
+  </div>
   <button id="camShotBtn" onclick="captureShot()"></button>
 </div>
 
@@ -641,11 +650,56 @@ async function openCamera(){
   document.getElementById("camVideo").srcObject=stream;
   document.getElementById("camRatioBadge").textContent=normRatioMode(localStorage.getItem("capture_ratio"));
   sizeCamViewport();
+  setupZoom();
   document.getElementById("camModal").style.display="flex";
 }
 function closeCamera(){
   if(camStream){camStream.getTracks().forEach(function(t){t.stop();});camStream=null;camTrack=null;}
   document.getElementById("camModal").style.display="none";
+  document.getElementById("camVideo").style.transform="scale(1)";
+}
+
+// ── 카메라 줌 ──────────────────────────────────────────
+var zoomLevel=1, digitalZoom=true;
+function setupZoom(){
+  zoomLevel=1;
+  digitalZoom=true;
+  document.getElementById("camVideo").style.transform="scale(1)";
+  var slider=document.getElementById("camZoomSlider");
+  slider.min=1;slider.max=3;slider.step=0.1;slider.value=1;
+  document.getElementById("camZoomLabel").textContent="1.0x";
+  try{
+    var caps=camTrack&&camTrack.getCapabilities?camTrack.getCapabilities():null;
+    if(caps&&caps.zoom){
+      digitalZoom=false;
+      slider.min=caps.zoom.min;
+      slider.max=caps.zoom.max;
+      slider.step=caps.zoom.step||0.1;
+      var cur=(camTrack.getSettings&&camTrack.getSettings().zoom)||caps.zoom.min;
+      slider.value=cur;
+      zoomLevel=parseFloat(cur);
+      document.getElementById("camZoomLabel").textContent=zoomLevel.toFixed(1)+"x";
+    }
+  }catch(e){}
+}
+document.getElementById("camZoomSlider").addEventListener("input",function(){
+  zoomLevel=parseFloat(this.value);
+  document.getElementById("camZoomLabel").textContent=zoomLevel.toFixed(1)+"x";
+  if(digitalZoom){
+    document.getElementById("camVideo").style.transform="scale("+zoomLevel+")";
+  }else if(camTrack){
+    camTrack.applyConstraints({advanced:[{zoom:zoomLevel}]}).catch(function(e){console.error("줌 적용 실패",e);});
+  }
+});
+function applyDigitalZoom(source,zoom){
+  if(zoom<=1)return source;
+  var sw=source.width,sh=source.height;
+  var cw=sw/zoom,ch=sh/zoom;
+  var ox=(sw-cw)/2,oy=(sh-ch)/2;
+  var cv=document.createElement("canvas");
+  cv.width=sw;cv.height=sh;
+  cv.getContext("2d").drawImage(source,ox,oy,cw,ch,0,0,sw,sh);
+  return cv;
 }
 function playShutterSound(){
   try{
@@ -681,6 +735,7 @@ async function captureShot(){
     cv.width=video.videoWidth;cv.height=video.videoHeight;
     cv.getContext("2d").drawImage(video,0,0,cv.width,cv.height);
   }
+  if(digitalZoom&&zoomLevel>1) cv=applyDigitalZoom(cv,zoomLevel);
   closeCamera();
   var now=new Date();
   processCapturedFrame(cv,now.toISOString().slice(0,10),now.toTimeString().slice(0,5));
