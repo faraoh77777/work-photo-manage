@@ -518,6 +518,7 @@ var customCats=catsByMenu[activeMenu];
 var customAreas=loadList("custom_areas",DEFAULT_AREAS);
 
 var LABELS_BY_MENU={
+  "품질":{tagPh:"검사번호"},
   "자재":{tag:"검수번호/Packing NO.",tagPh:"검수번호",cat:"자재품명",workType:"자재구분",wtNew:"도급",wtMod:"사급",loc:"자재보관장소"},
   "안전":{tag:"사진제목",tagPh:"사진제목",cat:"사진내용",workType:"현장안전점검",wtNew:"현장안전점검",wtMod:"안전용품",loc:"장소"},
   "화기/유도":{tag:"화기/유도원 이름",tagPh:"이름",wtNew:"화기감시자",wtMod:"유도원"}
@@ -909,7 +910,8 @@ function getWorkLabel(){
 }
 function togglePhaseSelect(){
   var isMod=document.getElementById('wtMod').checked;
-  var show=isMod&&!LABELS_BY_MENU[activeMenu];
+  var d=LABELS_BY_MENU[activeMenu];
+  var show=isMod&&!(d&&d.wtMod);
   document.getElementById('inPhase').style.display=show?'':'none';
 }
 document.querySelectorAll('input[name="workType"]').forEach(function(r){
