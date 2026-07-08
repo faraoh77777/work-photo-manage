@@ -505,11 +505,23 @@ function loadList(key,def){
 }
 function saveList(key,list){ localStorage.setItem(key,JSON.stringify(list)); }
 
+// 예전 세션에 저장된 안전/화기유도 placeholder 기본값이 남아있으면 새 기본값으로 1회 승격
+function fixStaleCategoryDefaults(map){
+  var changed=false;
+  if(map&&JSON.stringify(map["안전"])===JSON.stringify(["기타"])){
+    map["안전"]=DEFAULT_CATS_BY_MENU["안전"].slice(); changed=true;
+  }
+  if(map&&JSON.stringify(map["화기/유도"])===JSON.stringify(DEFAULT_CATS_시공)){
+    map["화기/유도"]=DEFAULT_CATS_BY_MENU["화기/유도"].slice(); changed=true;
+  }
+  return changed;
+}
 function loadCatsByMenu(){
   try{
     var v=JSON.parse(localStorage.getItem("custom_categories_by_menu"));
     if(v&&typeof v==="object"){
       MENUS.forEach(function(m){ if(!Array.isArray(v[m])||!v[m].length) v[m]=DEFAULT_CATS_BY_MENU[m].slice(); });
+      fixStaleCategoryDefaults(v);
       return v;
     }
   }catch(e){}
@@ -525,6 +537,7 @@ var catsByMenu=loadCatsByMenu();
 var activeMenu=(MENUS.indexOf(localStorage.getItem("active_menu"))!==-1)?localStorage.getItem("active_menu"):"시공";
 var customCats=catsByMenu[activeMenu];
 var customAreas=loadList("custom_areas",DEFAULT_AREAS);
+saveCatsByMenu();
 
 var LABELS_BY_MENU={
   "품질":{tagPh:"검사번호"},
@@ -621,12 +634,14 @@ function applyRemoteSettings(data){
     });
   }
   if(Array.isArray(data.areas)&&data.areas.length){ customAreas=data.areas; changed=true; }
-  if(changed){
+  var fixedStale=fixStaleCategoryDefaults(catsByMenu);
+  if(changed||fixedStale){
     customCats=catsByMenu[activeMenu];
     saveCatsByMenu();
     saveList("custom_areas",customAreas);
     populateCatSelect(true);
     populateAreaSelect(true);
+    if(fixedStale) pushSettingsToSupabase();
   }
 }
 async function fetchSettingsFromSupabase(){
