@@ -559,7 +559,6 @@ function saveAllPhotos(){
   savedPhotos=[];
   loadedImg=null;lockedInfo=null;
   updateList();
-  document.getElementById("prevCard").style.display="none";
   document.getElementById("inTime").value=new Date().toTimeString().slice(0,5);
   showT(cnt+"장 저장 완료!");
   setTimeout(function(){window.scrollTo({top:0,behavior:"smooth"});},300);
