@@ -49,7 +49,7 @@ textarea.f{resize:none;height:48px;}
 .br{bottom:8px;right:8px;border-bottom:3px solid #2E5F9E;border-right:3px solid #2E5F9E;border-radius:0 0 3px 0;}
 #camModal{display:none;position:fixed;inset:0;background:#000;z-index:9999;
   align-items:center;justify-content:center;}
-#camViewport{position:relative;overflow:hidden;background:#000;}
+#camViewport{position:relative;overflow:hidden;background:#000;touch-action:none;}
 #camVideo{width:100%;height:100%;object-fit:cover;display:block;transform-origin:center center;}
 #camCloseBtn{position:absolute;top:14px;right:14px;width:38px;height:38px;border-radius:50%;
   background:rgba(0,0,0,0.5);color:#fff;border:none;font-size:18px;cursor:pointer;}
@@ -103,11 +103,11 @@ textarea.f{resize:none;height:48px;}
 .menu-tab[data-menu="자재"]{border-color:#D6B98C;color:#8B5E3C;}
 .menu-tab[data-menu="안전"]{border-color:#F8D386;color:#B9770E;}
 .menu-tab[data-menu="품질"]{border-color:#A3E4C1;color:#1E8449;}
-.menu-tab[data-menu="화기/유도"]{border-color:#C8CDD1;color:#6C7A80;}
+.menu-tab[data-menu="화기/유도"]{border-color:#F1B0A8;color:#C0392B;}
 .menu-tab.active[data-menu="자재"]{background:#A0703A;border-color:#A0703A;color:#fff;}
 .menu-tab.active[data-menu="안전"]{background:#F39C12;border-color:#F39C12;color:#fff;}
 .menu-tab.active[data-menu="품질"]{background:#27AE60;border-color:#27AE60;color:#fff;}
-.menu-tab.active[data-menu="화기/유도"]{background:#7F8C8D;border-color:#7F8C8D;color:#fff;}
+.menu-tab.active[data-menu="화기/유도"]{background:#C0392B;border-color:#C0392B;color:#fff;}
 #settingsOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);
   z-index:9997;align-items:center;justify-content:center;padding:16px;}
 #settingsBox{background:#fff;border-radius:14px;width:100%;max-width:420px;
@@ -277,6 +277,8 @@ textarea.f{resize:none;height:48px;}
         <button onclick="addArea()">추가</button>
       </div>
     </div>
+    <button onclick="saveSettingsChanges()" style="width:100%;margin-top:14px;background:var(--brand-2);
+      color:#fff;border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:800;cursor:pointer;">💾 저장</button>
     <div class="set-section">
       <div class="set-title">계정</div>
       <button onclick="withdrawMember()" style="width:100%;background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.5);color:#E74C3C;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">회원탈퇴</button>
@@ -472,7 +474,7 @@ var MENU_THEMES={
   "품질":["#145A32","#27AE60"],
   "자재":["#5C3A1E","#A0703A"],
   "안전":["#7A4A00","#F39C12"],
-  "화기/유도":["#3F4A50","#7F8C8D"]
+  "화기/유도":["#7B241C","#C0392B"]
 };
 function applyMenuTheme(menu){
   var t=MENU_THEMES[menu]||MENU_THEMES["시공"];
@@ -568,60 +570,69 @@ function populateAreaSelect(preserve){
   if(prev&&customAreas.indexOf(prev)!==-1) el.value=prev;
 }
 
+var tempCats=null, tempAreas=null;
 function openSettings(){
   var lbl=document.getElementById("catSectionTitle");
   var d=LABELS_BY_MENU[activeMenu]||{};
   if(lbl) lbl.textContent=(d.cat||"작업 분류")+" 관리 ("+activeMenu+")";
+  tempCats=customCats.slice();
+  tempAreas=customAreas.slice();
   renderCatChips();
   renderAreaChips();
   document.getElementById("settingsOverlay").style.display="flex";
 }
 function closeSettings(){
+  tempCats=null; tempAreas=null;
   document.getElementById("settingsOverlay").style.display="none";
 }
+function saveSettingsChanges(){
+  if(!tempCats||!tempAreas)return;
+  catsByMenu[activeMenu]=tempCats;
+  customCats=tempCats;
+  saveCatsByMenu();
+  customAreas=tempAreas;
+  saveList("custom_areas",customAreas);
+  populateCatSelect(true);
+  populateAreaSelect(true);
+  tempCats=null; tempAreas=null;
+  document.getElementById("settingsOverlay").style.display="none";
+  showT("설정이 저장되었습니다");
+}
 function renderCatChips(){
-  document.getElementById("catChips").innerHTML=customCats.map(function(c,i){
+  document.getElementById("catChips").innerHTML=tempCats.map(function(c,i){
     return '<span class="chip">'+c+'<button onclick="removeCategory('+i+')" title="삭제">&#10005;</button></span>';
   }).join('');
 }
 function addCategory(){
   var inp=document.getElementById("newCatInput");
   var v=inp.value.trim();
-  if(!v||customCats.indexOf(v)!==-1)return;
-  customCats.push(v);
-  saveCatsByMenu();
+  if(!v||tempCats.indexOf(v)!==-1)return;
+  tempCats.push(v);
   inp.value="";
   renderCatChips();
-  populateCatSelect(true);
 }
 function removeCategory(i){
-  if(customCats.length<=1)return;
-  customCats.splice(i,1);
-  saveCatsByMenu();
+  if(tempCats.length<=1)return;
+  tempCats.splice(i,1);
   renderCatChips();
-  populateCatSelect(true);
 }
 function renderAreaChips(){
-  document.getElementById("areaChips").innerHTML=customAreas.map(function(a,i){
+  document.getElementById("areaChips").innerHTML=tempAreas.map(function(a,i){
     return '<span class="chip">'+a+'<button onclick="removeArea('+i+')" title="삭제">&#10005;</button></span>';
   }).join('');
 }
 function addArea(){
   var inp=document.getElementById("newAreaInput");
   var v=inp.value.trim();
-  if(!v||customAreas.indexOf(v)!==-1)return;
-  customAreas.push(v);
-  saveList("custom_areas",customAreas);
+  if(!v||tempAreas.indexOf(v)!==-1)return;
+  tempAreas.push(v);
   inp.value="";
   renderAreaChips();
-  populateAreaSelect(true);
 }
 function removeArea(i){
-  if(customAreas.length<=1)return;
-  customAreas.splice(i,1);
-  saveList("custom_areas",customAreas);
+  if(tempAreas.length<=1)return;
+  tempAreas.splice(i,1);
   renderAreaChips();
-  populateAreaSelect(true);
 }
 
 var savedPhotos=[], lockedInfo=null;
@@ -788,15 +799,50 @@ function setupZoom(){
     }
   }catch(e){}
 }
-document.getElementById("camZoomSlider").addEventListener("input",function(){
-  zoomLevel=parseFloat(this.value);
+function applyZoom(newZoom){
+  var slider=document.getElementById("camZoomSlider");
+  var min=parseFloat(slider.min),max=parseFloat(slider.max);
+  zoomLevel=Math.min(max,Math.max(min,newZoom));
+  slider.value=zoomLevel;
   document.getElementById("camZoomLabel").textContent=zoomLevel.toFixed(1)+"x";
   if(digitalZoom){
     document.getElementById("camVideo").style.transform="scale("+zoomLevel+")";
   }else if(camTrack){
     camTrack.applyConstraints({advanced:[{zoom:zoomLevel}]}).catch(function(e){console.error("줌 적용 실패",e);});
   }
+}
+document.getElementById("camZoomSlider").addEventListener("input",function(){
+  applyZoom(parseFloat(this.value));
 });
+
+// ── 핀치 줌 (터치 제스처) ────────────────────────────────
+var pinchStartDist=null, pinchStartZoom=1;
+function touchDist(touches){
+  var dx=touches[0].clientX-touches[1].clientX;
+  var dy=touches[0].clientY-touches[1].clientY;
+  return Math.sqrt(dx*dx+dy*dy);
+}
+(function(){
+  var vp=document.getElementById("camViewport");
+  vp.addEventListener("touchstart",function(e){
+    if(e.touches.length===2){
+      pinchStartDist=touchDist(e.touches);
+      pinchStartZoom=zoomLevel;
+      e.preventDefault();
+    }
+  },{passive:false});
+  vp.addEventListener("touchmove",function(e){
+    if(e.touches.length===2&&pinchStartDist){
+      e.preventDefault();
+      var dist=touchDist(e.touches);
+      applyZoom(pinchStartZoom*(dist/pinchStartDist));
+    }
+  },{passive:false});
+  vp.addEventListener("touchend",function(e){
+    if(e.touches.length<2)pinchStartDist=null;
+  });
+  vp.addEventListener("touchcancel",function(){pinchStartDist=null;});
+})();
 function applyDigitalZoom(source,zoom){
   if(zoom<=1)return source;
   var sw=source.width,sh=source.height;
