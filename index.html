@@ -493,7 +493,9 @@ function applyMenuTheme(menu){
 var DEFAULT_CATS_시공=["DCS Panel","LCP","Junction Box","Field Instrument","Cable Duct","Cable Tray",
   "Conduit Pipe","Air Pipe","Hook Up","Stanchion","Support","Connection","Line Check","Loop Test",
   "Leak Test","Instrument Calibration","Steam Tracing Tube","Steam Tracing Insulation","Scaffolding","Others","관리자"];
-var DEFAULT_CATS_BY_MENU={"시공":DEFAULT_CATS_시공,"자재":["기타"],"안전":["기타"],"품질":DEFAULT_CATS_시공,"화기/유도":DEFAULT_CATS_시공};
+var DEFAULT_CATS_안전=["개인보호구","안전난간","소화기","전기안전","고소작업","위험물보관","비상통로","중장비안전","밀폐공간","낙하물방지","기타"];
+var DEFAULT_CATS_화기유도=["용접작업","절단작업","화재감시","가연물제거","방화포","가스누출점검","소화기배치","유도원배치","차량유도","작업구간통제","기타"];
+var DEFAULT_CATS_BY_MENU={"시공":DEFAULT_CATS_시공,"자재":["기타"],"안전":DEFAULT_CATS_안전,"품질":DEFAULT_CATS_시공,"화기/유도":DEFAULT_CATS_화기유도};
 var DEFAULT_AREAS=["SCC","U&O"];
 function loadList(key,def){
   try{
