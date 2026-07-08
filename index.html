@@ -491,7 +491,8 @@ var customCats=catsByMenu[activeMenu];
 var customAreas=loadList("custom_areas",DEFAULT_AREAS);
 
 var LABELS_BY_MENU={
-  "자재":{tag:"검수번호/Packing NO.",cat:"자재품명",workType:"자재구분",wtNew:"도급",wtMod:"사급",loc:"자재보관장소"}
+  "자재":{tag:"검수번호/Packing NO.",cat:"자재품명",workType:"자재구분",wtNew:"도급",wtMod:"사급",loc:"자재보관장소"},
+  "안전":{tag:"사진제목",cat:"사진내용",workType:"현장안전점검",wtNew:"현장안전점검",wtMod:"안전용품",loc:"장소"}
 };
 function applyMenuLabels(menu){
   var d=LABELS_BY_MENU[menu];
@@ -951,7 +952,7 @@ function sanitizeForFilename(str){
     .slice(0,30):"";
 }
 
-var WT_EN={'신규':'new','변경전':'mod-before','변경후':'mod-after','도급':'contract','사급':'owner-supply'};
+var WT_EN={'신규':'new','변경전':'mod-before','변경후':'mod-after','도급':'contract','사급':'owner-supply','현장안전점검':'safety-check','안전용품':'safety-gear'};
 
 function buildFileName(idx){
   var wt=WT_EN[lockedInfo.wt]||sanitizeForFilename(lockedInfo.wt)||'work';
