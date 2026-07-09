@@ -23,5 +23,5 @@ export default function App() {
 
 const styles = StyleSheet.create({
   container: { flex:1, backgroundColor:'#1E3A5F' },
-  webview:   { flex:1 },
+  webview:   { flex:1, backgroundColor:'#1E3A5F' },
 });

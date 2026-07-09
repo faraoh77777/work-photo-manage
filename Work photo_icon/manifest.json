@@ -6,7 +6,7 @@
   "scope": "/work-photo-manage/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#F0F4F8",
+  "background_color": "#1E3A5F",
   "theme_color": "#1E3A5F",
   "icons": [
     {
