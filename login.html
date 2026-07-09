@@ -17,10 +17,10 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
 .app-sub{font-size:11px;opacity:0.75;margin-top:2px;}
 .icon-wrap{position:relative;display:inline-flex;flex:none;cursor:pointer;}
 .icon-flash{position:absolute;inset:0;border-radius:8px;background:#fff;opacity:0;pointer-events:none;}
-.icon-wrap.fire img{animation:wp-icon-pop 1.2s ease;}
-.icon-wrap.fire .icon-flash{animation:wp-icon-flash 1.2s ease;}
-@keyframes wp-icon-pop{0%{transform:scale(1);}15%{transform:scale(1.22);}30%{transform:scale(1);}45%{transform:scale(1.22);}60%{transform:scale(1);}100%{transform:scale(1);}}
-@keyframes wp-icon-flash{0%{opacity:0;}15%{opacity:.85;}30%{opacity:0;}45%{opacity:.85;}60%{opacity:0;}100%{opacity:0;}}
+.icon-wrap.fire img{animation:wp-icon-pop 1.8s ease;}
+.icon-wrap.fire .icon-flash{animation:wp-icon-flash 1.8s ease;}
+@keyframes wp-icon-pop{0%{transform:scale(1);}20%{transform:scale(1.22);}40%{transform:scale(1);}60%{transform:scale(1.22);}80%{transform:scale(1);}100%{transform:scale(1);}}
+@keyframes wp-icon-flash{0%{opacity:0;}20%{opacity:.85;}40%{opacity:0;}60%{opacity:.85;}80%{opacity:0;}100%{opacity:0;}}
 .card{background:#fff;border:1px solid #D1DCE8;border-radius:12px;
   padding:16px;box-shadow:0 2px 6px rgba(0,0,0,0.06);}
 .tab-bar{display:grid;grid-template-columns:1fr 1fr;margin-bottom:18px;
