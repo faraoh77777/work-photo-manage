@@ -77,6 +77,8 @@ textarea.f{resize:none;height:48px;}
   font-weight:800;cursor:pointer;margin-top:8px;}
 .sbtn-send{background:linear-gradient(135deg,var(--brand-2),var(--brand-1));color:#fff;transition:background 0.25s;}
 .sbtn-send:disabled{background:#BDC3C7;color:#fff;cursor:not-allowed;}
+.sbtn-kakao{background:#FEE500;color:#1A2332;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px;}
+.sbtn-kakao:disabled{background:#F5E6A0;color:#8A8560;cursor:not-allowed;}
 .list-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
 .list-title{font-size:13px;font-weight:700;color:#1A2332;}
 .list-count{font-size:13px;font-weight:800;color:#2E5F9E;}
@@ -303,6 +305,7 @@ textarea.f{resize:none;height:48px;}
   </div>
   <div class="saved-list" id="savedList"></div>
   <button class="sbtn sbtn-send" id="sendBtn" onclick="sendToSupabase()">&#9729;&#65039; 전송하기</button>
+  <button class="sbtn sbtn-kakao" id="kakaoBtn" onclick="shareToKakao()">&#128172; 카톡으로 전송</button>
 </div>
 
 <div id="toast"></div>
@@ -395,6 +398,38 @@ async function sendToSupabase(){
     showTE('⚠️ '+success+'/'+total+'장 성공 — '+lastErr);
   } else {
     showTE('❌ 전송 실패: '+lastErr);
+  }
+}
+
+async function shareToKakao(){
+  if(!savedPhotos.length){ showTE('전송할 사진이 없습니다.'); return; }
+  var btn=document.getElementById('kakaoBtn');
+
+  function fallbackDownload(){
+    savedPhotos.forEach(function(p){
+      var a=document.createElement('a');
+      a.href=p.dataUrl;a.download=p.filename;
+      document.body.appendChild(a);a.click();document.body.removeChild(a);
+    });
+    showT('사진 '+savedPhotos.length+'장 저장됨 → 카카오톡에서 직접 전송하세요');
+  }
+
+  var files=savedPhotos.map(function(p){return new File([p.blob],p.filename,{type:'image/jpeg'});});
+  var shareData={files:files,title:'작업 사진 '+savedPhotos.length+'장'};
+
+  if(!navigator.share||!navigator.canShare||!navigator.canShare(shareData)){
+    fallbackDownload();
+    return;
+  }
+
+  btn.disabled=true;
+  try{
+    await navigator.share(shareData);
+    showT('카톡 공유 화면으로 전달했습니다.');
+  }catch(e){
+    if(e.name!=='AbortError') fallbackDownload();
+  }finally{
+    btn.disabled=false;
   }
 }
 

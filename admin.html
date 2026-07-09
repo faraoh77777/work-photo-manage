@@ -71,6 +71,8 @@ canvas{width:100%;border-radius:12px;display:block;}
 .sbtn-cam{background:linear-gradient(135deg,#2E5F9E,#1E3A5F);color:#fff;}
 .sbtn-save{background:linear-gradient(135deg,#27AE60,#1E8449);color:#fff;}
 .sbtn-save:disabled{background:#BDC3C7;color:#fff;cursor:not-allowed;}
+.sbtn-kakao{background:#FEE500;color:#1A2332;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px;}
+.sbtn-kakao:disabled{background:#F5E6A0;color:#8A8560;cursor:not-allowed;}
 .hdivider{height:1px;background:#E8EEF4;margin:10px 0;}
 .save-guide{background:#EAF8F0;border:1.5px solid #A9DFBF;border-radius:10px;
   padding:12px 14px;margin-top:10px;font-size:14px;color:#1E8449;line-height:1.8;display:none;}
@@ -222,6 +224,7 @@ canvas{width:100%;border-radius:12px;display:block;}
     <div class="empty-msg">촬영된 사진이 없습니다</div>
   </div>
   <button class="sbtn sbtn-save" id="saveAllBtn" onclick="saveAllPhotos()" style="display:none;margin-top:14px;">&#128190; 전체 저장 후 처음으로</button>
+  <button class="sbtn sbtn-kakao" id="kakaoBtn" onclick="sharePhotos()" style="display:none;">&#128172; 카톡으로 전송</button>
 </div>
 
 
@@ -545,6 +548,7 @@ function updateList(){
   var cnt=savedPhotos.length;
   document.getElementById("photoCount").textContent=cnt;
   document.getElementById("saveAllBtn").style.display=cnt>0?"block":"none";
+  document.getElementById("kakaoBtn").style.display=cnt>0?"flex":"none";
   var list=document.getElementById("savedList");
   if(cnt===0){list.innerHTML='<div class="empty-msg">촬영된 사진이 없습니다</div>';return;}
   var html="";
