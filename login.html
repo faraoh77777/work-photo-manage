@@ -7,8 +7,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
+html{background:#1E3A5F;}
 body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:100vh;
   padding:24px 16px;font-size:17px;}
+#splashScreen{position:fixed;inset:0;z-index:100000;background:#1E3A5F;
+  display:flex;align-items:center;justify-content:center;transition:opacity .7s ease;}
+#splashScreen.hide{opacity:0;pointer-events:none;}
+#splashScreen img{width:88px;height:88px;border-radius:18px;display:block;}
 .wrap{max-width:420px;margin:0 auto;}
 .app-header{background:linear-gradient(135deg,#1E3A5F,#2E5F9E);border-radius:12px;
   padding:14px 18px;margin-bottom:16px;color:#fff;}
@@ -48,6 +53,12 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
 </style>
 </head>
 <body>
+<div id="splashScreen">
+  <span class="icon-wrap fire" id="splashIconWrap">
+    <img src="Work%20photo_icon/icon-192.png" alt=""/>
+    <span class="icon-flash"></span>
+  </span>
+</div>
 <div class="wrap">
   <div class="app-header">
     <div class="app-title"><span class="icon-wrap" onclick="fireIconEffect(this)"><img src="Work%20photo_icon/icon-192.png" alt=""/><span class="icon-flash"></span></span> 작업 사진</div>
@@ -154,6 +165,16 @@ document.addEventListener('animationend',function(e){
   var wrap=e.target.closest&&e.target.closest('.icon-wrap');
   if(wrap)wrap.classList.remove('fire');
 });
+(function(){
+  var splashIcon=document.getElementById('splashIconWrap');
+  if(!splashIcon)return;
+  splashIcon.addEventListener('animationend',function(){
+    var s=document.getElementById('splashScreen');
+    if(!s)return;
+    s.classList.add('hide');
+    setTimeout(function(){s.style.display='none';},750);
+  },{once:true});
+})();
 
 function normPhone(v){return v.replace(/\D/g,'');}
 

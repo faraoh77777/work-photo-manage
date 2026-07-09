@@ -6,8 +6,13 @@
 <title>작업 사진</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
+html{background:#1E3A5F;}
 body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:100vh;
   padding:16px;font-size:16px;}
+#splashScreen{position:fixed;inset:0;z-index:100000;background:#1E3A5F;
+  display:flex;align-items:center;justify-content:center;transition:opacity .7s ease;}
+#splashScreen.hide{opacity:0;pointer-events:none;}
+#splashScreen img{width:88px;height:88px;border-radius:18px;display:block;}
 .app-header{background:linear-gradient(135deg,#1E3A5F,#2E5F9E);border-radius:16px;
   padding:18px 20px;margin-bottom:16px;color:#fff;}
 .app-title{font-size:28px;font-weight:800;letter-spacing:1px;margin-bottom:2px;display:flex;align-items:center;gap:8px;}
@@ -104,6 +109,12 @@ canvas{width:100%;border-radius:12px;display:block;}
 </style>
 </head>
 <body>
+<div id="splashScreen">
+  <span class="icon-wrap fire" id="splashIconWrap">
+    <img src="Work%20photo_icon/icon-192.png" alt=""/>
+    <span class="icon-flash"></span>
+  </span>
+</div>
 
 <div class="app-header">
   <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -278,6 +289,16 @@ document.addEventListener('animationend',function(e){
   var wrap=e.target.closest&&e.target.closest('.icon-wrap');
   if(wrap)wrap.classList.remove('fire');
 });
+(function(){
+  var splashIcon=document.getElementById('splashIconWrap');
+  if(!splashIcon)return;
+  splashIcon.addEventListener('animationend',function(){
+    var s=document.getElementById('splashScreen');
+    if(!s)return;
+    s.classList.add('hide');
+    setTimeout(function(){s.style.display='none';},750);
+  },{once:true});
+})();
 function openSettings(){
   renderCatChips();
   renderAreaChips();
