@@ -15,10 +15,10 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
 .app-sub{font-size:13px;opacity:0.75;}
 .icon-wrap{position:relative;display:inline-flex;flex:none;cursor:pointer;}
 .icon-flash{position:absolute;inset:0;border-radius:8px;background:#fff;opacity:0;pointer-events:none;}
-.icon-wrap.fire img{animation:wp-icon-pop 1.1s ease;}
-.icon-wrap.fire .icon-flash{animation:wp-icon-flash 1.1s ease;}
-@keyframes wp-icon-pop{0%{transform:scale(1);}18%{transform:scale(1.22);}45%{transform:scale(1.22);}75%{transform:scale(.95);}100%{transform:scale(1);}}
-@keyframes wp-icon-flash{0%{opacity:0;}10%{opacity:.85;}45%{opacity:.4;}100%{opacity:0;}}
+.icon-wrap.fire img{animation:wp-icon-pop 1.2s ease;}
+.icon-wrap.fire .icon-flash{animation:wp-icon-flash 1.2s ease;}
+@keyframes wp-icon-pop{0%{transform:scale(1);}15%{transform:scale(1.22);}30%{transform:scale(1);}45%{transform:scale(1.22);}60%{transform:scale(1);}100%{transform:scale(1);}}
+@keyframes wp-icon-flash{0%{opacity:0;}15%{opacity:.85;}30%{opacity:0;}45%{opacity:.85;}60%{opacity:0;}100%{opacity:0;}}
 .card{background:#fff;border:1px solid #D1DCE8;border-radius:16px;
   padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,0.07);}
 .flbl{font-size:13px;font-weight:700;color:#5A7A9A;letter-spacing:0.5px;
@@ -270,7 +270,7 @@ function fireIconEffect(el){
   el.classList.remove('fire');
   void el.offsetWidth;
   el.classList.add('fire');
-  setTimeout(function(){el.classList.remove('fire');},1100);
+  setTimeout(function(){el.classList.remove('fire');},1200);
 }
 function openSettings(){
   renderCatChips();
