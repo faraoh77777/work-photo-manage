@@ -352,6 +352,11 @@ catch(e){ console.error('Supabase 초기화 실패',e); }
 async function sendToSupabase(){
   if(!savedPhotos.length){ showTE("전송할 사진이 없습니다."); return; }
   if(!sbClient){ showTE("Supabase 연결 실패"); return; }
+  // 업로드 전(=사용자 제스처가 살아있는 시점)에 폴더 미지정 여부를 먼저 확인 — 업로드 대기 이후엔 브라우저가 폴더 선택창을 막을 수 있음
+  if(!isMobile && window.showDirectoryPicker && !dirHandle){
+    var wantsFolder=confirm('기기에 사진을 저장할 폴더가 지정되지 않았습니다.\n\n지금 폴더를 지정하시겠습니까?\n(취소하면 다운로드 폴더에 개별 저장됩니다)');
+    if(wantsFolder) await pickSaveFolder();
+  }
   var btn=document.getElementById('sendBtn');
   btn.disabled=true;
   var total=savedPhotos.length;
@@ -456,12 +461,26 @@ async function pickSaveFolder(){
     dirHandle=await window.showDirectoryPicker({mode:'readwrite',startIn:'downloads'});
     document.getElementById('folderBtn').textContent='📁 '+dirHandle.name;
     showT('저장 폴더: '+dirHandle.name);
+    persistFolderHandle(dirHandle);
   }catch(e){
     if(e.name!=='AbortError') showTE('폴더 선택 실패: '+e.message);
   }
 }
 
+async function ensureFolderPermission(handle){
+  try{
+    var result=await handle.requestPermission({mode:'readwrite'});
+    return result==='granted';
+  }catch(e){ return false; }
+}
+
 async function autoSaveToDevice(photos){
+  if(dirHandle&&!isMobile&&!(await ensureFolderPermission(dirHandle))){
+    showTE('폴더 접근 권한이 만료되었습니다. 폴더를 다시 지정해주세요.');
+    downloadAll(photos);
+    setTimeout(function(){finishSend(photos);},photos.length*300+2000);
+    return;
+  }
   if(dirHandle&&!isMobile){
     var cnt=0, lastErr='';
     for(var i=0;i<photos.length;i++){
@@ -779,16 +798,45 @@ function removeArea(i){
 var savedPhotos=[], lockedInfo=null;
 
 // ── 미전송 사진 보존 (IndexedDB) ───────────────────────
-var DB_NAME="work-photo-db", DB_VERSION=1, STORE_NAME="photos", dbPromise=null;
+var DB_NAME="work-photo-db", DB_VERSION=2, STORE_NAME="photos", SETTINGS_STORE="settings", dbPromise=null;
 function openDB(){
   if(dbPromise)return dbPromise;
   dbPromise=new Promise(function(resolve,reject){
     var req=indexedDB.open(DB_NAME,DB_VERSION);
-    req.onupgradeneeded=function(){req.result.createObjectStore(STORE_NAME,{keyPath:"id",autoIncrement:true});};
+    req.onupgradeneeded=function(){
+      var db=req.result;
+      if(!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME,{keyPath:"id",autoIncrement:true});
+      if(!db.objectStoreNames.contains(SETTINGS_STORE)) db.createObjectStore(SETTINGS_STORE,{keyPath:"key"});
+    };
     req.onsuccess=function(){resolve(req.result);};
     req.onerror=function(){reject(req.error);};
   });
   return dbPromise;
+}
+
+// 저장 폴더 핸들 기억 — 한 번 지정하면 새로고침 후에도 다시 묻지 않음
+async function persistFolderHandle(handle){
+  try{
+    var db=await openDB();
+    var tx=db.transaction(SETTINGS_STORE,'readwrite');
+    tx.objectStore(SETTINGS_STORE).put({key:'folderHandle',value:handle});
+  }catch(e){ console.warn('폴더 정보 저장 실패',e); }
+}
+async function loadSavedFolderHandle(){
+  if(isMobile || !window.showDirectoryPicker) return;
+  try{
+    var db=await openDB();
+    var rec=await new Promise(function(resolve){
+      var tx=db.transaction(SETTINGS_STORE,'readonly');
+      var req=tx.objectStore(SETTINGS_STORE).get('folderHandle');
+      req.onsuccess=function(){resolve(req.result);};
+      req.onerror=function(){resolve(null);};
+    });
+    if(rec && rec.value){
+      dirHandle=rec.value;
+      document.getElementById('folderBtn').textContent='📁 '+dirHandle.name;
+    }
+  }catch(e){ console.warn('폴더 정보 불러오기 실패',e); }
 }
 async function dbAddPhoto(p){
   var db=await openDB();
@@ -836,6 +884,7 @@ async function restoreSavedPhotos(){
   }catch(e){console.error("사진 복원 실패",e);}
 }
 restoreSavedPhotos();
+loadSavedFolderHandle();
 
 populateAreaSelect();
 populateCatSelect();
