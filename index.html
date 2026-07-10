@@ -354,14 +354,15 @@ async function sendToSupabase(){
   if(!sbClient){ showTE("Supabase 연결 실패"); return; }
   var btn=document.getElementById('sendBtn');
   btn.disabled=true;
-  var total=savedPhotos.length, success=0, lastErr='';
+  var total=savedPhotos.length;
+  var succeeded=[], failed=[];
   for(var i=0;i<total;i++){
     var p=savedPhotos[i];
     btn.textContent='⏳ 전송 중... ('+(i+1)+'/'+total+'장)';
     try{
       var filePath=(p.info.date||'nodate')+'/'+p.filename;
       var storageRes=await sbClient.storage.from('work-photo').upload(filePath,p.blob,{contentType:'image/jpeg',upsert:true});
-      if(storageRes.error){ lastErr='[Storage] '+storageRes.error.message; continue; }
+      if(storageRes.error){ failed.push({p:p,err:'[Storage] '+storageRes.error.message}); continue; }
       var photoUrl=sbClient.storage.from('work-photo').getPublicUrl(filePath).data.publicUrl;
       var insertData={
         date:p.info.date||'', time:p.info.time||'', tag:p.info.tag||'',
@@ -385,19 +386,27 @@ async function sendToSupabase(){
         dbRes=await sbClient.from('work_photos').insert(insertData);
         attempts++;
       }
-      if(dbRes.error){ lastErr='[DB] '+dbRes.error.message; continue; }
-      success++;
-    }catch(e){ lastErr=e.message||String(e); }
+      if(dbRes.error){ failed.push({p:p,err:'[DB] '+dbRes.error.message}); continue; }
+      succeeded.push(p);
+    }catch(e){ failed.push({p:p,err:e.message||String(e)}); }
   }
   btn.disabled=false;
   btn.textContent='☁️ 전송하기';
-  if(success===total){
-    showT('✅ '+success+'장 전송 완료! 저장 중...');
-    autoSaveToDevice(savedPhotos.slice());
-  } else if(success>0){
-    showTE('⚠️ '+success+'/'+total+'장 성공 — '+lastErr);
+
+  // 실패한 사진은 목록에 그대로 보류(재전송 가능), 성공한 사진만 기기에 저장 후 정리
+  savedPhotos=failed.map(function(f){return f.p;});
+  updateList();
+  if(succeeded.length) autoSaveToDevice(succeeded);
+
+  if(!failed.length){
+    showT('✅ '+succeeded.length+'장 전송 완료! 저장 중...');
   } else {
-    showTE('❌ 전송 실패: '+lastErr);
+    var tagList=failed.map(function(f){return f.p.info.tag||'(TAG없음)';}).join(', ');
+    if(succeeded.length){
+      showTE('⚠️ '+succeeded.length+'장 전송 완료, '+failed.length+'장 전송 못함(보류) — '+tagList);
+    } else {
+      showTE('❌ 전송 실패, '+failed.length+'장 보류됨 — '+tagList);
+    }
   }
 }
 
@@ -479,27 +488,32 @@ async function autoSaveToDevice(photos){
         console.error('파일저장실패',p.filename,e);
       }
     }
-    if(cnt>0){showT('📁 '+dirHandle.name+'에 '+cnt+'장 저장 완료!');setTimeout(resetApp,2000);}
-    else{showTE('폴더 저장 실패: '+lastErr);downloadAll(photos);setTimeout(resetApp,photos.length*300+2000);}
+    if(cnt>0){showT('📁 '+dirHandle.name+'에 '+cnt+'장 저장 완료!');setTimeout(function(){finishSend(photos);},2000);}
+    else{showTE('폴더 저장 실패: '+lastErr);downloadAll(photos);setTimeout(function(){finishSend(photos);},photos.length*300+2000);}
   } else {
     downloadAll(photos);
-    setTimeout(resetApp,photos.length*300+2000);
+    setTimeout(function(){finishSend(photos);},photos.length*300+2000);
   }
 }
 
-function resetApp(){
-  savedPhotos=[];
-  lockedInfo=null;
-  document.getElementById('fileInput').value='';
-  document.getElementById('inTag').value='';
-  document.getElementById('inNote').value='';
-  document.getElementById('wtNew').checked=true;
-  document.getElementById('inPhase').style.display='none';
-  document.getElementById('inPhase').value='변경전';
-  if(customAreas.length)document.getElementById('inLoc').value=customAreas[0];
+// 전송(및 기기 저장)까지 끝난 사진만 로컬 보관(IndexedDB)에서 정리.
+// 실패해서 savedPhotos에 남아있는 사진은 건드리지 않음(다음 전송 때 재시도).
+function finishSend(photos){
+  photos.forEach(function(p){
+    if(p&&p.dbId!=null) dbDeletePhoto(p.dbId).catch(function(e){console.error("사진 삭제 실패",e);});
+  });
+  if(!savedPhotos.length){
+    lockedInfo=null;
+    document.getElementById('fileInput').value='';
+    document.getElementById('inTag').value='';
+    document.getElementById('inNote').value='';
+    document.getElementById('wtNew').checked=true;
+    document.getElementById('inPhase').style.display='none';
+    document.getElementById('inPhase').value='변경전';
+    if(customAreas.length)document.getElementById('inLoc').value=customAreas[0];
+    resetCam();
+  }
   updateList();
-  resetCam();
-  dbClearAll().catch(function(e){console.error("저장소 초기화 실패",e);});
 }
 
 function downloadAll(photos){
@@ -1027,6 +1041,23 @@ function updCat(){
   var v=document.getElementById("inCat").value;
   document.getElementById("catBar").style.background=CC[v]||"#7F8C8D";
   localStorage.setItem("last_category",v);
+}
+
+document.getElementById("inTag").addEventListener("blur",checkTagDuplicate);
+
+async function checkTagDuplicate(){
+  var tagEl=document.getElementById("inTag");
+  var tag=(tagEl.value||"").trim();
+  var cat=document.getElementById("inCat").value;
+  if(!tag||!cat||!sbClient)return;
+  try{
+    var res=await sbClient.from('work_photos').select('id').eq('cat',cat).eq('tag',tag).limit(1);
+    if(res.error){console.error('중복 확인 실패',res.error);return;}
+    if(res.data&&res.data.length){
+      var keep=confirm('['+cat+'] 분류에 이미 등록된 TAG NO입니다: '+tag+'\n그래도 저장하시겠습니까?');
+      if(!keep){tagEl.value='';tagEl.focus();}
+    }
+  }catch(e){console.error('중복 확인 실패',e);}
 }
 
 function getWorkLabel(){
