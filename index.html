@@ -369,7 +369,10 @@ async function sendToSupabase(){
     btn.textContent='⏳ 전송 중... ('+(i+1)+'/'+total+'장)';
     try{
       var filePath=(p.info.date||'nodate')+'/'+p.filename;
-      var storageRes=await sbClient.storage.from('work-photo').upload(filePath,p.blob,{contentType:'image/jpeg',upsert:true});
+      // 갤러리전송은 원본 파일(blob=File)을 그대로 올리므로, 실제 파일 형식(png/heic 등)에 맞는
+      // contentType을 써야 한다 — 항상 image/jpeg로 고정하면 실제로는 다른 형식일 때 문제될 수 있다.
+      var uploadType=(p.blob&&p.blob.type)||'image/jpeg';
+      var storageRes=await sbClient.storage.from('work-photo').upload(filePath,p.blob,{contentType:uploadType,upsert:true});
       if(storageRes.error){ failed.push({p:p,err:'[Storage] '+storageRes.error.message}); continue; }
       var photoUrl=sbClient.storage.from('work-photo').getPublicUrl(filePath).data.publicUrl;
       var insertData={
@@ -409,11 +412,12 @@ async function sendToSupabase(){
   if(!failed.length){
     showT('✅ '+succeeded.length+'장 전송 완료! 저장 중...');
   } else {
-    var tagList=failed.map(function(f){return f.p.info.tag||'(TAG없음)';}).join(', ');
+    console.error('[전송 실패 상세]', failed.map(function(f){return {filename:f.p.filename, err:f.err};}));
+    var errList=failed.map(function(f){return (f.p.filename||f.p.info.tag||'?')+': '+f.err;}).join(' / ');
     if(succeeded.length){
-      showTE('⚠️ '+succeeded.length+'장 전송 완료, '+failed.length+'장 전송 못함(보류) — '+tagList);
+      showTE('⚠️ '+succeeded.length+'장 전송 완료, '+failed.length+'장 전송 못함 — '+errList);
     } else {
-      showTE('❌ 전송 실패, '+failed.length+'장 보류됨 — '+tagList);
+      showTE('❌ 전송 실패 — '+errList);
     }
   }
 }
