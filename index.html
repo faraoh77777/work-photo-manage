@@ -1189,10 +1189,11 @@ function loadOneGalleryFile(file){
         autoDate=now.toISOString().slice(0,10);
         autoTime=now.toTimeString().slice(0,5);
       }
+      var rawDataUrl=ev.target.result;
       var img=new Image();
-      img.onload=function(){processGalleryFrame(img,autoDate,autoTime).then(resolve).catch(resolve);};
+      img.onload=function(){processGalleryFrame(file,img,rawDataUrl,autoDate,autoTime).then(resolve).catch(resolve);};
       img.onerror=function(){resolve();}; // 손상된 파일은 건너뛰고 계속 진행
-      img.src=ev.target.result;
+      img.src=rawDataUrl;
     };
     reader.onerror=function(){resolve();};
     reader.readAsDataURL(file);
@@ -1242,6 +1243,21 @@ function processCapturedFrame(source,autoDate,autoTime){
   applyCapturedInfoAndAdd(source, currentFormInfo(autoDate,autoTime));
 }
 
+// 갤러리에서 고른 사진은 크롭/워터마크 재생성 없이 원본 그대로 목록에 추가한다
+// (파일명·사진 내용·기존 워터마크를 전혀 건드리지 않고 그대로 전송하기 위함).
+// 분류 정보(info)만 OCR로 읽어 DB 메타데이터로 함께 올린다.
+function addOriginalGalleryPhoto(file, rawDataUrl, info){
+  var photo={dataUrl:rawDataUrl, filename:file.name, blob:file, info:info};
+  savedPhotos.push(photo);
+  document.getElementById("camBox").innerHTML=
+    '<img src="'+rawDataUrl+'" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"/>'
+    +'<div class="corner tl"></div><div class="corner tr"></div>'
+    +'<div class="corner bl"></div><div class="corner br"></div>';
+  updateList();
+  showT("추가 완료! 총 "+savedPhotos.length+"장");
+  dbAddPhoto(photo).then(function(id){photo.dbId=id;}).catch(function(e){console.error("사진 저장 실패",e);});
+}
+
 // ── 갤러리에서 고른 사진 OCR 자동 인식 ──────────────────
 // 이미 찍혀있는 사진(예: 갤러리에서 다시 고른 work-shoot 사진)의 워터마크를 읽어서
 // 기기번호/작업분류/작업구역/작업구분/특이사항을 자동으로 채운다. 입력창에 지금 타이핑된
@@ -1282,26 +1298,27 @@ function parseGalleryOCRText(text){
   return r;
 }
 
-async function processGalleryFrame(source,autoDate,autoTime){
+async function processGalleryFrame(file,imgEl,rawDataUrl,autoDate,autoTime){
   var formInfo=currentFormInfo(autoDate,autoTime);
   var ocrInfo={};
   try{
     var worker=await getGalleryOCRWorker();
-    var res=await worker.recognize(source);
+    var res=await worker.recognize(imgEl);
     ocrInfo=parseGalleryOCRText(res.data.text);
   }catch(ex){ console.warn('[갤러리 OCR] 인식 실패, 입력값으로 대체:',ex); }
 
   var merged={
     date: ocrInfo.date || formInfo.date,
     time: ocrInfo.time || formInfo.time,
-    tag:  ocrInfo.tag  || formInfo.tag,
+    tag:  (ocrInfo.tag || formInfo.tag) || "-",
     cat:  (ocrInfo.cat && customCats.indexOf(ocrInfo.cat)!==-1) ? ocrInfo.cat : formInfo.cat,
     loc:  (ocrInfo.loc && customAreas.indexOf(ocrInfo.loc)!==-1) ? ocrInfo.loc : formInfo.loc,
     note: ocrInfo.note || formInfo.note,
     wt:   ocrInfo.wt   || formInfo.wt,
     menu: formInfo.menu
   };
-  applyCapturedInfoAndAdd(source, merged);
+  // 파일명/사진 내용/워터마크는 그대로 두고, 분류 정보만 채워서 목록에 추가한다
+  addOriginalGalleryPhoto(file, rawDataUrl, merged);
 }
 
 function renderCanvas(loadedImg){
