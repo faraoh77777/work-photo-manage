@@ -1243,7 +1243,7 @@ function processCapturedFrame(source,autoDate,autoTime){
 // 갤러리에서 고른 사진은 크롭/워터마크 재생성 없이 원본 그대로 목록에 추가한다
 // (파일명·사진 내용·기존 워터마크를 전혀 건드리지 않고 그대로 전송하기 위함).
 // 분류 정보(info)만 OCR로 읽어 DB 메타데이터로 함께 올린다.
-function addOriginalGalleryPhoto(file, rawDataUrl, info){
+async function addOriginalGalleryPhoto(file, rawDataUrl, info){
   var photo={dataUrl:rawDataUrl, filename:file.name, blob:file, info:info};
   savedPhotos.push(photo);
   document.getElementById("camBox").innerHTML=
@@ -1252,7 +1252,9 @@ function addOriginalGalleryPhoto(file, rawDataUrl, info){
     +'<div class="corner bl"></div><div class="corner br"></div>';
   updateList();
   showT("추가 완료! 총 "+savedPhotos.length+"장");
-  dbAddPhoto(photo).then(function(id){photo.dbId=id;}).catch(function(e){console.error("사진 저장 실패",e);});
+  // dbId가 채워지기 전에 전송 버튼을 누르면 finishSend()가 임시 백업을 못 지우고 남기게
+  // 되므로, 여기서 끝까지 기다려 dbId를 확실히 채워둔다.
+  try{ photo.dbId=await dbAddPhoto(photo); }catch(e){ console.error("사진 저장 실패",e); }
 }
 
 // 갤러리에서 고른 사진은 모바일에서 워터마크 인식(OCR)을 하지 않는다 — 사진 한 장당
@@ -1265,7 +1267,7 @@ async function processGalleryFrame(file,rawDataUrl,autoDate,autoTime){
     menu:activeMenu
   };
   // 파일명/사진 내용/워터마크는 그대로 두고, 분류는 비운 채로 목록에 추가한다
-  addOriginalGalleryPhoto(file, rawDataUrl, info);
+  await addOriginalGalleryPhoto(file, rawDataUrl, info);
 }
 
 function renderCanvas(loadedImg){
