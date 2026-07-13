@@ -1189,11 +1189,8 @@ function loadOneGalleryFile(file){
         autoDate=now.toISOString().slice(0,10);
         autoTime=now.toTimeString().slice(0,5);
       }
-      var rawDataUrl=ev.target.result;
-      var img=new Image();
-      img.onload=function(){processGalleryFrame(file,img,rawDataUrl,autoDate,autoTime).then(resolve).catch(resolve);};
-      img.onerror=function(){resolve();}; // 손상된 파일은 건너뛰고 계속 진행
-      img.src=rawDataUrl;
+      // OCR을 안 하므로 화면 표시용 Image 로딩 없이 바로 처리 — 그만큼 더 빠르다
+      processGalleryFrame(file,ev.target.result,autoDate,autoTime).then(resolve).catch(resolve);
     };
     reader.onerror=function(){resolve();};
     reader.readAsDataURL(file);
@@ -1258,67 +1255,17 @@ function addOriginalGalleryPhoto(file, rawDataUrl, info){
   dbAddPhoto(photo).then(function(id){photo.dbId=id;}).catch(function(e){console.error("사진 저장 실패",e);});
 }
 
-// ── 갤러리에서 고른 사진 OCR 자동 인식 ──────────────────
-// 이미 찍혀있는 사진(예: 갤러리에서 다시 고른 work-shoot 사진)의 워터마크를 읽어서
-// 기기번호/작업분류/작업구역/작업구분/특이사항을 자동으로 채운다. 입력창에 지금 타이핑된
-// 값은 OCR로 못 읽어낸 항목에 한해서만 대체값으로 쓰인다.
-const TESS_CDN='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-var galleryOcrWorker=null;
-function loadTesseractLib(){
-  if(window.Tesseract) return Promise.resolve();
-  return new Promise(function(res,rej){
-    var s=document.createElement('script'); s.src=TESS_CDN;
-    s.onload=res; s.onerror=rej; document.head.appendChild(s);
-  });
-}
-async function getGalleryOCRWorker(){
-  if(galleryOcrWorker) return galleryOcrWorker;
-  await loadTesseractLib();
-  galleryOcrWorker=await Tesseract.createWorker(['kor','eng']);
-  return galleryOcrWorker;
-}
-
-function parseGalleryOCRText(text){
-  var r={}, t=(text||'').replace(/\r/g,'');
-  var tagM=t.match(/(?:TAG|기기\s*번호)\s*[:\s]+([A-Za-z]{1,4}[-_]?\d{3,6}[A-Za-z]?)/i)
-    ||t.match(/\b(\d{2,6}-[A-Za-z]{1,4}-\d{2,6}[A-Za-z]?)\b/)
-    ||t.match(/\b([A-Z]{1,4}-\d{3,6}[A-Z]?)\b/);
-  if(tagM) r.tag=tagM[1].trim().toUpperCase();
-  var dateM=t.match(/(\d{4})[-:/](\d{2})[-:/](\d{2})/);
-  if(dateM) r.date=dateM[1]+"-"+dateM[2]+"-"+dateM[3];
-  var timeM=t.match(/(\d{1,2})[:\s시](\d{2})(?:[:\s분]|$)/m)||t.match(/(\d{2}):(\d{2}):\d{2}/);
-  if(timeM) r.time=timeM[1].padStart(2,'0')+":"+timeM[2];
-  if(/수정.{0,2}작업.{0,2}후/.test(t)) r.wt='수정-작업후';
-  else if(/수정.{0,2}작업.{0,2}전/.test(t)) r.wt='수정-작업전';
-  else if(/신규/.test(t)) r.wt='신규';
-  for(var i=0;i<customCats.length;i++){ if(t.includes(customCats[i])){ r.cat=customCats[i]; break; } }
-  for(var j=0;j<customAreas.length;j++){ if(t.includes(customAreas[j])){ r.loc=customAreas[j]; break; } }
-  var noteM=t.match(/특이\s*사항\s*[:\s：]+(.+)/m);
-  if(noteM){ var v=noteM[1].trim(); if(v&&v!=='-'&&v!=='없음'&&v!=='N/A') r.note=v; }
-  return r;
-}
-
-async function processGalleryFrame(file,imgEl,rawDataUrl,autoDate,autoTime){
-  var formInfo=currentFormInfo(autoDate,autoTime);
-  var ocrInfo={};
-  try{
-    var worker=await getGalleryOCRWorker();
-    var res=await worker.recognize(imgEl);
-    ocrInfo=parseGalleryOCRText(res.data.text);
-  }catch(ex){ console.warn('[갤러리 OCR] 인식 실패, 입력값으로 대체:',ex); }
-
-  var merged={
-    date: ocrInfo.date || formInfo.date,
-    time: ocrInfo.time || formInfo.time,
-    tag:  (ocrInfo.tag || formInfo.tag) || "-",
-    cat:  (ocrInfo.cat && customCats.indexOf(ocrInfo.cat)!==-1) ? ocrInfo.cat : formInfo.cat,
-    loc:  (ocrInfo.loc && customAreas.indexOf(ocrInfo.loc)!==-1) ? ocrInfo.loc : formInfo.loc,
-    note: ocrInfo.note || formInfo.note,
-    wt:   ocrInfo.wt   || formInfo.wt,
-    menu: formInfo.menu
+// 갤러리에서 고른 사진은 모바일에서 워터마크 인식(OCR)을 하지 않는다 — 사진 한 장당
+// 몇 초씩 걸려 여러 장 고르면 매우 느려지기 때문. 분류(기기번호/작업분류/작업구역/특이사항)는
+// 비워서 올리고, PC의 갤러리 앱 "자동 분류" 기능이 나중에 OCR로 채운다.
+async function processGalleryFrame(file,rawDataUrl,autoDate,autoTime){
+  var info={
+    date:autoDate, time:autoTime,
+    tag:"-", cat:"", loc:"", note:"-", wt:"",
+    menu:activeMenu
   };
-  // 파일명/사진 내용/워터마크는 그대로 두고, 분류 정보만 채워서 목록에 추가한다
-  addOriginalGalleryPhoto(file, rawDataUrl, merged);
+  // 파일명/사진 내용/워터마크는 그대로 두고, 분류는 비운 채로 목록에 추가한다
+  addOriginalGalleryPhoto(file, rawDataUrl, info);
 }
 
 function renderCanvas(loadedImg){
