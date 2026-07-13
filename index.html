@@ -1415,6 +1415,7 @@ function autoAddPhoto(loadedImg){
   savedPhotos.push(photo);
   updateList();
   showT("추가 완료! 총 "+savedPhotos.length+"장");
+  document.getElementById("inNote").value="";
   setTimeout(resetCam,800);
   dbAddPhoto(photo).then(function(id){photo.dbId=id;}).catch(function(e){console.error("사진 저장 실패",e);});
 }

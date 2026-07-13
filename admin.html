@@ -543,6 +543,7 @@ function savePhoto(){
 
   updateList();
   showT("추가 완료! 총 "+savedPhotos.length+"장");
+  document.getElementById("inNote").value="";
   setTimeout(function(){resetCam();},500);
 }
 
