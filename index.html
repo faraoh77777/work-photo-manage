@@ -226,6 +226,7 @@ textarea.f{resize:none;height:48px;}
     <div style="display:flex;gap:4px;">
       <button type="button" id="ratioBtn67" class="ratio-btn" onclick="setCaptureRatio('6:7')">6:7</button>
       <button type="button" id="ratioBtn169" class="ratio-btn" onclick="setCaptureRatio('16:9')">16:9</button>
+      <button type="button" id="galleryPickBtn" class="ratio-btn" onclick="document.getElementById('galleryFileInput').click()">🖼 갤러리에서 선택</button>
     </div>
   </div>
   <div class="cam-box" id="camBox">
@@ -237,6 +238,8 @@ textarea.f{resize:none;height:48px;}
     <div class="corner bl"></div><div class="corner br"></div>
   </div>
   <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none"/>
+  <!-- 휴대폰에 이미 저장된 사진을 여러 장 골라 업로드하기 위한 입력 (capture 속성 없음 → 사진첩이 열림) -->
+  <input type="file" id="galleryFileInput" accept="image/*" multiple style="display:none"/>
 </div>
 
 <!-- 후면 카메라 실시간 촬영 -->
@@ -893,6 +896,7 @@ subscribeSettingsRealtime();
 
 document.getElementById("camBox").addEventListener("click",openCamera);
 document.getElementById("fileInput").addEventListener("change",loadImg);
+document.getElementById("galleryFileInput").addEventListener("change",loadImgsFromGallery);
 
 // ── 후면 카메라 실시간 촬영 (비율 선택 가능) ───────────
 var camStream=null,camTrack=null;
@@ -1161,6 +1165,51 @@ function loadImg(e){
   };
   reader.readAsDataURL(file);
   e.target.value="";
+}
+
+// 휴대폰 사진첩에 이미 저장돼 있는 사진을 여러 장 골라 한 번에 추가한다. 파일마다
+// EXIF 촬영일시를 읽어(loadImg와 동일 로직) processCapturedFrame으로 넘기므로,
+// 카메라로 찍은 사진과 동일하게 워터마크가 찍히고 savedPhotos 목록에 쌓인다.
+// 순서를 지키고 camBox 미리보기/lockedInfo 갱신이 겹치지 않도록 파일을 하나씩 순차 처리한다.
+function loadOneGalleryFile(file){
+  return new Promise(function(resolve){
+    var reader=new FileReader();
+    reader.onload=function(ev){
+      var autoDate="",autoTime="";
+      try{
+        var exifObj=piexif.load(ev.target.result);
+        var dt=exifObj["Exif"]&&exifObj["Exif"][piexif.ExifIFD.DateTimeOriginal];
+        if(dt&&dt.length>=16){
+          autoDate=dt.slice(0,10).replace(/:/g,"-");
+          autoTime=dt.slice(11,16);
+        }
+      }catch(ex){}
+      if(!autoDate){
+        var now=new Date();
+        autoDate=now.toISOString().slice(0,10);
+        autoTime=now.toTimeString().slice(0,5);
+      }
+      var img=new Image();
+      img.onload=function(){processCapturedFrame(img,autoDate,autoTime);resolve();};
+      img.onerror=function(){resolve();}; // 손상된 파일은 건너뛰고 계속 진행
+      img.src=ev.target.result;
+    };
+    reader.onerror=function(){resolve();};
+    reader.readAsDataURL(file);
+  });
+}
+
+async function loadImgsFromGallery(e){
+  var files=Array.prototype.slice.call(e.target.files||[]);
+  e.target.value="";
+  if(!files.length) return;
+  var btn=document.getElementById("galleryPickBtn");
+  var origText=btn?btn.textContent:"";
+  for(var i=0;i<files.length;i++){
+    if(btn) btn.textContent="🖼 "+(i+1)+"/"+files.length+" 처리 중...";
+    await loadOneGalleryFile(files[i]);
+  }
+  if(btn) btn.textContent=origText;
 }
 
 function processCapturedFrame(source,autoDate,autoTime){
