@@ -226,7 +226,7 @@ textarea.f{resize:none;height:48px;}
     <div style="display:flex;gap:4px;">
       <button type="button" id="ratioBtn67" class="ratio-btn" onclick="setCaptureRatio('6:7')">6:7</button>
       <button type="button" id="ratioBtn169" class="ratio-btn" onclick="setCaptureRatio('16:9')">16:9</button>
-      <button type="button" id="galleryPickBtn" class="ratio-btn" onclick="document.getElementById('galleryFileInput').click()">🖼 갤러리에서 선택</button>
+      <button type="button" id="galleryPickBtn" class="ratio-btn" onclick="document.getElementById('galleryFileInput').click()">🖼 갤러리전송</button>
     </div>
   </div>
   <div class="cam-box" id="camBox">
@@ -1190,7 +1190,7 @@ function loadOneGalleryFile(file){
         autoTime=now.toTimeString().slice(0,5);
       }
       var img=new Image();
-      img.onload=function(){processCapturedFrame(img,autoDate,autoTime);resolve();};
+      img.onload=function(){processGalleryFrame(img,autoDate,autoTime).then(resolve).catch(resolve);};
       img.onerror=function(){resolve();}; // 손상된 파일은 건너뛰고 계속 진행
       img.src=ev.target.result;
     };
@@ -1206,16 +1206,15 @@ async function loadImgsFromGallery(e){
   var btn=document.getElementById("galleryPickBtn");
   var origText=btn?btn.textContent:"";
   for(var i=0;i<files.length;i++){
-    if(btn) btn.textContent="🖼 "+(i+1)+"/"+files.length+" 처리 중...";
+    if(btn) btn.textContent="🖼 "+(i+1)+"/"+files.length+" 인식 중...";
     await loadOneGalleryFile(files[i]);
   }
   if(btn) btn.textContent=origText;
 }
 
-function processCapturedFrame(source,autoDate,autoTime){
-  var loadedImg=crop34(source);
+function currentFormInfo(autoDate,autoTime){
   var catEl=document.getElementById("inCat");
-  lockedInfo={
+  return {
     date:autoDate, time:autoTime,
     tag:document.getElementById("inTag").value.trim(),
     cat:catEl.options[catEl.selectedIndex].text,
@@ -1224,6 +1223,11 @@ function processCapturedFrame(source,autoDate,autoTime){
     wt:getWorkLabel(),
     menu:activeMenu
   };
+}
+
+function applyCapturedInfoAndAdd(source, info){
+  var loadedImg=crop34(source);
+  lockedInfo=info;
   // 캠박스에 촬영된 이미지 표시
   document.getElementById("camBox").innerHTML=
     '<img src="'+loadedImg.toDataURL()+'" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"/>'
@@ -1232,6 +1236,72 @@ function processCapturedFrame(source,autoDate,autoTime){
 
   // 바로 목록에 추가
   autoAddPhoto(loadedImg);
+}
+
+function processCapturedFrame(source,autoDate,autoTime){
+  applyCapturedInfoAndAdd(source, currentFormInfo(autoDate,autoTime));
+}
+
+// ── 갤러리에서 고른 사진 OCR 자동 인식 ──────────────────
+// 이미 찍혀있는 사진(예: 갤러리에서 다시 고른 work-shoot 사진)의 워터마크를 읽어서
+// 기기번호/작업분류/작업구역/작업구분/특이사항을 자동으로 채운다. 입력창에 지금 타이핑된
+// 값은 OCR로 못 읽어낸 항목에 한해서만 대체값으로 쓰인다.
+const TESS_CDN='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+var galleryOcrWorker=null;
+function loadTesseractLib(){
+  if(window.Tesseract) return Promise.resolve();
+  return new Promise(function(res,rej){
+    var s=document.createElement('script'); s.src=TESS_CDN;
+    s.onload=res; s.onerror=rej; document.head.appendChild(s);
+  });
+}
+async function getGalleryOCRWorker(){
+  if(galleryOcrWorker) return galleryOcrWorker;
+  await loadTesseractLib();
+  galleryOcrWorker=await Tesseract.createWorker(['kor','eng']);
+  return galleryOcrWorker;
+}
+
+function parseGalleryOCRText(text){
+  var r={}, t=(text||'').replace(/\r/g,'');
+  var tagM=t.match(/(?:TAG|기기\s*번호)\s*[:\s]+([A-Za-z]{1,4}[-_]?\d{3,6}[A-Za-z]?)/i)
+    ||t.match(/\b(\d{2,6}-[A-Za-z]{1,4}-\d{2,6}[A-Za-z]?)\b/)
+    ||t.match(/\b([A-Z]{1,4}-\d{3,6}[A-Z]?)\b/);
+  if(tagM) r.tag=tagM[1].trim().toUpperCase();
+  var dateM=t.match(/(\d{4})[-:/](\d{2})[-:/](\d{2})/);
+  if(dateM) r.date=dateM[1]+"-"+dateM[2]+"-"+dateM[3];
+  var timeM=t.match(/(\d{1,2})[:\s시](\d{2})(?:[:\s분]|$)/m)||t.match(/(\d{2}):(\d{2}):\d{2}/);
+  if(timeM) r.time=timeM[1].padStart(2,'0')+":"+timeM[2];
+  if(/수정.{0,2}작업.{0,2}후/.test(t)) r.wt='수정-작업후';
+  else if(/수정.{0,2}작업.{0,2}전/.test(t)) r.wt='수정-작업전';
+  else if(/신규/.test(t)) r.wt='신규';
+  for(var i=0;i<customCats.length;i++){ if(t.includes(customCats[i])){ r.cat=customCats[i]; break; } }
+  for(var j=0;j<customAreas.length;j++){ if(t.includes(customAreas[j])){ r.loc=customAreas[j]; break; } }
+  var noteM=t.match(/특이\s*사항\s*[:\s：]+(.+)/m);
+  if(noteM){ var v=noteM[1].trim(); if(v&&v!=='-'&&v!=='없음'&&v!=='N/A') r.note=v; }
+  return r;
+}
+
+async function processGalleryFrame(source,autoDate,autoTime){
+  var formInfo=currentFormInfo(autoDate,autoTime);
+  var ocrInfo={};
+  try{
+    var worker=await getGalleryOCRWorker();
+    var res=await worker.recognize(source);
+    ocrInfo=parseGalleryOCRText(res.data.text);
+  }catch(ex){ console.warn('[갤러리 OCR] 인식 실패, 입력값으로 대체:',ex); }
+
+  var merged={
+    date: ocrInfo.date || formInfo.date,
+    time: ocrInfo.time || formInfo.time,
+    tag:  ocrInfo.tag  || formInfo.tag,
+    cat:  (ocrInfo.cat && customCats.indexOf(ocrInfo.cat)!==-1) ? ocrInfo.cat : formInfo.cat,
+    loc:  (ocrInfo.loc && customAreas.indexOf(ocrInfo.loc)!==-1) ? ocrInfo.loc : formInfo.loc,
+    note: ocrInfo.note || formInfo.note,
+    wt:   ocrInfo.wt   || formInfo.wt,
+    menu: formInfo.menu
+  };
+  applyCapturedInfoAndAdd(source, merged);
 }
 
 function renderCanvas(loadedImg){
