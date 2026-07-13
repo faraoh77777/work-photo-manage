@@ -230,6 +230,7 @@ canvas{width:100%;border-radius:12px;display:block;}
 <div id="toast"></div>
 <div id="toastE"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 var CC={
   'DCS Panel':"#E67E22",'LCP':"#E74C3C",'Junction Box':"#F39C12",'Field Instrument':"#2980B9",'Cable Duct':"#16A085",
@@ -251,6 +252,73 @@ function loadList(key,def){
 function saveList(key,list){ localStorage.setItem(key,JSON.stringify(list)); }
 var customCats=loadList("custom_categories",DEFAULT_CATS);
 var customAreas=loadList("custom_areas",DEFAULT_AREAS);
+
+// ── 모바일 앱(index.html)·갤러리와 작업분류/작업구역 클라우드 동기화 (Supabase) ──
+// 이 화면은 메뉴 구분 없이 분류 하나만 관리하므로, 모바일 앱의 "시공" 메뉴 목록과 대응한다.
+var SUPABASE_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
+var SUPABASE_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
+var sbClient=null;
+try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }catch(e){console.error("Supabase 초기화 실패",e);}
+var remoteCatsByMenu=null; // 다른 메뉴(품질/자재/안전/화기 등) 분류를 보존하기 위한 원격 병합 기준값
+async function pushSettingsToSupabase(){
+  if(!sbClient)return;
+  try{
+    // 다른 메뉴(품질/자재/안전/화기 등) 분류를 덮어쓰지 않도록, 원격 기준값을 아직 못 받았으면
+    // 병합 전에 한 번 더 시도해서 받아온다(레이스 컨디션으로 인한 데이터 유실 방지).
+    if(!remoteCatsByMenu){
+      var cur=await sbClient.from('app_settings').select('cats_by_menu').eq('id','global').single();
+      if(cur.data&&cur.data.cats_by_menu) remoteCatsByMenu=cur.data.cats_by_menu;
+    }
+    var merged=remoteCatsByMenu?Object.assign({},remoteCatsByMenu):{};
+    merged["시공"]=customCats;
+    var res=await sbClient.from('app_settings').upsert({
+      id:'global',
+      cats_by_menu:merged,
+      areas:customAreas,
+      updated_at:new Date().toISOString()
+    });
+    if(res.error){ console.error("설정 클라우드 동기화 실패",res.error.message); return; }
+    remoteCatsByMenu=merged;
+  }catch(e){console.error("설정 클라우드 동기화 실패",e);}
+}
+function applyRemoteSettings(data){
+  var changed=false;
+  if(data.cats_by_menu){
+    remoteCatsByMenu=data.cats_by_menu;
+    if(Array.isArray(data.cats_by_menu["시공"])&&data.cats_by_menu["시공"].length){
+      customCats=data.cats_by_menu["시공"];
+      changed=true;
+    }
+  }
+  if(Array.isArray(data.areas)&&data.areas.length){ customAreas=data.areas; changed=true; }
+  if(changed){
+    saveList("custom_categories",customCats);
+    saveList("custom_areas",customAreas);
+    renderCatChips();
+    renderAreaChips();
+    populateCatSelect(true);
+    populateAreaSelect(true);
+  }
+}
+async function fetchSettingsFromSupabase(){
+  if(!sbClient)return;
+  try{
+    var res=await sbClient.from('app_settings').select('*').eq('id','global').single();
+    if(res.error||!res.data)return;
+    applyRemoteSettings(res.data);
+  }catch(e){console.error("설정 클라우드 불러오기 실패",e);}
+}
+function subscribeSettingsRealtime(){
+  if(!sbClient||!sbClient.channel)return;
+  sbClient.channel('app_settings_changes_admin')
+    .on('postgres_changes',{event:'*',schema:'public',table:'app_settings',filter:'id=eq.global'},function(payload){
+      if(payload.new) applyRemoteSettings(payload.new);
+    })
+    .subscribe();
+}
+fetchSettingsFromSupabase();
+subscribeSettingsRealtime();
+
 function optionHtml(v){
   var esc=String(v).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
   return '<option value="'+esc+'">'+esc+'</option>';
@@ -299,6 +367,7 @@ function addCategory(){
   inp.value="";
   renderCatChips();
   populateCatSelect(true);
+  pushSettingsToSupabase();
 }
 function removeCategory(i){
   if(customCats.length<=1)return;
@@ -306,6 +375,7 @@ function removeCategory(i){
   saveList("custom_categories",customCats);
   renderCatChips();
   populateCatSelect(true);
+  pushSettingsToSupabase();
 }
 function renderAreaChips(){
   document.getElementById("areaChips").innerHTML=customAreas.map(function(a,i){
@@ -321,6 +391,7 @@ function addArea(){
   inp.value="";
   renderAreaChips();
   populateAreaSelect(true);
+  pushSettingsToSupabase();
 }
 function removeArea(i){
   if(customAreas.length<=1)return;
@@ -328,6 +399,7 @@ function removeArea(i){
   saveList("custom_areas",customAreas);
   renderAreaChips();
   populateAreaSelect(true);
+  pushSettingsToSupabase();
 }
 
 var loadedImg=null, savedPhotos=[], lockedInfo=null;
