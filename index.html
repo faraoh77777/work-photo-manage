@@ -1227,7 +1227,7 @@ function currentFormInfo(autoDate,autoTime){
     tag:document.getElementById("inTag").value.trim(),
     cat:catEl.options[catEl.selectedIndex].text,
     loc:document.getElementById("inLoc").value,
-    note:document.getElementById("inNote").value.trim()||"-",
+    note:document.getElementById("inNote").value.trim(),
     wt:getWorkLabel(),
     menu:activeMenu
   };
@@ -1275,7 +1275,7 @@ async function addOriginalGalleryPhoto(file, rawDataUrl, info){
 async function processGalleryFrame(file,rawDataUrl,autoDate,autoTime){
   var info={
     date:autoDate, time:autoTime,
-    tag:"-", cat:"", loc:"", note:"-", wt:"",
+    tag:"", cat:"", loc:"", note:"", wt:"",
     menu:activeMenu
   };
   // 파일명/사진 내용/워터마크는 그대로 두고, 분류는 비운 채로 목록에 추가한다
@@ -1401,7 +1401,7 @@ function autoAddPhoto(loadedImg){
   var rawDataUrl=cv.toDataURL("image/jpeg",0.92);
   var info={
     date:lockedInfo.date,time:lockedInfo.time,
-    tag:lockedInfo.tag||"-",cat:lockedInfo.cat,
+    tag:lockedInfo.tag,cat:lockedInfo.cat,
     loc:lockedInfo.loc,note:lockedInfo.note,wt:lockedInfo.wt,
     menu:lockedInfo.menu
   };
