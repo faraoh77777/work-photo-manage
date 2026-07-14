@@ -1468,10 +1468,7 @@ function startSTT(fieldId,btnId){
   var btn=document.getElementById(btnId);
   if(activeRec){activeRec.stop();return;}
   var rec=new SpeechRecognition();
-  // 기기번호(TAG NO)는 영문+숫자 조합이 대부분이라 한국어 인식으로는 잘 안 잡힌다.
-  // Web Speech API는 언어를 하나만 지정할 수 있어(동시 다국어 인식 불가), 이 필드만 영어로 인식한다.
-  rec.lang=fieldId==="inTag"?"en-US":"ko-KR";
-  rec.interimResults=true;rec.maxAlternatives=1;
+  rec.lang="ko-KR";rec.interimResults=true;rec.maxAlternatives=1;
   activeRec=rec;btn.classList.add("listening");btn.textContent="⏹";
   rec.onresult=function(e){
     var t="";
