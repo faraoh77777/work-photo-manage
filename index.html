@@ -195,10 +195,7 @@ textarea.f{resize:none;height:48px;}
       <span id="wtModLabel">수정</span>
     </label>
   </div>
-  <select id="inPhase" class="f" style="display:none;margin-bottom:4px;">
-    <option value="변경전">변경전</option>
-    <option value="변경후">변경후</option>
-  </select>
+  <select id="inPhase" class="f" style="display:none;margin-bottom:4px;"></select>
 
   <div class="row2">
     <div>
@@ -416,12 +413,12 @@ async function sendToSupabase(){
   }
 
   if(!failed.length){
-    showT('✅ '+succeeded.length+'장 전송 완료! 저장 중...');
+    showT('✅ 전송 완료! ('+succeeded.length+'장) 저장 중...');
   } else {
     console.error('[전송 실패 상세]', failed.map(function(f){return {filename:f.p.filename, err:f.err};}));
     var errList=failed.map(function(f){return (f.p.filename||f.p.info.tag||'?')+': '+f.err;}).join(' / ');
     if(succeeded.length){
-      showTE('⚠️ '+succeeded.length+'장 전송 완료, '+failed.length+'장 전송 못함 — '+errList);
+      showTE('❌ 전송 실패 '+failed.length+'장 (성공 '+succeeded.length+'장은 목록에서 사라짐, 실패한 사진만 아래에 남음) — '+errList);
     } else {
       showTE('❌ 전송 실패 — '+errList);
     }
@@ -540,8 +537,7 @@ function finishSend(photos){
     document.getElementById('inTag').value='';
     document.getElementById('inNote').value='';
     document.getElementById('wtNew').checked=true;
-    document.getElementById('inPhase').style.display='none';
-    document.getElementById('inPhase').value='변경전';
+    togglePhaseSelect();
     if(customAreas.length)document.getElementById('inLoc').value=customAreas[0];
     resetCam();
   }
@@ -636,11 +632,19 @@ var customAreas=loadList("custom_areas",DEFAULT_AREAS);
 saveCatsByMenu();
 
 var LABELS_BY_MENU={
-  "품질":{tagPh:"검사번호"},
+  "시공":{modPhases:["변경전","변경후"],newPhases:["진행중","완료"]},
+  "품질":{tagPh:"검사번호",modPhases:["변경전","변경후"]},
   "자재":{tag:"검수번호/Packing NO.",tagPh:"검수번호",cat:"자재품명",workType:"자재구분",wtNew:"도급",wtMod:"사급",loc:"자재보관장소"},
   "안전":{tag:"사진제목",tagPh:"사진제목",cat:"사진내용",workType:"현장안전점검",wtNew:"현장안전점검",wtMod:"안전용품",loc:"장소"},
   "화기/유도":{tag:"화기/유도원 이름",tagPh:"이름",wtNew:"화기감시자",wtMod:"유도원"}
 };
+// radioValue(신규/수정 라디오의 실제 value)에 해당하는 하위 단계 목록을 반환 (없으면 null)
+function wtPhasesFor(radioValue, d){
+  var newVal=(d&&d.wtNew)||"신규", modVal=(d&&d.wtMod)||"수정";
+  if(radioValue===newVal) return (d&&d.newPhases)||null;
+  if(radioValue===modVal) return (d&&d.modPhases)||null;
+  return null;
+}
 function applyMenuLabels(menu){
   var d=LABELS_BY_MENU[menu]||{};
   document.getElementById("lblTag").textContent=d.tag||"기기번호";
@@ -671,6 +675,7 @@ document.querySelectorAll(".menu-tab").forEach(function(btn){
 });
 applyMenuLabels(activeMenu);
 applyMenuTheme(activeMenu);
+togglePhaseSelect();
 
 function optionHtml(v){
   var esc=String(v).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
@@ -1126,14 +1131,22 @@ async function checkTagDuplicate(){
 function getWorkLabel(){
   var wt=document.querySelector('input[name="workType"]:checked');
   var v=wt?wt.value:'신규';
-  if(v==='수정')return document.getElementById('inPhase').value||'변경전';
+  var d=LABELS_BY_MENU[activeMenu];
+  var phases=wtPhasesFor(v,d);
+  if(phases) return document.getElementById('inPhase').value||phases[0];
   return v;
 }
 function togglePhaseSelect(){
-  var isMod=document.getElementById('wtMod').checked;
+  var checked=document.querySelector('input[name="workType"]:checked');
   var d=LABELS_BY_MENU[activeMenu];
-  var show=isMod&&!(d&&d.wtMod);
-  document.getElementById('inPhase').style.display=show?'':'none';
+  var phases=checked?wtPhasesFor(checked.value,d):null;
+  var sel=document.getElementById('inPhase');
+  if(phases){
+    sel.innerHTML=phases.map(optionHtml).join('');
+    sel.style.display='';
+  }else{
+    sel.style.display='none';
+  }
 }
 document.querySelectorAll('input[name="workType"]').forEach(function(r){
   r.addEventListener('change',togglePhaseSelect);
@@ -1339,13 +1352,15 @@ function sanitizeFolderName(name){
   var cleaned=String(name==null?"":name).replace(/[\\/:*?"<>|]/g,"_").trim();
   return cleaned||"Others";
 }
-// 시공/품질은 수정 선택 시 변경전/변경후로 세분화되지만, 폴더는 "수정" 하나로 묶음
+// 시공/품질은 수정 선택 시 변경전/변경후로, 시공은 신규 선택 시 진행중/완료로 세분화되지만
+// 폴더는 각각 "수정"/"신규" 하나로 묶음
 function workTypeFolderName(wt){
   if(wt==="변경전"||wt==="변경후")return "수정";
+  if(wt==="진행중"||wt==="완료")return "신규";
   return wt||"기타";
 }
 
-var WT_EN={'신규':'new','변경전':'mod-before','변경후':'mod-after','도급':'contract','사급':'owner-supply','현장안전점검':'safety-check','안전용품':'safety-gear','화기감시자':'fire-watch','유도원':'guide'};
+var WT_EN={'신규':'new','진행중':'in-progress','완료':'done','변경전':'mod-before','변경후':'mod-after','도급':'contract','사급':'owner-supply','현장안전점검':'safety-check','안전용품':'safety-gear','화기감시자':'fire-watch','유도원':'guide'};
 
 function buildFileName(idx){
   var wt=WT_EN[lockedInfo.wt]||sanitizeForFilename(lockedInfo.wt)||'work';
@@ -1456,8 +1471,20 @@ function resetCam(){
     +'<div class="corner bl"></div><div class="corner br"></div>';
 }
 
-function showT(m){var t=document.getElementById("toast");t.textContent=m;t.style.display="block";setTimeout(function(){t.style.display="none";},2500);}
-function showTE(m){var t=document.getElementById("toastE");t.textContent=m;t.style.display="block";setTimeout(function(){t.style.display="none";},7000);}
+// 성공(toast)/에러(toastE) 토스트가 같은 자리에 떠서 겹치면 어느 쪽 결과인지 헷갈리므로,
+// 하나를 띄울 땐 항상 반대쪽을 먼저 숨겨서 한 번에 하나만 보이게 한다.
+function showT(m){
+  document.getElementById("toastE").style.display="none";
+  var t=document.getElementById("toast");t.textContent=m;t.style.display="block";
+  clearTimeout(t._hideTimer);
+  t._hideTimer=setTimeout(function(){t.style.display="none";},2500);
+}
+function showTE(m){
+  document.getElementById("toast").style.display="none";
+  var t=document.getElementById("toastE");t.textContent=m;t.style.display="block";
+  clearTimeout(t._hideTimer);
+  t._hideTimer=setTimeout(function(){t.style.display="none";},7000);
+}
 
 // ── 음성 인식 (STT) ──────────────────────────────────
 var SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;

@@ -143,10 +143,7 @@ canvas{width:100%;border-radius:12px;display:block;}
     </label>
   </div>
 
-  <select id="inPhase" class="f" style="display:none;margin-top:8px;">
-    <option value="변경전">변경전</option>
-    <option value="변경후">변경후</option>
-  </select>
+  <select id="inPhase" class="f" style="display:none;margin-top:8px;"></select>
 
   <div class="flbl">작업 분류</div>
   <select id="inCat" class="f"></select>
@@ -439,24 +436,26 @@ document.getElementById("inCat").addEventListener("change",updCat);
 document.querySelectorAll('input[name="workType"]').forEach(function(r){
   r.addEventListener("change",function(){togglePhaseRow();});
 });
+togglePhaseRow();
 
 function updCat(){
   var v=document.getElementById("inCat").value;
   document.getElementById("catBar").style.background=CC[v]||"#7F8C8D";
 }
 
+var NEW_PHASES=["진행중","완료"], MOD_PHASES=["변경전","변경후"];
 function togglePhaseRow(){
   var isMod=document.getElementById("wtMod").checked;
-  document.getElementById("inPhase").style.display=isMod?"":"none";
+  var phases=isMod?MOD_PHASES:NEW_PHASES;
+  var sel=document.getElementById("inPhase");
+  sel.innerHTML=phases.map(function(p){return '<option value="'+p+'">'+p+'</option>';}).join('');
+  sel.style.display="";
 }
 
 function getWorkLabel(){
   var wt=document.querySelector('input[name="workType"]:checked').value;
-  if(wt==="수정"){
-    var phase=document.getElementById("inPhase").value||"변경전";
-    return wt+"-"+phase;
-  }
-  return wt;
+  var ph=document.getElementById("inPhase").value;
+  return ph||wt;
 }
 
 var CROP_TARGET_W=1600;
