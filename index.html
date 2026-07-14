@@ -1497,7 +1497,10 @@ if('serviceWorker' in navigator){
         if(reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
       };
     }
-    if(reg.waiting && navigator.serviceWorker.controller) promptUpdate();
+    // 앱을 "새로 여는" 시점에 이미 새 버전이 대기 중이면, 배너를 누를 필요 없이 바로 최신화한다
+    // (이 시점엔 진행 중인 작업이 없어서 새로고침해도 안전 — 미전송 사진은 IndexedDB에서 복원됨).
+    // 앱을 이미 켜서 쓰던 도중에 새 버전이 발견되면(아래 updatefound), 작업 방해 없이 배너로만 알린다.
+    if(reg.waiting && navigator.serviceWorker.controller) reg.waiting.postMessage('SKIP_WAITING');
     reg.addEventListener('updatefound',function(){
       var nw=reg.installing;
       if(!nw)return;
