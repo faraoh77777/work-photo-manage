@@ -1178,9 +1178,8 @@ function loadImg(e){
 }
 
 // 휴대폰 사진첩에 이미 저장돼 있는 사진을 여러 장 골라 한 번에 추가한다. 파일마다
-// EXIF 촬영일시를 읽어(loadImg와 동일 로직) processCapturedFrame으로 넘기므로,
-// 카메라로 찍은 사진과 동일하게 워터마크가 찍히고 savedPhotos 목록에 쌓인다.
-// 순서를 지키고 camBox 미리보기/lockedInfo 갱신이 겹치지 않도록 파일을 하나씩 순차 처리한다.
+// EXIF 촬영일시를 읽고 processGalleryFrame으로 넘기며, 분류는 화면에 선택된 값을 그대로
+// 붙인다(원본 파일·워터마크는 건드리지 않음). 순서를 지키기 위해 파일을 하나씩 순차 처리한다.
 function loadOneGalleryFile(file){
   return new Promise(function(resolve){
     var reader=new FileReader();
@@ -1252,7 +1251,7 @@ function processCapturedFrame(source,autoDate,autoTime){
 
 // 갤러리에서 고른 사진은 크롭/워터마크 재생성 없이 원본 그대로 목록에 추가한다
 // (파일명·사진 내용·기존 워터마크를 전혀 건드리지 않고 그대로 전송하기 위함).
-// 분류 정보(info)만 OCR로 읽어 DB 메타데이터로 함께 올린다.
+// 분류 정보(info)는 호출한 쪽(processGalleryFrame)에서 화면 선택값으로 채워 넘겨준다.
 async function addOriginalGalleryPhoto(file, rawDataUrl, info){
   // source:'gallery' — 전송 후 기기 저장(autoSaveToDevice) 단계에서 원본이 이미 폰에
   // 있는 사진은 건너뛰기 위한 표시.
@@ -1269,16 +1268,14 @@ async function addOriginalGalleryPhoto(file, rawDataUrl, info){
   try{ photo.dbId=await dbAddPhoto(photo); }catch(e){ console.error("사진 저장 실패",e); }
 }
 
-// 갤러리에서 고른 사진은 모바일에서 워터마크 인식(OCR)을 하지 않는다 — 사진 한 장당
-// 몇 초씩 걸려 여러 장 고르면 매우 느려지기 때문. 분류(기기번호/작업분류/작업구역/특이사항)는
-// 비워서 올리고, PC의 갤러리 앱 "자동 분류" 기능이 나중에 OCR로 채운다.
+// 갤러리에서 고른 사진은 워터마크 OCR 인식에 의존하면 실패하기 쉽다(자체 워터마크가 있어도
+// 사진 상태·크기에 따라 인식률이 들쭉날쭉함). 그래서 카메라 촬영과 동일하게, 사진을 고르는
+// 시점에 화면에 선택돼 있는 작업분류/작업구역/기기번호/특이사항을 그대로 붙여서 올린다.
+// 한 번에 여러 장을 고르면 모두 같은 값이 적용되므로, 분류가 다른 사진들은 분류를 바꿔가며
+// 나눠서 여러 번 갤러리전송해야 한다.
 async function processGalleryFrame(file,rawDataUrl,autoDate,autoTime){
-  var info={
-    date:autoDate, time:autoTime,
-    tag:"", cat:"", loc:"", note:"", wt:"",
-    menu:activeMenu
-  };
-  // 파일명/사진 내용/워터마크는 그대로 두고, 분류는 비운 채로 목록에 추가한다
+  var info=currentFormInfo(autoDate,autoTime);
+  // 파일명/사진 내용/워터마크는 그대로 두고(원본 유지), 분류 정보만 함께 올린다
   await addOriginalGalleryPhoto(file, rawDataUrl, info);
 }
 
