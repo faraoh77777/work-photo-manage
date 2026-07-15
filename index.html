@@ -1347,6 +1347,16 @@ function sanitizeForFilename(str){
     .slice(0,30):"";
 }
 
+// 촬영자 이름·특이사항은 한글이 대부분이라 위 sanitizeForFilename(ASCII만 허용)을 쓰면
+// 값이 통째로 사라지므로, 예약문자만 치환하고 한글은 남기는 전용 함수를 따로 둔다.
+function sanitizeForFilenameKr(str){
+  return str?String(str).trim()
+    .replace(/[\\\/:*?"<>|&]/g,"")
+    .replace(/\s+/g,"_")
+    .replace(/^[_\-]+|[_\-]+$/g,"")
+    .slice(0,30):"";
+}
+
 // 폴더명은 한글을 유지해야 하므로 sanitizeForFilename과 별도로 예약문자만 치환
 function sanitizeFolderName(name){
   var cleaned=String(name==null?"":name).replace(/[\\/:*?"<>|]/g,"_").trim();
@@ -1367,11 +1377,13 @@ function buildFileName(idx){
   var cat=sanitizeForFilename(lockedInfo.cat)||'etc';
   var tag=sanitizeForFilename(lockedInfo.tag)||'NONAME';
   var loc=sanitizeForFilename(lockedInfo.loc)||'LOC';
-  var note=sanitizeForFilename(lockedInfo.note);
+  var name=sanitizeForFilenameKr(localStorage.getItem("member_name")||"");
+  var note=sanitizeForFilenameKr(lockedInfo.note);
   var parts=["WORK",
     (lockedInfo.date||"").replace(/-/g,""),
     (lockedInfo.time||"").replace(":",""),
     wt, cat, tag, loc];
+  if(name) parts.push(name);
   if(note) parts.push(note);
   parts.push(idx);
   var fname=parts.join("_")+".jpg";

@@ -155,6 +155,9 @@ canvas{width:100%;border-radius:12px;display:block;}
   <div class="flbl">팀 이름</div>
   <input type="text" id="inLeader" class="f" placeholder="팀 이름 입력"/>
 
+  <div class="flbl">촬영자 이름</div>
+  <input type="text" id="inPhotographer" class="f" placeholder="촬영자 이름 입력"/>
+
   <div class="flbl">특이사항</div>
   <textarea id="inNote" class="f" placeholder="특이사항을 입력하세요..."></textarea>
 </div>
@@ -485,6 +488,7 @@ function loadImg(e){
         cat:catEl.options[catEl.selectedIndex].text,
         loc:document.getElementById("inLoc").value,
         leader:document.getElementById("inLeader").value.trim(),
+        photographer:document.getElementById("inPhotographer").value.trim(),
         note:document.getElementById("inNote").value.trim()||"-",
         wt:getWorkLabel()
       };
@@ -511,6 +515,7 @@ function renderCanvas(){
     lockedInfo.tag||"-",
     lockedInfo.loc,
     lockedInfo.leader||"-",
+    lockedInfo.photographer||"-",
     lockedInfo.note||"-",
     lockedInfo.date
   ];
@@ -574,10 +579,11 @@ function buildFileName(idx){
   var cat=sanitizeForFilename(lockedInfo.cat)||"기타";
   var loc=sanitizeForFilename(lockedInfo.loc)||"구역없음";
   var leader=sanitizeForFilename(lockedInfo.leader)||"팀없음";
+  var photographer=sanitizeForFilename(lockedInfo.photographer)||"이름없음";
   var note=sanitizeForFilename(lockedInfo.note)||"특이사항없음";
   var wt=sanitizeForFilename(lockedInfo.wt);
 
-  var parts=["WORK",date,time,wt,cat,tag,loc,leader,note,idx];
+  var parts=["WORK",date,time,wt,cat,tag,loc,leader,photographer,note,idx];
   var fname=parts.join("_")+".jpg";
 
   // 윈도우 등에서 파일명 전체 길이 제한(확장자 포함 약 200자)을 넘지 않도록 보정
@@ -601,6 +607,7 @@ function savePhoto(){
     cat:lockedInfo.cat,
     loc:lockedInfo.loc,
     leader:lockedInfo.leader||"-",
+    photographer:lockedInfo.photographer||"-",
     note:lockedInfo.note,
     wt:lockedInfo.wt
   };
@@ -663,7 +670,7 @@ function sharePhotos(){
     txt+="\n"+(i+1)+". ["+info.wt+"] "+info.cat
       +"\n   NAME: "+info.tag
       +" / 날짜: "+info.date+" "+info.time
-      +"\n   구역: "+info.loc+" / 팀: "+info.leader
+      +"\n   구역: "+info.loc+" / 팀: "+info.leader+" / 촬영자: "+info.photographer
       +"\n   특이사항: "+info.note+"\n";
   });
 
