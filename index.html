@@ -365,7 +365,7 @@ async function sendToSupabase(){
     var p=savedPhotos[i];
     btn.textContent='⏳ 전송 중... ('+(i+1)+'/'+total+'장)';
     try{
-      var filePath=(p.info.date||'nodate')+'/'+p.filename;
+      var filePath=(p.info.date||'nodate')+'/'+sanitizeForStorageKey(p.filename);
       // 갤러리전송은 원본 파일(blob=File)을 그대로 올리므로, 실제 파일 형식(png/heic 등)에 맞는
       // contentType을 써야 한다 — 항상 image/jpeg로 고정하면 실제로는 다른 형식일 때 문제될 수 있다.
       var uploadType=(p.blob&&p.blob.type)||'image/jpeg';
@@ -1355,6 +1355,16 @@ function sanitizeForFilenameKr(str){
     .replace(/\s+/g,"_")
     .replace(/^[_\-]+|[_\-]+$/g,"")
     .slice(0,30):"";
+}
+
+// Supabase Storage 키는 비-ASCII(한글 등)를 거부하므로, 표시/저장용 한글 파일명과
+// 별도로 업로드 경로만 ASCII로 정리한다 (기기 저장/카톡 공유용 파일명은 한글 유지).
+function sanitizeForStorageKey(name){
+  var dot=name.lastIndexOf('.');
+  var base=dot>=0?name.slice(0,dot):name;
+  var ext=dot>=0?name.slice(dot):'';
+  base=base.replace(/[^\x00-\x7F]/g,'').replace(/_{2,}/g,'_').replace(/^_+|_+$/g,'');
+  return (base||'photo')+ext;
 }
 
 // 폴더명은 한글을 유지해야 하므로 sanitizeForFilename과 별도로 예약문자만 치환
