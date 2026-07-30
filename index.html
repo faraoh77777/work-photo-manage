@@ -1286,12 +1286,14 @@ async function addOriginalGalleryPhoto(file, rawDataUrl, info){
 // 비워서 올리고, PC의 갤러리 앱 "자동 분류" 기능이 나중에 OCR로 채운다. (사진마다 분류가
 // 다를 수 있어 화면의 현재 선택값을 일괄 적용하는 방식은 쓸 수 없음 — 2026-07-14 되돌림)
 async function processGalleryFrame(file,rawDataUrl,autoDate,autoTime){
+  // 작업구역은 사진마다 다를 확률이 낮고(같은 현장에서 몰아 찍는 경우가 대부분) 화면에
+  // 이미 선택돼 있으므로 그대로 적용한다. 작업분류/기기번호/특이사항은 사진마다 다를 수
+  // 있어(2026-07-14 되돌림 사유) 계속 비워서 올린다.
   var info={
     date:autoDate, time:autoTime,
-    tag:"", cat:"", loc:"", note:"", wt:"",
+    tag:"", cat:"", loc:document.getElementById("inLoc").value||"", note:"", wt:"",
     menu:activeMenu
   };
-  // 파일명/사진 내용/워터마크는 그대로 두고, 분류는 비운 채로 목록에 추가한다
   await addOriginalGalleryPhoto(file, rawDataUrl, info);
 }
 
