@@ -118,7 +118,7 @@ canvas{width:100%;border-radius:12px;display:block;}
 <div class="card">
   <div class="flbl">날짜 / 시간</div>
   <div class="row2">
-    <input type="date" id="inDate" class="f"/>
+    <select id="inDate" class="f"></select>
     <input type="time" id="inTime" class="f"/>
   </div>
 
@@ -404,8 +404,23 @@ function removeArea(i){
 
 var loadedImg=null, savedPhotos=[], lockedInfo=null;
 
+// 날짜는 매번 달력을 열지 않고 최근 날짜 중에서 바로 고를 수 있도록 드롭다운으로 제공한다.
+// 값이 없으면(=처음 열 때) 항상 사진을 추가하는 오늘 날짜가 기본으로 선택된다.
+var WEEKDAY_KR=["일","월","화","수","목","금","토"];
+function populateDateSelect(selEl,daysBack){
+  var today=new Date();
+  var opts=[];
+  for(var i=0;i<=daysBack;i++){
+    var d=new Date(today);d.setDate(d.getDate()-i);
+    var iso=d.toISOString().slice(0,10);
+    var label=(d.getMonth()+1)+"/"+d.getDate()+" ("+(i===0?"오늘":i===1?"어제":WEEKDAY_KR[d.getDay()])+")";
+    opts.push('<option value="'+iso+'">'+label+'</option>');
+  }
+  selEl.innerHTML=opts.join("");
+  selEl.value=today.toISOString().slice(0,10);
+}
 var now=new Date();
-document.getElementById("inDate").value=now.toISOString().slice(0,10);
+populateDateSelect(document.getElementById("inDate"),13);
 document.getElementById("inTime").value=now.toTimeString().slice(0,5);
 populateAreaSelect();
 populateCatSelect();
