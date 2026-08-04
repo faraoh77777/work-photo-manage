@@ -1266,6 +1266,13 @@ function processCapturedFrame(source,autoDate,autoTime){
 // (파일명·사진 내용·기존 워터마크를 전혀 건드리지 않고 그대로 전송하기 위함).
 // 분류 정보(info)만 OCR로 읽어 DB 메타데이터로 함께 올린다.
 async function addOriginalGalleryPhoto(file, rawDataUrl, info){
+  // 아직 전송 안 된 목록 안에서만 파일명 중복을 막는다 — 전송 완료된 사진은 savedPhotos에서
+  // 이미 빠지므로(sendToSupabase), 전송 후 같은 파일을 다시 고르면 새로운 추가로 처리된다.
+  var isDup=savedPhotos.some(function(p){return p.source==='gallery'&&p.filename===file.name;});
+  if(isDup){
+    showT("이미 추가된 사진 (중복 제외): "+file.name);
+    return;
+  }
   // source:'gallery' — 전송 후 기기 저장(autoSaveToDevice) 단계에서 원본이 이미 폰에
   // 있는 사진은 건너뛰기 위한 표시.
   var photo={dataUrl:rawDataUrl, filename:file.name, blob:file, info:info, source:'gallery'};
