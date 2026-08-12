@@ -123,7 +123,8 @@ canvas{width:100%;border-radius:12px;display:block;}
   </div>
 
   <div class="flbl">기기번호 (TAG NO, EQ NO, 모든 기기이름 및 번호)</div>
-  <input type="text" id="inTag" class="f" placeholder="예: PT-2101, EQ-001 등 기기 번호"/>
+  <input type="text" id="inTag" class="f" placeholder="예: PT-2101, EQ-001 등 기기 번호"
+    oninput="normalizeTagInput(this)"/>
 
   <div class="flbl">작업 구분</div>
   <div style="display:flex;gap:10px;margin-bottom:4px;">
@@ -250,6 +251,17 @@ function loadList(key,def){
   }catch(e){ return def.slice(); }
 }
 function saveList(key,list){ localStorage.setItem(key,JSON.stringify(list)); }
+
+// 기기번호는 대문자로 통일하고, 띄어쓰기는 하이픈으로 바꾼다("PT 2101" -> "PT-2101").
+// 공백 1글자 = 하이픈 1글자라 길이가 그대로여서 커서 위치를 그대로 되돌릴 수 있다.
+function normalizeTag(v){ return String(v||"").toUpperCase().replace(/\s/g,"-"); }
+function normalizeTagInput(el){
+  var v=normalizeTag(el.value);
+  if(v===el.value)return;
+  var pos=el.selectionStart;
+  el.value=v;
+  try{ el.setSelectionRange(pos,pos); }catch(e){}
+}
 var customCats=loadList("custom_categories",DEFAULT_CATS);
 var customAreas=loadList("custom_areas",DEFAULT_AREAS);
 

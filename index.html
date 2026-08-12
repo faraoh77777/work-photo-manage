@@ -174,7 +174,7 @@ textarea.f{resize:none;height:48px;}
   <div class="flbl" id="lblTag">기기번호</div>
   <div class="mic-row">
     <input type="text" id="inTag" class="f" placeholder="PT-2101, EQ-001 등"
-      oninput="this.value=this.value.toUpperCase()"/>
+      oninput="normalizeTagInput(this)"/>
     <button class="mic-btn" id="micTag" onclick="startSTT('inTag','micTag')" title="음성 입력">&#127908;</button>
   </div>
 
@@ -1111,6 +1111,17 @@ function updCat(){
   localStorage.setItem("last_category",v);
 }
 
+// 기기번호는 대문자로 통일하고, 띄어쓰기는 하이픈으로 바꾼다("PT 2101" -> "PT-2101").
+// 공백 1글자 = 하이픈 1글자라 길이가 그대로여서 커서 위치를 그대로 되돌릴 수 있다.
+function normalizeTag(v){ return String(v||"").toUpperCase().replace(/\s/g,"-"); }
+function normalizeTagInput(el){
+  var v=normalizeTag(el.value);
+  if(v===el.value)return;
+  var pos=el.selectionStart;
+  el.value=v;
+  try{ el.setSelectionRange(pos,pos); }catch(e){}
+}
+
 document.getElementById("inTag").addEventListener("blur",checkTagDuplicate);
 
 async function checkTagDuplicate(){
@@ -1532,7 +1543,7 @@ function startSTT(fieldId,btnId){
     var t="";
     for(var i=e.resultIndex;i<e.results.length;i++)t+=e.results[i][0].transcript;
     var el=document.getElementById(fieldId);
-    el.value=fieldId==="inTag"?t.toUpperCase():t;
+    el.value=fieldId==="inTag"?normalizeTag(t):t;
     if(e.results[e.results.length-1].isFinal)showT("음성 입력 완료");
   };
   rec.onerror=function(e){if(e.error!=="aborted")showTE("음성 오류: "+e.error);_stopSTT(btn);};
