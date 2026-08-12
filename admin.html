@@ -253,12 +253,15 @@ function loadList(key,def){
 function saveList(key,list){ localStorage.setItem(key,JSON.stringify(list)); }
 
 // 기기번호는 대문자로 통일하고, 띄어쓰기는 하이픈으로 바꾼다("PT 2101" -> "PT-2101").
-// 공백 1글자 = 하이픈 1글자라 길이가 그대로여서 커서 위치를 그대로 되돌릴 수 있다.
-function normalizeTag(v){ return String(v||"").toUpperCase().replace(/\s/g,"-"); }
+// 공백이 연달아 오거나 하이픈 옆에 붙어도 하이픈 하나로 합친다
+// ("PT  2101", "PT - 2101" -> 모두 "PT-2101"). 직접 친 "--"는 건드리지 않는다.
+function normalizeTag(v){ return String(v||"").toUpperCase().replace(/\s*-\s*|\s+/g,"-"); }
+// 공백을 합치면 글자 수가 줄어드는 만큼 커서가 밀리므로, 커서 앞부분만 똑같이
+// 변환해서 그 길이를 새 커서 위치로 쓴다.
 function normalizeTagInput(el){
   var v=normalizeTag(el.value);
   if(v===el.value)return;
-  var pos=el.selectionStart;
+  var pos=normalizeTag(el.value.slice(0,el.selectionStart)).length;
   el.value=v;
   try{ el.setSelectionRange(pos,pos); }catch(e){}
 }
