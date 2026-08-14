@@ -16,7 +16,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#1E3A5F"
       },
-      "package": "io.github.faraoh77777.twa",
+      "package": "com.faraoh.workphotomanage",
       "versionCode": 4,
       "permissions": [
         "android.permission.INTERNET",
