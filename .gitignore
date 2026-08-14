@@ -3,3 +3,8 @@ node_modules/
 dist/
 *.apk
 *.aab
+
+# 서명 키스토어와 비밀번호는 절대 커밋하지 않는다
+credentials.json
+*.keystore
+*.jks
