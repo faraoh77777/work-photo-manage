@@ -1,6 +1,6 @@
 {
   "name": "shaheen-photo",
-  "main": "App.js",
+  "main": "index.js",
   "version": "1.0.0",
   "dependencies": {
     "@expo/ui": "~56.0.17",
