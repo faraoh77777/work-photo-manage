@@ -968,6 +968,13 @@ async function openCamera(){
       try{
         stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
       }catch(e3){
+        // 권한이 거부된 경우엔 아래 fileInput(capture="environment") 경로도 같이 막힌다.
+        // 그대로 폴백하면 탭해도 아무 반응이 없어 보여서, 원스토어에 반려됐던
+        // "사진 촬영 버튼 선택 시 반응 없음"과 똑같은 증상이 된다. 안내를 띄운다.
+        if(e3&&(e3.name==="NotAllowedError"||e3.name==="SecurityError")){
+          showTE("카메라 권한이 거부되어 촬영할 수 없습니다. 설정 > 애플리케이션 > 작업사진 > 권한에서 카메라를 허용해 주세요.");
+          return;
+        }
         document.getElementById("fileInput").click();
         return;
       }
