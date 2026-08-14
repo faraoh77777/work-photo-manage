@@ -1,113 +1,79 @@
-# work-photo-manage → 원스토어 출시 가이드
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>개인정보처리방침 — 작업 사진</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:100vh;
+  padding:24px 16px;font-size:16px;line-height:1.6;}
+.wrap{max-width:640px;margin:0 auto;}
+.app-header{background:linear-gradient(135deg,#1E3A5F,#2E5F9E);border-radius:12px;
+  padding:14px 18px;margin-bottom:16px;color:#fff;}
+.app-title{font-size:24px;font-weight:800;letter-spacing:1px;}
+.app-sub{font-size:12px;opacity:0.75;margin-top:2px;}
+.card{background:#fff;border:1px solid #D1DCE8;border-radius:12px;
+  padding:22px 20px;box-shadow:0 2px 6px rgba(0,0,0,0.06);}
+h1{font-size:19px;margin-bottom:4px;}
+.updated{font-size:12px;color:#5A7A9A;margin-bottom:18px;}
+h2{font-size:15px;margin-top:22px;margin-bottom:8px;color:#1E3A5F;border-left:4px solid #2E5F9E;padding-left:8px;}
+p,li{font-size:14px;color:#33465E;}
+ul{margin:6px 0 6px 20px;}
+table{width:100%;border-collapse:collapse;margin:8px 0;font-size:13.5px;}
+th,td{border:1px solid #D1DCE8;padding:8px 10px;text-align:left;vertical-align:top;}
+th{background:#F7FAFC;color:#1E3A5F;width:110px;}
+.back{display:inline-block;margin-top:20px;color:#2E5F9E;font-size:14px;font-weight:700;text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="app-header">
+    <div class="app-title">작업 사진</div>
+    <div class="app-sub">계장 &amp; 전기 공사</div>
+  </div>
 
-## 0단계. 현재 상황 정리
+  <div class="card">
+    <h1>개인정보처리방침</h1>
+    <div class="updated">시행일: 2026년 8월 14일</div>
 
-- 웹앱은 이미 완성되어 https://faraoh77777.github.io/work-photo-manage/ 에 배포되어 있음
-- shaheen-photo 폴더에 Expo 프로젝트가 있고, eas-cli 로그인(faraoh 계정) 및 production 빌드 1회 성공 완료
-- 이번에 할 일: 이 Expo 앱이 work-photo-manage 웹사이트를 정확히 보여주도록 만들고, 원스토어에 올리기
+    <p>‘작업 사진’(이하 “서비스”)은 건설 현장의 작업 사진을 기록·관리하기 위한 목적으로만 아래와 같이 최소한의 개인정보를 수집·이용하며, 관련 법령을 준수합니다.</p>
 
----
+    <h2>1. 수집하는 개인정보 항목</h2>
+    <p>회원가입 시 아래 정보를 수집합니다.</p>
+    <table>
+      <tr><th>필수 항목</th><td>이름, 전화번호, 소속 회사명, 참여 프로젝트명, 작업 분류</td></tr>
+      <tr><th>서비스 이용 중 생성</th><td>업로드한 현장 작업 사진 및 촬영 시각·기기 정보(워터마크 표기용)</td></tr>
+    </table>
 
-## 1단계. App.js에 정확한 웹사이트 주소 설정
+    <h2>2. 개인정보 수집 및 이용 목적</h2>
+    <ul>
+      <li>회원 식별 및 로그인(전화번호 기반)</li>
+      <li>현장 작업사진의 촬영자·소속·작업분류 기록 및 워터마크 표기</li>
+      <li>현장별 작업 진행 관리 및 보고 자료 작성</li>
+    </ul>
 
-PowerShell에서 shaheen-photo 폴더로 이동 후 아래 명령어로 현재 설정을 확인합니다.
+    <h2>3. 보유 및 이용 기간</h2>
+    <p>회원 탈퇴 요청 시 또는 해당 프로젝트 종료 후 지체 없이 파기합니다. 단, 관계 법령에 따라 보존이 필요한 경우 해당 기간 동안 보관합니다.</p>
 
-```
-findstr /i "https" App.js
-```
+    <h2>4. 개인정보 처리 위탁</h2>
+    <table>
+      <tr><th>수탁업체</th><td>Supabase Inc.</td></tr>
+      <tr><th>위탁 업무</th><td>회원정보 및 작업사진 데이터베이스·저장소 운영</td></tr>
+    </table>
+    <p>서비스는 회원정보 저장 및 사진 파일 저장을 위해 Supabase를 이용하며, 별도의 국내 제3자에게 개인정보를 제공하지 않습니다.</p>
 
-work-photo-manage 주소가 안 보이거나 다른 주소가 보이면, App.js 안의 WebView 부분을 아래처럼 맞춰야 합니다. (정확한 수정은 결과 보고 같이 진행)
+    <h2>5. 이용자의 권리</h2>
+    <p>이용자는 언제든지 자신의 개인정보 열람, 정정, 삭제, 처리정지를 요청할 수 있습니다. 아래 문의처로 연락 주시면 지체 없이 조치합니다.</p>
 
-```jsx
-<WebView source={{ uri: "https://faraoh77777.github.io/work-photo-manage/" }} />
-```
+    <h2>6. 접근 권한 안내</h2>
+    <p>서비스는 작업 현장 사진 촬영 및 첨부를 위해 카메라 및 사진(갤러리) 접근 권한을 사용합니다. 해당 권한은 사진 촬영·첨부 기능에만 사용되며, 동의하지 않아도 다른 기능은 이용할 수 있으나 사진 기록 기능은 제한될 수 있습니다.</p>
 
-- [x] App.js가 work-photo-manage 주소를 가리키도록 확인/수정 완료
+    <h2>7. 문의처</h2>
+    <p>개인정보 관련 문의는 아래로 연락 주시기 바랍니다.<br/>이메일: faraoh@naver.com</p>
 
----
-
-## 2단계. 앱 정보(app.json) 확정
-
-app.json 또는 app.config.js에서 아래 항목을 한 번에 정리합니다.
-
-```
-type app.json
-```
-
-확인할 항목:
-- name (앱 표시 이름, 예: "작업사진")
-- slug (Expo 프로젝트 식별자)
-- android.package (예: com.faraoh.workphoto 또는 기존 com.faraoh.shaheenphoto 유지)
-- version, android.versionCode
-
-- [x] 패키지명 최종 결정 → com.faraoh.workphotomanage (slug는 shaheen-photo 그대로 유지)
-- [x] app.json 확인/수정 완료
-
----
-
-## 3단계. 프로덕션 빌드
-
-```
-eas build --platform android --profile production
-```
-
-- 빌드는 보통 3~4시간 정도 걸릴 수 있음 (대기열 포함)
-- 완료되면 expo.dev 대시보드 → Builds 탭에서 Download 버튼으로 .aab 파일 받기
-
-- [x] 빌드 성공 (versionCode 3, com.faraoh.workphotomanage)
-- [ ] .aab 파일 다운로드 완료
-
----
-
-## 4단계. 원스토어 개발자센터 가입
-
-1. https://dev.onestore.co.kr 접속
-2. 회원가입 (개인 인증 또는 사업자 인증 중 선택)
-3. 인증 완료까지 보통 1~2일 소요될 수 있음
-
-- [x] 원스토어 개발자센터 가입 완료
-- [x] 인증 완료
-
----
-
-## 5단계. 개인정보처리방침 페이지 준비
-
-카메라 권한을 쓰는 앱이라 개인정보처리방침 URL이 필요할 가능성이 높습니다. 간단한 안내 페이지를 만들어서 GitHub Pages에 같이 올려두면 됩니다 (필요하면 이 페이지도 같이 만들어 드릴 수 있어요).
-
-- [x] 개인정보처리방침 페이지 URL 준비 완료 (작성 완료, GitHub Pages 업로드 필요)
-
----
-
-## 6단계. 앱 등록
-
-원스토어 개발자센터 → 상품등록에서:
-- 카테고리 선택 (예: 비즈니스/생산성)
-- 패키지명 입력 (2단계에서 정한 값)
-- 앱 아이콘(512x512 권장), 스크린샷 등록
-- 앱 이름, 짧은/긴 설명 작성
-- 개인정보처리방침 URL 입력
-- 무료/유료 설정 (무료 선택 시 외부결제 사용 안함으로 설정)
-
-- [ ] 앱 등록 정보 입력 완료
-
----
-
-## 7단계. 빌드 파일 업로드 및 심사 신청
-
-- 3단계에서 받은 .aab 파일 업로드
-- 지원 단말 전체 선택
-- 콘텐츠 등급 설정
-- 검수 신청 제출
-
-- [ ] 빌드 파일 업로드 완료
-- [ ] 심사 신청 완료
-
----
-
-## 8단계. 승인 대기 및 게시
-
-- 심사는 보통 영업일 기준으로 진행됨
-- 승인되면 자동/수동 게시 옵션에 따라 스토어에 노출
-
-- [ ] 승인 완료
-- [ ] 게시 확인
+    <a class="back" href="login.html">&larr; 로그인/회원가입으로 돌아가기</a>
+  </div>
+</div>
+</body>
+</html>

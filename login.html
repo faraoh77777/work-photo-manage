@@ -35,6 +35,9 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
   font-weight:800;cursor:pointer;margin-top:18px;
   background:linear-gradient(135deg,#2980B9,#1A5276);color:#fff;}
 .sbtn:disabled{background:#BDC3C7;cursor:not-allowed;}
+.agree{display:flex;align-items:center;gap:8px;margin-top:16px;font-size:13px;color:#33465E;cursor:pointer;}
+.agree input{width:17px;height:17px;flex:none;accent-color:#2E5F9E;}
+.agree a{color:#2E5F9E;font-weight:700;text-decoration:underline;}
 #toast,#toastE{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
   padding:10px 20px;border-radius:10px;font-size:14px;font-weight:700;
   display:none;z-index:9998;white-space:nowrap;color:#fff;
@@ -100,7 +103,11 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
         <option value="Others">Others</option>
         <option value="관리자">관리자</option>
       </select>
-      <button class="sbtn" onclick="doSignup()">가입하기</button>
+      <label class="agree">
+        <input type="checkbox" id="regAgree"/>
+        <span><a href="privacy.html" target="_blank" rel="noopener">개인정보 수집·이용</a>에 동의합니다 (필수)</span>
+      </label>
+      <button class="sbtn" id="signupBtn" onclick="doSignup()" disabled>가입하기</button>
     </div>
   </div>
 </div>
@@ -134,6 +141,10 @@ async function loadSignupOptions(){
   }catch(e){console.error('가입 옵션 로드 실패',e);}
 }
 loadSignupOptions();
+
+document.getElementById('regAgree').addEventListener('change',function(){
+  document.getElementById('signupBtn').disabled=!this.checked;
+});
 
 function switchTab(t){
   document.getElementById('panelLogin').style.display=t==='login'?'':'none';
@@ -172,6 +183,7 @@ async function doSignup(){
   var phone=normPhone(document.getElementById('regPhone').value.trim());
   var category=document.getElementById('regCategory').value;
   if(!company||!project||!name||phone.length<10){showTE('모든 항목을 입력해 주세요.');return;}
+  if(!document.getElementById('regAgree').checked){showTE('개인정보 수집·이용에 동의해 주세요.');return;}
   showT('가입 중...');
   var insertData={company:company,project:project,name:name,phone:phone,category:category};
   var res=await sbClient.from('members').insert(insertData).select().single();
