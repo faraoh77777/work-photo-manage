@@ -9,7 +9,9 @@ import {
   BackHandler,
 } from 'react-native';
 
-const SITE_URL = 'https://faraoh77777.github.io/shaheen-photo/';
+// shaheen-photo 저장소는 구버전 페이지만 있고 푸시 권한이 없어 갱신할 수 없다.
+// work-photo-manage가 현재 index.html과 동일한 내용을 이미 서빙 중이라 이쪽을 쓴다.
+const SITE_URL = 'https://faraoh77777.github.io/work-photo-manage/';
 
 export default function App() {
   const webRef = useRef(null);
