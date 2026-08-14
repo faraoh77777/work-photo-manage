@@ -2,7 +2,7 @@
   "expo": {
     "name": "작업사진",
     "slug": "shaheen-photo",
-    "version": "1.0.0",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "light",
@@ -16,7 +16,8 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#1E3A5F"
       },
-      "package": "com.faraoh.shaheenphoto",
+      "package": "io.github.faraoh77777.twa",
+      "versionCode": 4,
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.CAMERA",
