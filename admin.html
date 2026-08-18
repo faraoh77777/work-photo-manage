@@ -208,6 +208,10 @@ canvas{width:100%;border-radius:12px;display:block;}
         <button onclick="addArea()">추가</button>
       </div>
     </div>
+    <div class="set-section">
+      <div class="set-title">회원 승인 대기 <span id="pendingCount" style="color:#2E5F9E;">0</span></div>
+      <div id="pendingList" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
   </div>
 </div>
 
@@ -363,7 +367,42 @@ document.addEventListener('animationend',function(e){
 function openSettings(){
   renderCatChips();
   renderAreaChips();
+  renderPendingMembers();
   document.getElementById("settingsOverlay").style.display="flex";
+}
+
+// ── 회원 승인 대기 목록 ──
+async function renderPendingMembers(){
+  if(!sbClient)return;
+  var listEl=document.getElementById("pendingList");
+  var countEl=document.getElementById("pendingCount");
+  try{
+    var res=await sbClient.from('members').select('*').eq('approved',false).order('created_at',{ascending:true});
+    if(res.error){ listEl.innerHTML='<div style="font-size:13px;color:#E74C3C;">불러오기 실패: '+res.error.message+'</div>'; return; }
+    var rows=res.data||[];
+    countEl.textContent=rows.length;
+    if(!rows.length){ listEl.innerHTML='<div style="font-size:13px;color:#A0BBD4;">대기 중인 가입 신청이 없습니다.</div>'; return; }
+    listEl.innerHTML=rows.map(function(m){
+      return '<div style="background:#F7FAFC;border:1.5px solid #C8D8E8;border-radius:10px;padding:10px 12px;">'
+        +'<div style="font-size:14px;font-weight:700;color:#1A2332;">'+m.name+' <span style="font-weight:400;color:#5A7A9A;">('+m.phone+')</span></div>'
+        +'<div style="font-size:12px;color:#5A7A9A;margin-top:2px;">'+m.company+' · '+m.project+' · '+(m.category||'-')+'</div>'
+        +'<div style="display:flex;gap:6px;margin-top:8px;">'
+        +'<button onclick="approveMember(\''+m.id+'\')" style="flex:1;background:#27AE60;color:#fff;border:none;border-radius:8px;padding:8px;font-size:13px;font-weight:700;cursor:pointer;">승인</button>'
+        +'<button onclick="rejectMember(\''+m.id+'\',\''+m.name.replace(/'/g,"")+'\')" style="flex:1;background:#E74C3C;color:#fff;border:none;border-radius:8px;padding:8px;font-size:13px;font-weight:700;cursor:pointer;">거부</button>'
+        +'</div></div>';
+    }).join('');
+  }catch(e){ listEl.innerHTML='<div style="font-size:13px;color:#E74C3C;">불러오기 실패</div>'; console.error(e); }
+}
+async function approveMember(id){
+  var res=await sbClient.from('members').update({approved:true}).eq('id',id);
+  if(res.error){ alert('승인 실패: '+res.error.message); return; }
+  renderPendingMembers();
+}
+async function rejectMember(id,name){
+  if(!confirm(name+' 가입 신청을 거부하고 삭제할까요?'))return;
+  var res=await sbClient.from('members').delete().eq('id',id);
+  if(res.error){ alert('거부 실패: '+res.error.message); return; }
+  renderPendingMembers();
 }
 function closeSettings(){
   document.getElementById("settingsOverlay").style.display="none";

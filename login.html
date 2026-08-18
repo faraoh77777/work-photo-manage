@@ -64,6 +64,12 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
     <div id="panelLogin">
       <div class="flbl">전화번호</div>
       <input type="tel" id="loginPhone" class="f" placeholder="01012345678"/>
+      <div class="flbl">비밀번호 (4자리)</div>
+      <input type="password" id="loginPin" class="f" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="••••"/>
+      <div class="flbl" id="loginPinConfirmLbl" style="display:none;">비밀번호 확인 (최초 설정)</div>
+      <input type="password" id="loginPinConfirm" class="f" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="••••" style="display:none;"/>
+      <div id="pinSetupNotice" style="display:none;font-size:13px;color:#2980B9;margin-top:8px;line-height:1.6;">처음 로그인하시는군요! 앞으로 사용하실 4자리 비밀번호를 확인란에 한 번 더 입력하고 로그인을 눌러주세요.</div>
+      <div id="approvalNotice" style="display:none;font-size:13px;color:#B9770E;margin-top:8px;line-height:1.6;">관리자 승인 대기 중입니다. 승인 후 다시 로그인해 주세요.</div>
       <button class="sbtn" onclick="doLogin()">로그인</button>
     </div>
 
@@ -79,6 +85,10 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
       <input type="text" id="regName" class="f" placeholder="홍길동"/>
       <div class="flbl">전화번호</div>
       <input type="tel" id="regPhone" class="f" placeholder="01012345678"/>
+      <div class="flbl">비밀번호 (4자리 숫자)</div>
+      <input type="password" id="regPin" class="f" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="••••"/>
+      <div class="flbl">비밀번호 확인</div>
+      <input type="password" id="regPinConfirm" class="f" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="••••"/>
       <div class="flbl">작업 분류</div>
       <select id="regCategory" class="f">
         <option value="DCS Panel">DCS Panel</option>
@@ -165,14 +175,56 @@ document.addEventListener('animationend',function(e){
 
 function normPhone(v){return v.replace(/\D/g,'');}
 
+async function sha256Hex(str){
+  var enc=new TextEncoder().encode(str);
+  var buf=await crypto.subtle.digest('SHA-256',enc);
+  return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+}
+
+function showPinSetupUI(show){
+  document.getElementById('loginPinConfirmLbl').style.display=show?'':'none';
+  document.getElementById('loginPinConfirm').style.display=show?'':'none';
+  document.getElementById('pinSetupNotice').style.display=show?'':'none';
+}
+
 async function doLogin(){
   var phone=normPhone(document.getElementById('loginPhone').value.trim());
+  var pin=document.getElementById('loginPin').value.trim();
+  document.getElementById('approvalNotice').style.display='none';
   if(phone.length<10){showTE('전화번호를 입력해 주세요.');return;}
+  if(!/^\d{4}$/.test(pin)){showTE('비밀번호 4자리를 입력해 주세요.');return;}
   showT('확인 중...');
   var res=await sbClient.from('members').select('*').eq('phone',phone).single();
   if(res.error||!res.data){showTE('등록된 번호가 없습니다. 회원가입 해주세요.');return;}
-  saveSession(res.data);
-  showT('안녕하세요, '+res.data.name+'님!');
+  var m=res.data;
+
+  if(!m.pin_hash){
+    // 비밀번호가 아직 없는 기존 회원 → 최초 로그인 시 직접 설정
+    var confirmEl=document.getElementById('loginPinConfirm');
+    if(confirmEl.style.display==='none'){
+      showPinSetupUI(true);
+      showT('비밀번호 확인란에 같은 4자리를 한 번 더 입력하고 로그인을 눌러주세요.');
+      return;
+    }
+    var confirmPin=confirmEl.value.trim();
+    if(pin!==confirmPin){showTE('비밀번호가 서로 다릅니다. 다시 입력해 주세요.');return;}
+    var hash=await sha256Hex(pin);
+    var upd=await sbClient.from('members').update({pin_hash:hash}).eq('id',m.id).select().single();
+    if(upd.error||!upd.data){showTE('비밀번호 설정 실패: '+(upd.error&&upd.error.message||''));return;}
+    m=upd.data;
+    showPinSetupUI(false);
+  }else{
+    var hash2=await sha256Hex(pin);
+    if(hash2!==m.pin_hash){showTE('비밀번호가 올바르지 않습니다.');return;}
+  }
+
+  if(!m.approved){
+    document.getElementById('approvalNotice').style.display='';
+    showTE('관리자 승인 대기 중입니다. 승인 후 다시 로그인해 주세요.');
+    return;
+  }
+  saveSession(m);
+  showT('안녕하세요, '+m.name+'님!');
   setTimeout(function(){location.href='index.html';},900);
 }
 
@@ -181,11 +233,16 @@ async function doSignup(){
   var project=document.getElementById('regProject').value.trim();
   var name=document.getElementById('regName').value.trim();
   var phone=normPhone(document.getElementById('regPhone').value.trim());
+  var pin=document.getElementById('regPin').value.trim();
+  var pinConfirm=document.getElementById('regPinConfirm').value.trim();
   var category=document.getElementById('regCategory').value;
   if(!company||!project||!name||phone.length<10){showTE('모든 항목을 입력해 주세요.');return;}
+  if(!/^\d{4}$/.test(pin)){showTE('비밀번호 4자리를 입력해 주세요.');return;}
+  if(pin!==pinConfirm){showTE('비밀번호가 서로 다릅니다.');return;}
   if(!document.getElementById('regAgree').checked){showTE('개인정보 수집·이용에 동의해 주세요.');return;}
   showT('가입 중...');
-  var insertData={company:company,project:project,name:name,phone:phone,category:category};
+  var pinHash=await sha256Hex(pin);
+  var insertData={company:company,project:project,name:name,phone:phone,category:category,pin_hash:pinHash,approved:false};
   var res=await sbClient.from('members').insert(insertData).select().single();
   if(res.error){
     var msg=res.error.message||'';
@@ -201,9 +258,12 @@ async function doSignup(){
       return;
     }
   }
-  saveSession(res.data);
-  showT('가입 완료! 환영합니다, '+res.data.name+'님!');
-  setTimeout(function(){location.href='index.html';},1000);
+  // 가입 즉시 로그인시키지 않고 승인 대기 안내 후 로그인 탭으로 전환
+  showT('가입 완료! 관리자 승인 후 이용 가능합니다.');
+  setTimeout(function(){
+    switchTab('login');
+    document.getElementById('loginPhone').value=phone;
+  },1200);
 }
 
 function saveSession(m){
