@@ -99,6 +99,8 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
         <input type="text" id="newAreaInput" class="f" placeholder="새 구역 이름"/>
         <button onclick="addArea()">추가</button>
       </div>
+      <button onclick="saveCatAreaChanges()" style="width:100%;margin-top:14px;background:#2E5F9E;
+        color:#fff;border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:800;cursor:pointer;">💾 분류·구역 저장</button>
     </div>
 
     <div class="card">
@@ -181,6 +183,13 @@ function saveCatsByMenu(){ localStorage.setItem("custom_categories_by_menu",JSON
 var catsByMenu=loadCatsByMenu();
 var customAreas=loadList("custom_areas",DEFAULT_AREAS);
 var editMenu="시공";
+// 예전 index.html 방식과 동일하게, 추가/삭제는 임시본에서만 바꾸고
+// '분류·구역 저장' 버튼을 눌러야 실제로 반영·동기화된다.
+var tempCatsByMenu=null, tempAreas=null;
+function restageCatArea(){
+  tempCatsByMenu=JSON.parse(JSON.stringify(catsByMenu));
+  tempAreas=customAreas.slice();
+}
 
 async function pushSettingsToSupabase(){
   if(!sbClient)return;
@@ -202,6 +211,7 @@ async function fetchSettingsFromSupabase(){
       saveCatsByMenu();
     }
     if(Array.isArray(data.areas)&&data.areas.length){ customAreas=data.areas; saveList("custom_areas",customAreas); }
+    restageCatArea();
     renderCatMenuTabs(); renderCatChips(); renderAreaChips();
   }catch(e){console.error("설정 클라우드 불러오기 실패",e);}
 }
@@ -213,7 +223,7 @@ function renderCatMenuTabs(){
 }
 function switchEditMenu(m){ editMenu=m; renderCatMenuTabs(); renderCatChips(); }
 function renderCatChips(){
-  var list=catsByMenu[editMenu]||[];
+  var list=tempCatsByMenu[editMenu]||[];
   document.getElementById("catChips").innerHTML=list.map(function(c,i){
     return '<span class="chip">'+c+'<button onclick="removeCategory('+i+')" title="삭제">&#10005;</button></span>';
   }).join('');
@@ -221,35 +231,42 @@ function renderCatChips(){
 function addCategory(){
   var inp=document.getElementById("newCatInput");
   var v=inp.value.trim();
-  var list=catsByMenu[editMenu]||(catsByMenu[editMenu]=[]);
+  var list=tempCatsByMenu[editMenu]||(tempCatsByMenu[editMenu]=[]);
   if(!v||list.indexOf(v)!==-1)return;
   list.push(v);
-  saveCatsByMenu(); inp.value=""; renderCatChips(); pushSettingsToSupabase();
-  showT('분류가 추가되었습니다');
+  inp.value=""; renderCatChips();
 }
 function removeCategory(i){
-  var list=catsByMenu[editMenu]||[];
+  var list=tempCatsByMenu[editMenu]||[];
   if(list.length<=1)return;
   list.splice(i,1);
-  saveCatsByMenu(); renderCatChips(); pushSettingsToSupabase();
+  renderCatChips();
 }
 function renderAreaChips(){
-  document.getElementById("areaChips").innerHTML=customAreas.map(function(a,i){
+  document.getElementById("areaChips").innerHTML=tempAreas.map(function(a,i){
     return '<span class="chip">'+a+'<button onclick="removeArea('+i+')" title="삭제">&#10005;</button></span>';
   }).join('');
 }
 function addArea(){
   var inp=document.getElementById("newAreaInput");
   var v=inp.value.trim();
-  if(!v||customAreas.indexOf(v)!==-1)return;
-  customAreas.push(v);
-  saveList("custom_areas",customAreas); inp.value=""; renderAreaChips(); pushSettingsToSupabase();
-  showT('구역이 추가되었습니다');
+  if(!v||tempAreas.indexOf(v)!==-1)return;
+  tempAreas.push(v);
+  inp.value=""; renderAreaChips();
 }
 function removeArea(i){
-  if(customAreas.length<=1)return;
-  customAreas.splice(i,1);
-  saveList("custom_areas",customAreas); renderAreaChips(); pushSettingsToSupabase();
+  if(tempAreas.length<=1)return;
+  tempAreas.splice(i,1);
+  renderAreaChips();
+}
+function saveCatAreaChanges(){
+  if(!tempCatsByMenu||!tempAreas)return;
+  catsByMenu=JSON.parse(JSON.stringify(tempCatsByMenu));
+  saveCatsByMenu();
+  customAreas=tempAreas.slice();
+  saveList("custom_areas",customAreas);
+  showT("설정이 저장되었습니다");
+  pushSettingsToSupabase();
 }
 
 // ── 회원 승인 대기 ──
@@ -287,6 +304,7 @@ async function rejectMember(id,name){
 }
 
 function initAdmin(){
+  restageCatArea();
   renderCatMenuTabs();
   renderCatChips();
   renderAreaChips();
