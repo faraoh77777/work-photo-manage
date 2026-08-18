@@ -17,6 +17,9 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:100vh;
   padding:8px;font-size:17px;}
+/* PC 등 넓은 화면에서도 모바일과 같은 폭의 창으로 보이도록 가운데 정렬한다.
+   촬영 모달/설정 모달/토스트는 전부 position:fixed라 이 안에 있어도 화면 전체를 그대로 덮는다. */
+.wrap{max-width:460px;margin:0 auto;}
 .app-header{background:linear-gradient(135deg,var(--brand-1),var(--brand-2));border-radius:12px;
   padding:10px 14px;margin-bottom:8px;color:#fff;transition:background 0.25s;}
 .app-title{font-size:26px;font-weight:800;letter-spacing:1px;display:flex;align-items:center;gap:8px;}
@@ -143,6 +146,7 @@ textarea.f{resize:none;height:48px;}
 </head>
 <body>
 
+<div class="wrap">
 <div class="app-header">
   <div style="display:flex;justify-content:space-between;align-items:center;">
     <div style="min-width:0;flex:1;">
@@ -315,6 +319,7 @@ textarea.f{resize:none;height:48px;}
 
 <div id="toast"></div>
 <div id="toastE"></div>
+</div><!-- /.wrap -->
 
 <script>
 // ── 인증 체크 ─────────────────────────────────────────
