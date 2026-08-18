@@ -156,8 +156,10 @@ textarea.f{resize:none;height:48px;}
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
       <button onclick="logout()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer;">로그아웃</button>
-      <button onclick="openSettings()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;">⚙️ 설정</button>
+      <!-- ⚙️ 설정은 관리자 화면으로 가는 통로일 뿐이라 관리자 계정에만 보이게 함(아래 인증 스크립트에서 토글) -->
+      <button id="settingsBtn" onclick="openSettings()" style="display:none;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;">⚙️ 설정</button>
       <button id="folderBtn" onclick="pickSaveFolder()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;">📁 폴더설정</button>
+      <button onclick="withdrawMember()" style="background:none;border:none;color:rgba(255,255,255,0.6);border-radius:8px;padding:2px 4px;font-size:11px;text-decoration:underline;cursor:pointer;">회원탈퇴</button>
     </div>
   </div>
 </div>
@@ -263,20 +265,17 @@ textarea.f{resize:none;height:48px;}
   <button id="camShotBtn" onclick="captureShot()"></button>
 </div>
 
-<!-- 설정: 근로자가 매일 쓰는 항목만 남기고, 회원승인/작업분류/구역 관리·현장 관리는
-     관리자 전용 화면(admin.html)으로 옮겼다. -->
+<!-- ⚙️ 설정: 근로자에게는 버튼 자체가 안 보임(관리자 계정만 위 헤더 버튼이 표시됨).
+     회원승인/작업분류/구역 관리·현장 관리는 관리자 전용 화면(admin.html)으로 옮겼고,
+     회원탈퇴는 근로자도 써야 해서 헤더로 옮겼다 — 이 모달엔 관리자 화면 바로가기만 남음. -->
 <div id="settingsOverlay">
   <div id="settingsBox">
     <div class="set-header">
       <span>⚙️ 설정</span>
       <button onclick="closeSettings()">&#10005;</button>
     </div>
-    <div class="set-section" id="adminLinkSection" style="display:none;">
-      <a href="admin.html" style="display:block;text-align:center;background:#F7FAFC;border:1.5px solid #C8D8E8;border-radius:10px;padding:10px;font-size:14px;font-weight:700;color:var(--brand-2);text-decoration:none;">🛠️ 관리자 화면 열기</a>
-    </div>
     <div class="set-section">
-      <div class="set-title">계정</div>
-      <button onclick="withdrawMember()" style="width:100%;background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.5);color:#E74C3C;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">회원탈퇴</button>
+      <a href="admin.html" style="display:block;text-align:center;background:#F7FAFC;border:1.5px solid #C8D8E8;border-radius:10px;padding:10px;font-size:14px;font-weight:700;color:var(--brand-2);text-decoration:none;">🛠️ 관리자 화면 열기</a>
     </div>
   </div>
 </div>
@@ -307,6 +306,10 @@ textarea.f{resize:none;height:48px;}
   var c=localStorage.getItem('member_company')||'';
   if(p) document.getElementById('hdrProject').textContent=p;
   if(c) document.getElementById('hdrCompany').textContent=c;
+  // ⚙️ 설정 버튼은 관리자 화면으로 가는 통로일 뿐이라 관리자 계정에만 보여준다.
+  if(localStorage.getItem('member_category')==='관리자'){
+    document.getElementById('settingsBtn').style.display='';
+  }
 })();
 function logout(){
   ['member_id','member_name','member_company','member_project','member_phone','member_category','senderName'].forEach(function(k){localStorage.removeItem(k);});
@@ -692,8 +695,6 @@ function populateAreaSelect(preserve){
 // 여기서는 그 화면이 저장한 값을 읽어서(app_settings 실시간 동기화) 촬영 폼 드롭다운을
 // 채우는 용도로만 customCats/customAreas를 쓴다.
 function openSettings(){
-  document.getElementById("adminLinkSection").style.display=
-    (localStorage.getItem('member_category')==='관리자')?'block':'none';
   document.getElementById("settingsOverlay").style.display="flex";
 }
 function closeSettings(){
