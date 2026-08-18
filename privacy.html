@@ -72,8 +72,21 @@ th{background:#F7FAFC;color:#1E3A5F;width:110px;}
     <h2>7. 문의처</h2>
     <p>개인정보 관련 문의는 아래로 연락 주시기 바랍니다.<br/>이메일: faraoh@naver.com</p>
 
-    <a class="back" href="login.html">&larr; 로그인/회원가입으로 돌아가기</a>
+    <a class="back" href="login.html" id="backLink">&larr; 로그인/회원가입으로 돌아가기</a>
   </div>
 </div>
+<script>
+// login.html의 모달(iframe) 안에서 열린 경우, 새로 이동하지 않고 모달만 닫는다.
+// (이동해버리면 회원가입 폼에 입력하던 내용이 전부 초기화되는 문제가 있었음)
+if(window.self!==window.top){
+  var b=document.getElementById('backLink');
+  b.textContent='닫기';
+  b.href='#';
+  b.addEventListener('click',function(e){
+    e.preventDefault();
+    parent.postMessage('close-privacy-modal','*');
+  });
+}
+</script>
 </body>
 </html>

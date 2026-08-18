@@ -76,10 +76,10 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
     <!-- 회원가입 -->
     <div id="panelSignup" style="display:none;">
       <div class="flbl">회사명</div>
-      <input type="text" id="regCompany" class="f" placeholder="(주)OOO건설" list="companyList" autocomplete="off" value="대선이엔씨(주)"/>
+      <input type="text" id="regCompany" class="f" placeholder="(주)OOO건설" list="companyList" autocomplete="off"/>
       <datalist id="companyList"></datalist>
       <div class="flbl">프로젝트명</div>
-      <input type="text" id="regProject" class="f" placeholder="OOO 플랜트 공사" list="projectList" autocomplete="off" value="S-OIL SHAHEEN Project 계장공사 3공구(PKG-1)"/>
+      <input type="text" id="regProject" class="f" placeholder="OOO 플랜트 공사" list="projectList" autocomplete="off"/>
       <datalist id="projectList"></datalist>
       <div class="flbl">이름</div>
       <input type="text" id="regName" class="f" placeholder="홍길동"/>
@@ -115,13 +115,24 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
       </select>
       <label class="agree">
         <input type="checkbox" id="regAgree"/>
-        <span><a href="privacy.html" target="_blank" rel="noopener">개인정보 수집·이용</a>에 동의합니다 (필수)</span>
+        <span><a href="privacy.html" id="privacyLink" onclick="return openPrivacyModal(event)">개인정보 수집·이용</a>에 동의합니다 (필수)</span>
       </label>
       <button class="sbtn" id="signupBtn" onclick="doSignup()" disabled>가입하기</button>
     </div>
   </div>
   <div style="text-align:center;margin-top:14px;">
     <a href="site-setup.html" style="font-size:12px;color:#7A9AB8;text-decoration:underline;">다른 회사/현장 관리자이신가요? 새 현장 만들기</a>
+  </div>
+</div>
+
+<!-- 개인정보처리방침 모달 (페이지 이동 없이 확인만 하고 돌아올 수 있도록 iframe으로 띄움) -->
+<div id="privacyModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9990;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:14px;width:100%;max-width:480px;height:82vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #E8EEF4;flex:none;">
+      <span style="font-weight:800;font-size:15px;color:#1A2332;">개인정보처리방침</span>
+      <button onclick="closePrivacyModal()" style="background:none;border:none;font-size:18px;color:#7A9AB8;cursor:pointer;padding:4px 8px;">&#10005;</button>
+    </div>
+    <iframe id="privacyIframe" src="about:blank" style="flex:1;border:none;width:100%;"></iframe>
   </div>
 </div>
 
@@ -157,6 +168,13 @@ var SUPABASE_URL=localStorage.getItem('site_supabase_url')||DEFAULT_SUPABASE_URL
 var SUPABASE_KEY=localStorage.getItem('site_supabase_key')||DEFAULT_SUPABASE_KEY;
 var sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
+// 기본 현장(대선이엔씨)에서만 회사명/프로젝트명을 미리 채워준다.
+// 다른 회사가 새로 만든 현장에는 이 값이 섞여 들어가면 안 되므로 반드시 직접 입력하게 비워둔다.
+if(!localStorage.getItem('site_supabase_url')){
+  document.getElementById('regCompany').value='대선이엔씨(주)';
+  document.getElementById('regProject').value='S-OIL SHAHEEN Project 계장공사 3공구(PKG-1)';
+}
+
 // 이미 로그인된 경우 바로 이동
 if(localStorage.getItem('member_id')){location.href='index.html';}
 
@@ -181,6 +199,20 @@ loadSignupOptions();
 
 document.getElementById('regAgree').addEventListener('change',function(){
   document.getElementById('signupBtn').disabled=!this.checked;
+});
+
+function openPrivacyModal(e){
+  if(e)e.preventDefault();
+  document.getElementById('privacyIframe').src='privacy.html';
+  document.getElementById('privacyModalOverlay').style.display='flex';
+  return false;
+}
+function closePrivacyModal(){
+  document.getElementById('privacyModalOverlay').style.display='none';
+  document.getElementById('privacyIframe').src='about:blank';
+}
+window.addEventListener('message',function(e){
+  if(e.data==='close-privacy-modal')closePrivacyModal();
 });
 
 function switchTab(t){
