@@ -201,19 +201,22 @@ async function pushSettingsToSupabase(){
   }catch(e){console.error("설정 클라우드 동기화 실패",e);}
 }
 async function fetchSettingsFromSupabase(){
-  if(!sbClient)return;
-  try{
-    var res=await sbClient.from('app_settings').select('*').eq('id','global').single();
-    if(res.error||!res.data)return;
-    var data=res.data;
-    if(data.cats_by_menu){
-      MENUS.forEach(function(m){ if(Array.isArray(data.cats_by_menu[m])&&data.cats_by_menu[m].length) catsByMenu[m]=data.cats_by_menu[m]; });
-      saveCatsByMenu();
-    }
-    if(Array.isArray(data.areas)&&data.areas.length){ customAreas=data.areas; saveList("custom_areas",customAreas); }
-    restageCatArea();
-    renderCatMenuTabs(); renderCatChips(); renderAreaChips();
-  }catch(e){console.error("설정 클라우드 불러오기 실패",e);}
+  if(sbClient){
+    try{
+      var res=await sbClient.from('app_settings').select('*').eq('id','global').single();
+      if(!res.error&&res.data){
+        var data=res.data;
+        if(data.cats_by_menu){
+          MENUS.forEach(function(m){ if(Array.isArray(data.cats_by_menu[m])&&data.cats_by_menu[m].length) catsByMenu[m]=data.cats_by_menu[m]; });
+          saveCatsByMenu();
+        }
+        if(Array.isArray(data.areas)&&data.areas.length){ customAreas=data.areas; saveList("custom_areas",customAreas); }
+      }
+    }catch(e){console.error("설정 클라우드 불러오기 실패",e);}
+  }
+  // 원격을 못 받아왔어도(오프라인 등) 로컬에 있던 값으로라도 화면을 채운다.
+  restageCatArea();
+  renderCatMenuTabs(); renderCatChips(); renderAreaChips();
 }
 
 function renderCatMenuTabs(){
@@ -303,13 +306,11 @@ async function rejectMember(id,name){
   showT('거부했습니다'); renderPendingMembers();
 }
 
-function initAdmin(){
-  restageCatArea();
-  renderCatMenuTabs();
-  renderCatChips();
-  renderAreaChips();
+async function initAdmin(){
+  // 새 기기/브라우저에서는 로컬에 저장된 값이 없어 기본값(DEFAULT_CATS_BY_MENU)으로
+  // 화면이 잠깐이라도 잘못 보일 수 있었다 — Supabase에서 실제 값을 받아온 뒤에만 그린다.
   renderPendingMembers();
-  fetchSettingsFromSupabase();
+  await fetchSettingsFromSupabase();
 }
 </script>
 </body>
