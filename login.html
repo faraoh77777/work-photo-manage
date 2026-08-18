@@ -301,7 +301,14 @@ async function doSignup(){
   if(!document.getElementById('regAgree').checked){showTE('개인정보 수집·이용에 동의해 주세요.');return;}
   showT('가입 중...');
   var pinHash=await sha256Hex(pin);
-  var insertData={company:company,project:project,name:name,phone:phone,category:category,pin_hash:pinHash,approved:false};
+
+  // 이 현장에 회원이 한 명도 없으면(=새 현장의 첫 가입자) 자동으로 승인 처리한다.
+  // 승인은 로그인한 사람만 할 수 있는데, 승인된 사람이 한 명도 없으면 아무도 로그인할
+  // 수 없어 영원히 막히기 때문 — 첫 가입자만 예외로 스스로 승인시킨다.
+  var existingCheck=await sbClient.from('members').select('id').limit(1);
+  var isFirstMember=!existingCheck.error && (!existingCheck.data || existingCheck.data.length===0);
+
+  var insertData={company:company,project:project,name:name,phone:phone,category:category,pin_hash:pinHash,approved:isFirstMember};
   var res=await sbClient.from('members').insert(insertData).select().single();
   if(res.error){
     var msg=res.error.message||'';
@@ -316,6 +323,13 @@ async function doSignup(){
       else{showTE('가입 실패: '+msg2);}
       return;
     }
+  }
+  if(isFirstMember){
+    // 첫 가입자는 바로 로그인까지 시켜준다 (승인해줄 사람이 없으니 대기시킬 이유가 없음)
+    saveSession(res.data);
+    showT('가입 완료! 이 현장의 첫 회원이라 자동으로 승인되었습니다. 환영합니다, '+res.data.name+'님!');
+    setTimeout(function(){location.href='index.html';},1200);
+    return;
   }
   // 가입 즉시 로그인시키지 않고 승인 대기 안내 후 로그인 탭으로 전환
   showT('가입 완료! 관리자 승인 후 이용 가능합니다.');
