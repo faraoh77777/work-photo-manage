@@ -212,6 +212,10 @@ canvas{width:100%;border-radius:12px;display:block;}
       <div class="set-title">회원 승인 대기 <span id="pendingCount" style="color:#2E5F9E;">0</span></div>
       <div id="pendingList" style="display:flex;flex-direction:column;gap:8px;"></div>
     </div>
+    <div class="set-section">
+      <div class="set-title">현장 관리</div>
+      <a href="site-setup.html" style="display:block;text-align:center;background:#F7FAFC;border:1.5px solid #C8D8E8;border-radius:10px;padding:10px;font-size:14px;font-weight:700;color:#2E5F9E;text-decoration:none;">새 현장 만들기 / 직원 초대 링크</a>
+    </div>
   </div>
 </div>
 
@@ -274,8 +278,10 @@ var customAreas=loadList("custom_areas",DEFAULT_AREAS);
 
 // ── 모바일 앱(index.html)·갤러리와 작업분류/작업구역 클라우드 동기화 (Supabase) ──
 // 이 화면은 메뉴 구분 없이 분류 하나만 관리하므로, 모바일 앱의 "시공" 메뉴 목록과 대응한다.
-var SUPABASE_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
-var SUPABASE_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
+var DEFAULT_SUPABASE_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
+var DEFAULT_SUPABASE_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
+var SUPABASE_URL=localStorage.getItem('site_supabase_url')||DEFAULT_SUPABASE_URL;
+var SUPABASE_KEY=localStorage.getItem('site_supabase_key')||DEFAULT_SUPABASE_KEY;
 var sbClient=null;
 try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }catch(e){console.error("Supabase 초기화 실패",e);}
 var remoteCatsByMenu=null; // 다른 메뉴(품질/자재/안전/화기 등) 분류를 보존하기 위한 원격 병합 기준값

@@ -120,14 +120,41 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
       <button class="sbtn" id="signupBtn" onclick="doSignup()" disabled>가입하기</button>
     </div>
   </div>
+  <div style="text-align:center;margin-top:14px;">
+    <a href="site-setup.html" style="font-size:12px;color:#7A9AB8;text-decoration:underline;">다른 회사/현장 관리자이신가요? 새 현장 만들기</a>
+  </div>
 </div>
 
 <div id="toast"></div>
 <div id="toastE"></div>
 
 <script>
-var SUPABASE_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
-var SUPABASE_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
+// ── 초대 링크(?site=...)로 들어온 경우, 그 현장의 Supabase로 연결 정보를 갈아끼운다 ──
+// site-setup.html에서 관리자가 만든 초대 링크를 직원이 열면 여기서 처리된다.
+(function(){
+  var params=new URLSearchParams(location.search);
+  var siteParam=params.get('site');
+  if(!siteParam)return;
+  try{
+    var b64=siteParam.replace(/-/g,'+').replace(/_/g,'/');
+    while(b64.length%4)b64+='=';
+    var cfg=JSON.parse(decodeURIComponent(escape(atob(b64))));
+    if(cfg.u&&cfg.k){
+      // 다른 현장으로 전환하는 것이므로 이전 현장 로그인 세션은 지운다
+      ['member_id','member_name','member_company','member_project','member_phone','member_category','senderName'].forEach(function(k){localStorage.removeItem(k);});
+      localStorage.setItem('site_supabase_url',cfg.u);
+      localStorage.setItem('site_supabase_key',cfg.k);
+      if(cfg.n)localStorage.setItem('site_name',cfg.n);
+    }
+  }catch(e){console.error('초대 링크 처리 실패',e);}
+  history.replaceState(null,'',location.pathname);
+})();
+
+// ── Supabase 연결: 로컬에 저장된 현장 설정이 있으면 그걸 쓰고, 없으면 기본 현장을 쓴다 ──
+var DEFAULT_SUPABASE_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
+var DEFAULT_SUPABASE_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
+var SUPABASE_URL=localStorage.getItem('site_supabase_url')||DEFAULT_SUPABASE_URL;
+var SUPABASE_KEY=localStorage.getItem('site_supabase_key')||DEFAULT_SUPABASE_KEY;
 var sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 // 이미 로그인된 경우 바로 이동

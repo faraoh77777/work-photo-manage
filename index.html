@@ -342,9 +342,11 @@ async function withdrawMember(){
   location.href='login.html';
 }
 
-// ── Supabase ──────────────────────────────────────────
-var SUPABASE_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
-var SUPABASE_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
+// ── Supabase: 로컬에 저장된 현장 설정이 있으면 그걸 쓰고, 없으면 기본 현장을 쓴다 (site-setup.html 참고) ──
+var DEFAULT_SUPABASE_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
+var DEFAULT_SUPABASE_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
+var SUPABASE_URL=localStorage.getItem('site_supabase_url')||DEFAULT_SUPABASE_URL;
+var SUPABASE_KEY=localStorage.getItem('site_supabase_key')||DEFAULT_SUPABASE_KEY;
 var sbClient=null;
 try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }
 catch(e){ console.error('Supabase 초기화 실패',e); }

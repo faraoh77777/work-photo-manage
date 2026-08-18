@@ -544,9 +544,11 @@ function galleryLogout(){
   location.href='../login.html';
 }
 
-// ── Supabase ─────────────────────────────────────────
-const SUPABASE_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
-const SUPABASE_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
+// ── Supabase: 로컬에 저장된 현장 설정이 있으면 그걸 쓰고, 없으면 기본 현장을 쓴다 (site-setup.html 참고) ──
+const DEFAULT_SUPABASE_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
+const DEFAULT_SUPABASE_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
+const SUPABASE_URL=localStorage.getItem('site_supabase_url')||DEFAULT_SUPABASE_URL;
+const SUPABASE_KEY=localStorage.getItem('site_supabase_key')||DEFAULT_SUPABASE_KEY;
 let sbClient=null;
 try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }
 catch(e){ console.error('Supabase 초기화 실패',e); }
