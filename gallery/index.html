@@ -534,6 +534,12 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 // ── 인증 체크 ─────────────────────────────────────────
 (function(){
   if(!localStorage.getItem('member_id')){location.href='../login.html';return;}
+  // 사진/일보 열람은 관리자 화면(admin.html)에서 들어오는 관리자 전용 도구로 통합됨
+  if(localStorage.getItem('member_category')!=='관리자'){
+    alert('관리자 권한이 있는 계정으로만 볼 수 있는 화면입니다.');
+    location.href='../index.html';
+    return;
+  }
   const n=localStorage.getItem('member_name')||'';
   const c=localStorage.getItem('member_company')||'';
   const chip=document.getElementById('hdrUserChip');

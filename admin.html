@@ -3,13 +3,296 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
-<title>작업 사진</title>
-<!-- PC 화면(admin.html)과 모바일/웹 화면(index.html)을 따로 유지하다 보니 기능이 계속 어긋나서
-     (카메라 촬영은 되는데 Supabase 업로드는 안 되는 등), 2026-08-18부터 admin.html은
-     index.html로 그대로 넘겨서 항상 완전히 같은 화면을 쓰도록 통일했다. -->
-<meta http-equiv="refresh" content="0;url=index.html"/>
+<title>관리자 — 작업 사진</title>
+<link rel="icon" type="image/png" sizes="192x192" href="Work%20photo_icon/icon-192.png"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:100vh;
+  padding:16px;font-size:16px;}
+.wrap{max-width:460px;margin:0 auto;}
+.app-header{background:linear-gradient(135deg,#1E3A5F,#2E5F9E);border-radius:14px;
+  padding:16px 18px;margin-bottom:16px;color:#fff;display:flex;justify-content:space-between;align-items:center;}
+.app-title{font-size:22px;font-weight:800;letter-spacing:1px;display:flex;align-items:center;gap:8px;}
+.app-title img{width:36px;height:36px;border-radius:8px;}
+.app-sub{font-size:11px;opacity:0.75;margin-top:2px;}
+.hdr-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:#fff;
+  border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none;}
+.card{background:#fff;border:1px solid #D1DCE8;border-radius:14px;
+  padding:16px;box-shadow:0 2px 6px rgba(0,0,0,0.06);margin-bottom:14px;}
+.card-title{font-size:15px;font-weight:800;color:#1A2332;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.card-title .cnt{color:#2E5F9E;}
+.f{width:100%;background:#F7FAFC;border:1.5px solid #C8D8E8;border-radius:8px;
+  padding:10px;color:#1A2332;font-size:14px;outline:none;font-family:Arial;}
+.f:focus{border-color:#2E5F9E;background:#fff;}
+.chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+.chip{display:flex;align-items:center;gap:5px;background:#F7FAFC;border:1.5px solid #C8D8E8;
+  border-radius:14px;padding:4px 6px 4px 12px;font-size:13px;color:#1A2332;}
+.chip button{background:none;border:none;color:#A0BBD4;font-size:13px;cursor:pointer;padding:2px 6px;}
+.chip button:hover{color:#E74C3C;}
+.add-row{display:flex;gap:6px;}
+.add-row input{flex:1;}
+.add-row button{flex-shrink:0;background:#2E5F9E;color:#fff;border:none;border-radius:8px;
+  padding:0 16px;font-size:13px;font-weight:700;cursor:pointer;}
+.menu-tabs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;}
+.menu-tab{border:1.5px solid #C8D8E8;background:#F7FAFC;color:#5A7A9A;border-radius:8px;
+  padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;}
+.menu-tab.active{background:#2E5F9E;border-color:#2E5F9E;color:#fff;}
+.hint{font-size:12px;color:#7A9AB8;line-height:1.6;margin-bottom:10px;}
+.link-btn{display:block;width:100%;text-align:center;background:#F7FAFC;border:1.5px solid #C8D8E8;
+  border-radius:10px;padding:12px;font-size:14px;font-weight:700;color:#2E5F9E;text-decoration:none;}
+.pending-item{background:#F7FAFC;border:1.5px solid #C8D8E8;border-radius:10px;padding:10px 12px;margin-bottom:8px;}
+.pending-name{font-size:14px;font-weight:700;color:#1A2332;}
+.pending-sub{font-size:12px;color:#5A7A9A;margin-top:2px;}
+.pending-actions{display:flex;gap:6px;margin-top:8px;}
+.pending-actions button{flex:1;border:none;border-radius:8px;padding:8px;font-size:13px;font-weight:700;cursor:pointer;color:#fff;}
+.btn-ok{background:#27AE60;}
+.btn-no{background:#E74C3C;}
+#toast,#toastE{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  padding:10px 20px;border-radius:10px;font-size:14px;font-weight:700;
+  display:none;z-index:9998;white-space:nowrap;color:#fff;box-shadow:0 4px 12px rgba(0,0,0,0.2);}
+#toast{background:#27AE60;}
+#toastE{background:#E74C3C;}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
-<script>location.replace('index.html'+location.search+location.hash);</script>
+<div class="wrap">
+
+  <!-- 로그인/권한 확인 전엔 아무것도 안 보여준다 -->
+  <div id="gateCard" class="card" style="display:none;">
+    <div class="card-title">🔒 접근 제한</div>
+    <div class="hint" id="gateMsg"></div>
+    <a class="link-btn" href="index.html">현장작업일보(근로자) 화면으로 이동</a>
+  </div>
+
+  <div id="adminBody" style="display:none;">
+    <div class="app-header">
+      <div>
+        <div class="app-title"><img src="Work%20photo_icon/icon-192.png" alt=""/> 관리자</div>
+        <div class="app-sub" id="hdrWho"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+        <button class="hdr-btn" onclick="logout()">로그아웃</button>
+        <a class="hdr-btn" href="index.html">근로자 화면</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">👥 회원 승인 대기 <span class="cnt" id="pendingCount">0</span></div>
+      <div id="pendingList"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🏷️ 작업 분류 관리</div>
+      <div class="menu-tabs" id="catMenuTabs"></div>
+      <div class="chip-row" id="catChips"></div>
+      <div class="add-row">
+        <input type="text" id="newCatInput" class="f" placeholder="새 분류 이름"/>
+        <button onclick="addCategory()">추가</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📍 작업 구역 관리</div>
+      <div class="chip-row" id="areaChips"></div>
+      <div class="add-row">
+        <input type="text" id="newAreaInput" class="f" placeholder="새 구역 이름"/>
+        <button onclick="addArea()">추가</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🏗️ 현장 관리</div>
+      <div class="hint">다른 회사/현장을 이 앱에 새로 연결하거나, 직원 초대 링크를 만듭니다.</div>
+      <a class="link-btn" href="site-setup.html">새 현장 만들기 / 직원 초대 링크</a>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🖼️ 사진 · 일보 열람</div>
+      <div class="hint">현재 현장에 올라온 사진과 작업 기록을 모아 보고, 분류별로 내려받을 수 있습니다.</div>
+      <a class="link-btn" href="gallery/index.html">사진/일보 갤러리 열기</a>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+<div id="toastE"></div>
+
+<script>
+// ── Supabase: 로컬에 저장된 현장 설정이 있으면 그걸 쓰고, 없으면 기본 현장을 쓴다 (site-setup.html 참고) ──
+var DEFAULT_SUPABASE_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
+var DEFAULT_SUPABASE_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
+var SUPABASE_URL=localStorage.getItem('site_supabase_url')||DEFAULT_SUPABASE_URL;
+var SUPABASE_KEY=localStorage.getItem('site_supabase_key')||DEFAULT_SUPABASE_KEY;
+var sbClient=null;
+try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }catch(e){console.error("Supabase 초기화 실패",e);}
+
+function showT(m){var t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none';},2500);}
+function showTE(m){var t=document.getElementById('toastE');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none';},6000);}
+
+function logout(){
+  ['member_id','member_name','member_company','member_project','member_phone','member_category','senderName'].forEach(function(k){localStorage.removeItem(k);});
+  location.href='login.html';
+}
+
+// ── 권한 게이트: 로그인 + category==='관리자'만 통과 ──
+(function(){
+  var memberId=localStorage.getItem('member_id');
+  if(!memberId){ location.href='login.html'; return; }
+  var category=localStorage.getItem('member_category');
+  if(category!=='관리자'){
+    document.getElementById('gateMsg').textContent='관리자 권한이 있는 계정으로만 볼 수 있는 화면입니다. (현재 계정: '+(localStorage.getItem('member_name')||'-')+' / '+(category||'-')+')';
+    document.getElementById('gateCard').style.display='block';
+    return;
+  }
+  document.getElementById('hdrWho').textContent=(localStorage.getItem('member_name')||'')+' · '+(localStorage.getItem('member_company')||'');
+  document.getElementById('adminBody').style.display='block';
+  initAdmin();
+})();
+
+// ── 작업분류/구역 데이터 (index.html과 동일한 저장 구조를 그대로 씀) ──
+var MENUS=["시공","품질","자재","안전","화기/유도"];
+var DEFAULT_CATS_시공=["DCS Panel","LCP","Junction Box","Field Instrument","Cable Duct","Cable Tray",
+  "Conduit Pipe","Air Pipe","Hook Up","Stanchion","Support","Connection","Line Check","Loop Test",
+  "Leak Test","Instrument Calibration","Steam Tracing Tube","Steam Tracing Insulation","Scaffolding","Toe Plate","Others","관리자"];
+var DEFAULT_CATS_안전=["개인보호구","안전난간","소화기","전기안전","고소작업","위험물보관","비상통로","중장비안전","밀폐공간","낙하물방지","기타"];
+var DEFAULT_CATS_화기유도=["용접작업","절단작업","화재감시","가연물제거","방화포","가스누출점검","소화기배치","유도원배치","차량유도","작업구간통제","기타"];
+var DEFAULT_CATS_BY_MENU={"시공":DEFAULT_CATS_시공,"자재":DEFAULT_CATS_시공,"안전":DEFAULT_CATS_안전,"품질":DEFAULT_CATS_시공,"화기/유도":DEFAULT_CATS_화기유도};
+var DEFAULT_AREAS=["SCC","U&O"];
+function loadList(key,def){
+  try{ var v=JSON.parse(localStorage.getItem(key)); return (Array.isArray(v)&&v.length)?v:def.slice(); }
+  catch(e){ return def.slice(); }
+}
+function saveList(key,list){ localStorage.setItem(key,JSON.stringify(list)); }
+function loadCatsByMenu(){
+  try{
+    var v=JSON.parse(localStorage.getItem("custom_categories_by_menu"));
+    if(v&&typeof v==="object"){
+      MENUS.forEach(function(m){ if(!Array.isArray(v[m])||!v[m].length) v[m]=DEFAULT_CATS_BY_MENU[m].slice(); });
+      return v;
+    }
+  }catch(e){}
+  var obj={};
+  MENUS.forEach(function(m){ obj[m]=DEFAULT_CATS_BY_MENU[m].slice(); });
+  return obj;
+}
+function saveCatsByMenu(){ localStorage.setItem("custom_categories_by_menu",JSON.stringify(catsByMenu)); }
+var catsByMenu=loadCatsByMenu();
+var customAreas=loadList("custom_areas",DEFAULT_AREAS);
+var editMenu="시공";
+
+async function pushSettingsToSupabase(){
+  if(!sbClient)return;
+  try{
+    var res=await sbClient.from('app_settings').upsert({
+      id:'global', cats_by_menu:catsByMenu, areas:customAreas, updated_at:new Date().toISOString()
+    });
+    if(res.error) console.error("설정 클라우드 동기화 실패",res.error.message);
+  }catch(e){console.error("설정 클라우드 동기화 실패",e);}
+}
+async function fetchSettingsFromSupabase(){
+  if(!sbClient)return;
+  try{
+    var res=await sbClient.from('app_settings').select('*').eq('id','global').single();
+    if(res.error||!res.data)return;
+    var data=res.data;
+    if(data.cats_by_menu){
+      MENUS.forEach(function(m){ if(Array.isArray(data.cats_by_menu[m])&&data.cats_by_menu[m].length) catsByMenu[m]=data.cats_by_menu[m]; });
+      saveCatsByMenu();
+    }
+    if(Array.isArray(data.areas)&&data.areas.length){ customAreas=data.areas; saveList("custom_areas",customAreas); }
+    renderCatMenuTabs(); renderCatChips(); renderAreaChips();
+  }catch(e){console.error("설정 클라우드 불러오기 실패",e);}
+}
+
+function renderCatMenuTabs(){
+  document.getElementById("catMenuTabs").innerHTML=MENUS.map(function(m){
+    return '<button type="button" class="menu-tab'+(m===editMenu?' active':'')+'" onclick="switchEditMenu(\''+m+'\')">'+m+'</button>';
+  }).join('');
+}
+function switchEditMenu(m){ editMenu=m; renderCatMenuTabs(); renderCatChips(); }
+function renderCatChips(){
+  var list=catsByMenu[editMenu]||[];
+  document.getElementById("catChips").innerHTML=list.map(function(c,i){
+    return '<span class="chip">'+c+'<button onclick="removeCategory('+i+')" title="삭제">&#10005;</button></span>';
+  }).join('');
+}
+function addCategory(){
+  var inp=document.getElementById("newCatInput");
+  var v=inp.value.trim();
+  var list=catsByMenu[editMenu]||(catsByMenu[editMenu]=[]);
+  if(!v||list.indexOf(v)!==-1)return;
+  list.push(v);
+  saveCatsByMenu(); inp.value=""; renderCatChips(); pushSettingsToSupabase();
+  showT('분류가 추가되었습니다');
+}
+function removeCategory(i){
+  var list=catsByMenu[editMenu]||[];
+  if(list.length<=1)return;
+  list.splice(i,1);
+  saveCatsByMenu(); renderCatChips(); pushSettingsToSupabase();
+}
+function renderAreaChips(){
+  document.getElementById("areaChips").innerHTML=customAreas.map(function(a,i){
+    return '<span class="chip">'+a+'<button onclick="removeArea('+i+')" title="삭제">&#10005;</button></span>';
+  }).join('');
+}
+function addArea(){
+  var inp=document.getElementById("newAreaInput");
+  var v=inp.value.trim();
+  if(!v||customAreas.indexOf(v)!==-1)return;
+  customAreas.push(v);
+  saveList("custom_areas",customAreas); inp.value=""; renderAreaChips(); pushSettingsToSupabase();
+  showT('구역이 추가되었습니다');
+}
+function removeArea(i){
+  if(customAreas.length<=1)return;
+  customAreas.splice(i,1);
+  saveList("custom_areas",customAreas); renderAreaChips(); pushSettingsToSupabase();
+}
+
+// ── 회원 승인 대기 ──
+async function renderPendingMembers(){
+  if(!sbClient)return;
+  var listEl=document.getElementById("pendingList");
+  var countEl=document.getElementById("pendingCount");
+  try{
+    var res=await sbClient.from('members').select('*').eq('approved',false).order('created_at',{ascending:true});
+    if(res.error){ listEl.innerHTML='<div style="font-size:13px;color:#E74C3C;">불러오기 실패: '+res.error.message+'</div>'; return; }
+    var rows=res.data||[];
+    countEl.textContent=rows.length;
+    if(!rows.length){ listEl.innerHTML='<div style="font-size:13px;color:#A0BBD4;">대기 중인 가입 신청이 없습니다.</div>'; return; }
+    listEl.innerHTML=rows.map(function(m){
+      return '<div class="pending-item">'
+        +'<div class="pending-name">'+m.name+' <span style="font-weight:400;color:#5A7A9A;">('+m.phone+')</span></div>'
+        +'<div class="pending-sub">'+m.company+' · '+m.project+' · '+(m.category||'-')+'</div>'
+        +'<div class="pending-actions">'
+        +'<button class="btn-ok" onclick="approveMember(\''+m.id+'\')">승인</button>'
+        +'<button class="btn-no" onclick="rejectMember(\''+m.id+'\',\''+m.name.replace(/'/g,"")+'\')">거부</button>'
+        +'</div></div>';
+    }).join('');
+  }catch(e){ listEl.innerHTML='<div style="font-size:13px;color:#E74C3C;">불러오기 실패</div>'; console.error(e); }
+}
+async function approveMember(id){
+  var res=await sbClient.from('members').update({approved:true}).eq('id',id);
+  if(res.error){ showTE('승인 실패: '+res.error.message); return; }
+  showT('승인했습니다'); renderPendingMembers();
+}
+async function rejectMember(id,name){
+  if(!confirm(name+' 가입 신청을 거부하고 삭제할까요?'))return;
+  var res=await sbClient.from('members').delete().eq('id',id);
+  if(res.error){ showTE('거부 실패: '+res.error.message); return; }
+  showT('거부했습니다'); renderPendingMembers();
+}
+
+function initAdmin(){
+  renderCatMenuTabs();
+  renderCatChips();
+  renderAreaChips();
+  renderPendingMembers();
+  fetchSettingsFromSupabase();
+}
+</script>
 </body>
 </html>

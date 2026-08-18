@@ -263,38 +263,16 @@ textarea.f{resize:none;height:48px;}
   <button id="camShotBtn" onclick="captureShot()"></button>
 </div>
 
-<!-- 설정 -->
+<!-- 설정: 근로자가 매일 쓰는 항목만 남기고, 회원승인/작업분류/구역 관리·현장 관리는
+     관리자 전용 화면(admin.html)으로 옮겼다. -->
 <div id="settingsOverlay">
   <div id="settingsBox">
     <div class="set-header">
       <span>⚙️ 설정</span>
       <button onclick="closeSettings()">&#10005;</button>
     </div>
-    <div class="set-section">
-      <div class="set-title" id="catSectionTitle">작업 분류 관리</div>
-      <div class="chip-row" id="catChips"></div>
-      <div class="add-row">
-        <input type="text" id="newCatInput" class="f" placeholder="새 분류 이름"/>
-        <button onclick="addCategory()">추가</button>
-      </div>
-    </div>
-    <div class="set-section">
-      <div class="set-title">작업 구역 관리</div>
-      <div class="chip-row" id="areaChips"></div>
-      <div class="add-row">
-        <input type="text" id="newAreaInput" class="f" placeholder="새 구역 이름"/>
-        <button onclick="addArea()">추가</button>
-      </div>
-    </div>
-    <button onclick="saveSettingsChanges()" style="width:100%;margin-top:14px;background:var(--brand-2);
-      color:#fff;border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:800;cursor:pointer;">💾 저장</button>
-    <div class="set-section">
-      <div class="set-title">회원 승인 대기 <span id="pendingCount" style="color:var(--brand-2);">0</span></div>
-      <div id="pendingList" style="display:flex;flex-direction:column;gap:8px;"></div>
-    </div>
-    <div class="set-section">
-      <div class="set-title">현장 관리</div>
-      <a href="site-setup.html" style="display:block;text-align:center;background:#F7FAFC;border:1.5px solid #C8D8E8;border-radius:10px;padding:10px;font-size:14px;font-weight:700;color:var(--brand-2);text-decoration:none;">새 현장 만들기 / 직원 초대 링크</a>
+    <div class="set-section" id="adminLinkSection" style="display:none;">
+      <a href="admin.html" style="display:block;text-align:center;background:#F7FAFC;border:1.5px solid #C8D8E8;border-radius:10px;padding:10px;font-size:14px;font-weight:700;color:var(--brand-2);text-decoration:none;">🛠️ 관리자 화면 열기</a>
     </div>
     <div class="set-section">
       <div class="set-title">계정</div>
@@ -710,55 +688,15 @@ function populateAreaSelect(preserve){
   if(prev&&customAreas.indexOf(prev)!==-1) el.value=prev;
 }
 
-var tempCats=null, tempAreas=null;
+// 회원 승인 대기/작업분류·구역 편집/현장 관리는 관리자 전용 화면(admin.html)으로 옮겼다.
+// 여기서는 그 화면이 저장한 값을 읽어서(app_settings 실시간 동기화) 촬영 폼 드롭다운을
+// 채우는 용도로만 customCats/customAreas를 쓴다.
 function openSettings(){
-  var lbl=document.getElementById("catSectionTitle");
-  var d=LABELS_BY_MENU[activeMenu]||{};
-  if(lbl) lbl.textContent=(d.cat||"작업 분류")+" 관리 ("+activeMenu+")";
-  tempCats=customCats.slice();
-  tempAreas=customAreas.slice();
-  renderCatChips();
-  renderAreaChips();
-  renderPendingMembers();
+  document.getElementById("adminLinkSection").style.display=
+    (localStorage.getItem('member_category')==='관리자')?'block':'none';
   document.getElementById("settingsOverlay").style.display="flex";
 }
-
-// ── 회원 승인 대기 목록 ──
-async function renderPendingMembers(){
-  if(!sbClient)return;
-  var listEl=document.getElementById("pendingList");
-  var countEl=document.getElementById("pendingCount");
-  try{
-    var res=await sbClient.from('members').select('*').eq('approved',false).order('created_at',{ascending:true});
-    if(res.error){ listEl.innerHTML='<div style="font-size:13px;color:#E74C3C;">불러오기 실패: '+res.error.message+'</div>'; return; }
-    var rows=res.data||[];
-    countEl.textContent=rows.length;
-    if(!rows.length){ listEl.innerHTML='<div style="font-size:13px;color:#A0BBD4;">대기 중인 가입 신청이 없습니다.</div>'; return; }
-    listEl.innerHTML=rows.map(function(m){
-      return '<div style="background:#F7FAFC;border:1.5px solid #C8D8E8;border-radius:10px;padding:10px 12px;">'
-        +'<div style="font-size:14px;font-weight:700;color:#1A2332;">'+m.name+' <span style="font-weight:400;color:#5A7A9A;">('+m.phone+')</span></div>'
-        +'<div style="font-size:12px;color:#5A7A9A;margin-top:2px;">'+m.company+' · '+m.project+' · '+(m.category||'-')+'</div>'
-        +'<div style="display:flex;gap:6px;margin-top:8px;">'
-        +'<button onclick="approveMember(\''+m.id+'\')" style="flex:1;background:#27AE60;color:#fff;border:none;border-radius:8px;padding:8px;font-size:13px;font-weight:700;cursor:pointer;">승인</button>'
-        +'<button onclick="rejectMember(\''+m.id+'\',\''+m.name.replace(/'/g,"")+'\')" style="flex:1;background:#E74C3C;color:#fff;border:none;border-radius:8px;padding:8px;font-size:13px;font-weight:700;cursor:pointer;">거부</button>'
-        +'</div></div>';
-    }).join('');
-  }catch(e){ listEl.innerHTML='<div style="font-size:13px;color:#E74C3C;">불러오기 실패</div>'; console.error(e); }
-}
-async function approveMember(id){
-  var res=await sbClient.from('members').update({approved:true}).eq('id',id);
-  if(res.error){ alert('승인 실패: '+res.error.message); return; }
-  renderPendingMembers();
-}
-async function rejectMember(id,name){
-  if(!confirm(name+' 가입 신청을 거부하고 삭제할까요?'))return;
-  var res=await sbClient.from('members').delete().eq('id',id);
-  if(res.error){ alert('거부 실패: '+res.error.message); return; }
-  renderPendingMembers();
-}
-
 function closeSettings(){
-  tempCats=null; tempAreas=null;
   document.getElementById("settingsOverlay").style.display="none";
 }
 async function pushSettingsToSupabase(){
@@ -811,57 +749,6 @@ function subscribeSettingsRealtime(){
       if(payload.new) applyRemoteSettings(payload.new);
     })
     .subscribe();
-}
-
-function saveSettingsChanges(){
-  if(!tempCats||!tempAreas)return;
-  catsByMenu[activeMenu]=tempCats;
-  customCats=tempCats;
-  saveCatsByMenu();
-  customAreas=tempAreas;
-  saveList("custom_areas",customAreas);
-  populateCatSelect(true);
-  populateAreaSelect(true);
-  tempCats=null; tempAreas=null;
-  document.getElementById("settingsOverlay").style.display="none";
-  showT("설정이 저장되었습니다");
-  pushSettingsToSupabase();
-}
-function renderCatChips(){
-  document.getElementById("catChips").innerHTML=tempCats.map(function(c,i){
-    return '<span class="chip">'+c+'<button onclick="removeCategory('+i+')" title="삭제">&#10005;</button></span>';
-  }).join('');
-}
-function addCategory(){
-  var inp=document.getElementById("newCatInput");
-  var v=inp.value.trim();
-  if(!v||tempCats.indexOf(v)!==-1)return;
-  tempCats.push(v);
-  inp.value="";
-  renderCatChips();
-}
-function removeCategory(i){
-  if(tempCats.length<=1)return;
-  tempCats.splice(i,1);
-  renderCatChips();
-}
-function renderAreaChips(){
-  document.getElementById("areaChips").innerHTML=tempAreas.map(function(a,i){
-    return '<span class="chip">'+a+'<button onclick="removeArea('+i+')" title="삭제">&#10005;</button></span>';
-  }).join('');
-}
-function addArea(){
-  var inp=document.getElementById("newAreaInput");
-  var v=inp.value.trim();
-  if(!v||tempAreas.indexOf(v)!==-1)return;
-  tempAreas.push(v);
-  inp.value="";
-  renderAreaChips();
-}
-function removeArea(i){
-  if(tempAreas.length<=1)return;
-  tempAreas.splice(i,1);
-  renderAreaChips();
 }
 
 var savedPhotos=[], lockedInfo=null;
