@@ -559,6 +559,25 @@ let sbClient=null;
 try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }
 catch(e){ console.error('Supabase 초기화 실패',e); }
 
+// ── 사진 이미지 소스 ──────────────────────────────────
+// 사진은 base64 문자열(dataUrl)이 아니라 원본 Blob으로 저장한다(용량 -33%,
+// 무엇보다 화면을 그릴 때 그 큰 문자열을 HTML에 그대로 박아넣지 않아도 됨 —
+// 이게 사진이 많이 쌓였을 때 Out of Memory가 나던 진짜 원인이었다).
+// 화면에 보여줄 때만 짧은 objectURL을 만들어 캐시해서 쓴다.
+// (예전에 dataUrl로 저장된 레코드가 남아있을 수 있어 폴백을 둔다.)
+const photoUrlCache = new Map();
+function photoImgSrc(p){
+  if (p.blob) {
+    if (!photoUrlCache.has(p.id)) photoUrlCache.set(p.id, URL.createObjectURL(p.blob));
+    return photoUrlCache.get(p.id);
+  }
+  return p.dataUrl || '';
+}
+function revokePhotoUrl(id){
+  const u = photoUrlCache.get(id);
+  if (u) { URL.revokeObjectURL(u); photoUrlCache.delete(id); }
+}
+
 async function syncFromSupabase(){
   if(!sbClient){ alert('Supabase 연결 실패'); return; }
   const btn=document.getElementById('syncBtn');
@@ -627,9 +646,6 @@ async function syncFromSupabase(){
           if(ok) folderSaved++;
         }
 
-        const dataUrl=await new Promise((res,rej)=>{
-          const fr=new FileReader();fr.onload=e=>res(e.target.result);fr.onerror=rej;fr.readAsDataURL(blob);
-        });
         const fnP = parseWorkFilename(fname);
         const mn = localStorage.getItem('member_name')||'';
         const sender = rec.sender||mn;
@@ -639,7 +655,7 @@ async function syncFromSupabase(){
           date:rec.date||fnP.date||'', time:rec.time||fnP.time||'', tag:rec.tag||fnP.tag||'',
           cat:rec.cat||fnP.cat||'', wt:rec.work_type||fnP.wt||'', team:sender,
           area:rec.loc||fnP.area||'', note:rec.note||'', name:displayName,
-          size:blob.size, dataUrl,
+          size:blob.size, blob,
           created:rec.created_at||rec.date||new Date().toISOString(),
           source:'cloud', cloud_url:rec.photo_url
         };
@@ -810,7 +826,6 @@ async function loadFromFolder() {
     if (existingNames.has(name)) return;
     try {
       const file = await fileHandle.getFile();
-      const dataUrl = await fileToDataUrl(file);
       const parsed = parseWorkFilename(name);
       const photo = {
         id: Date.now() + Math.random(),
@@ -818,7 +833,7 @@ async function loadFromFolder() {
         tag: parsed.tag||'', wt: parsed.wt||'',
         cat: cat || parsed.cat || '',
         team:'', area:'', note:'',
-        size: file.size, dataUrl,
+        size: file.size, blob: file,
         created: file.lastModified
           ? new Date(file.lastModified).toISOString()
           : new Date().toISOString(),
@@ -942,8 +957,7 @@ async function startBatch() {
     document.getElementById('batchSt').textContent = p.name || '';
 
     try {
-      const resp = await fetch(p.dataUrl);
-      const blob = await resp.blob();
+      const blob = p.blob || await (await fetch(p.dataUrl)).blob();
       const worker = await getOCRWorker(() => {});
       const { data: { text } } = await worker.recognize(blob);
       const parsed = parseOCRText(text);
@@ -1158,7 +1172,7 @@ function photoCard(p) {
   const isSel = selectedIds.has(sid);
   return `<div class="photo-card${isSel?' selected':''}" data-photoid="${sid}" onclick='openDetail(${J(sid)})'>
     <input type="checkbox" class="pc-cb" data-id="${sid}" ${isSel?'checked':''} onclick="event.stopPropagation();toggleSelect(${J(sid)})">
-    <img src="${p.dataUrl}" alt="${p.name||''}" loading="lazy">
+    <img src="${photoImgSrc(p)}" alt="${p.name||''}" loading="lazy">
     <button class="pc-dl-btn" onclick="event.stopPropagation();downloadPhoto(${J(sid)})" title="다운로드">⬇</button>
     <div class="pc-body">
       ${selCat===null?`<div class="pc-cat">${CAT_ICON[p.cat||'Others']||''} ${p.cat||'Others'}</div>`:''}
@@ -1178,7 +1192,7 @@ function downloadPhoto(id) {
     : photos.find(x => x.id === currentDetailId);
   if (!p) return;
   const a = document.createElement('a');
-  a.href = p.dataUrl;
+  a.href = photoImgSrc(p);
   a.download = p.name || ('WORK_' + (p.date||'nodate') + '_' + (p.tag||'NOTAG') + '.jpg');
   a.style.display = 'none';
   document.body.appendChild(a);
@@ -1484,8 +1498,7 @@ async function savePhotos(){
   for(let i=0;i<total;i++){
     const f=pendingFiles[i];
     document.getElementById('upProgLbl').textContent=`${i+1} / ${total}장 저장 중...`;
-    const dataUrl=await fileToDataUrl(f);
-    const p={id:Date.now()+Math.random(),date,time,tag,wt,cat,area,team,note,name:f.name,size:f.size,dataUrl,created:new Date().toISOString()};
+    const p={id:Date.now()+Math.random(),date,time,tag,wt,cat,area,team,note,name:f.name,size:f.size,blob:f,created:new Date().toISOString()};
     await savePhotoToDB(p); photos.unshift(p);
     bar.style.width=`${((i+1)/total)*100}%`;
   }
@@ -1498,8 +1511,6 @@ async function savePhotos(){
   renderSidebar(); renderPhotos(); updateHeader(); closeUpload();
   btn.disabled=false; btn.textContent='💾 저장';
 }
-
-function fileToDataUrl(f){return new Promise(res=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.readAsDataURL(f);});}
 
 // ── 필터 초기화 ───────────────────────────────────────
 function resetFilter() {
@@ -1581,7 +1592,7 @@ async function deleteSelected() {
   if (!confirm(ids.length + '장을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) return;
   for (const sid of ids) {
     const id = photos.find(p => String(p.id) === sid)?.id;
-    if (id !== undefined) await deletePhotoDB(id);
+    if (id !== undefined) { await deletePhotoDB(id); revokePhotoUrl(id); }
   }
   photos = photos.filter(p => !selectedIds.has(String(p.id)));
   exitSelMode();
@@ -1598,7 +1609,7 @@ async function downloadSelected() {
     const p = photos.find(x => String(x.id) === ids[i]);
     if (!p) continue;
     const a = document.createElement('a');
-    a.href = p.dataUrl;
+    a.href = photoImgSrc(p);
     a.download = p.name || ('WORK_' + (p.date||'nodate') + '_' + (p.tag||'NOTAG') + '.jpg');
     a.style.display = 'none';
     document.body.appendChild(a);
@@ -1618,7 +1629,7 @@ function openDetail(id){
   if (selMode) { toggleSelect(String(id)); return; }
   const p=photos.find(x=>String(x.id)===String(id));if(!p)return;
   currentDetailId=p.id;
-  document.getElementById('detImg').src=p.dataUrl;
+  document.getElementById('detImg').src=photoImgSrc(p);
   const m=WT_META[p.wt]||{};
   document.getElementById('dPath').innerHTML=`<span class="pt pt-cat">${CAT_ICON[p.cat]||''} ${p.cat||'—'}</span><span class="pt ${m.ptCls||''}">${m.icon||''} ${p.wt||'—'}</span>`;
   document.getElementById('dTag').textContent=p.tag||'—';
@@ -1685,6 +1696,7 @@ function applyEditNotePreset(sel) {
 async function deletePhoto(){
   if(!confirm('이 사진을 삭제하시겠습니까?'))return;
   await deletePhotoDB(currentDetailId);
+  revokePhotoUrl(currentDetailId);
   photos=photos.filter(p=>p.id!==currentDetailId);
   closeDetail(); renderSidebar(); renderPhotos(); updateHeader();
 }
@@ -1750,6 +1762,8 @@ function removeCat(i){
 function clearAll(){
   if(!confirm('모든 사진과 설정을 삭제합니다.\n이 작업은 되돌릴 수 없습니다.'))return;
   txStore('photos','readwrite').clear();
+  photoUrlCache.forEach(u=>URL.revokeObjectURL(u));
+  photoUrlCache.clear();
   photos=[]; selCat=null; selWt=null;
   renderSidebar(); renderPhotos(); updateHeader(); closeSettings();
 }
