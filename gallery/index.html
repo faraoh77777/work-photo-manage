@@ -719,12 +719,16 @@ async function syncFromSupabase(opts){
     if(error) throw error;
     if(!records||records.length===0){ alert('클라우드에 사진이 없습니다.'); return; }
 
-    // 기존 사진에 team/name/cloud_id 업데이트 (sender가 새로 생기거나 cloud_id가 아직 없는 경우)
+    // 이미 로컬에 있는 사진도 클라우드 값 기준으로 맞춘다 — 다른 사람이 gallery에서
+    // 정보를 수정했으면(syncMetaToCloud) 그 수정 내용이 여기로 반영되어야 "모두에게
+    // 반영"이 완성된다. 예전엔 로컬 값이 비어있을 때만 채워서, 이미 값이 있으면(틀린
+    // 값이어도) 재동기화해도 안 바뀌는 문제가 있었다 — 클라우드가 다르면 무조건 덮어쓴다.
     const recordsById={};
     records.forEach(r=>{ if(r.id!=null) recordsById[r.id]=r; });
     const recordsByUrl={};
     records.forEach(r=>{ if(r.photo_url) recordsByUrl[r.photo_url]=r; });
     const mn0=localStorage.getItem('member_name')||'';
+    const FIELD_MAP=[['date','date'],['time','time'],['tag','tag'],['cat','cat'],['area','loc'],['wt','work_type'],['note','note']];
     let updated=0;
     for(const p of photos){
       if(!p.cloud_url) continue;
@@ -732,12 +736,18 @@ async function syncFromSupabase(opts){
       if(!rec) continue;
       const sender0=rec.sender||mn0;
       let changed=false;
-      if(!p.team&&sender0){p.team=sender0;changed=true;}
+      if(p.cloud_id==null&&rec.id!=null){p.cloud_id=rec.id;changed=true;}
+      // 클라우드 값이 실제로 있을 때만 덮어쓴다 — 자동분류(OCR) 등으로 로컬에 먼저
+      // 채워졌지만 아직 클라우드로 못 올라간 값을 빈 클라우드 값으로 지워버리는 걸 방지.
+      FIELD_MAP.forEach(([localKey,cloudKey])=>{
+        const cv=rec[cloudKey];
+        if(cv&&cv!==p[localKey]){ p[localKey]=cv; changed=true; }
+      });
+      if(sender0&&sender0!==p.team){ p.team=sender0; changed=true; }
       if(sender0&&!p.name.includes(sender0)){
         p.name=p.name.replace(/\.jpg$/i,`_${sender0}.jpg`);
         changed=true;
       }
-      if(p.cloud_id==null&&rec.id!=null){p.cloud_id=rec.id;changed=true;}
       if(changed){await savePhotoToDB(p);updated++;}
     }
 
@@ -1178,7 +1188,11 @@ async function startBatch() {
       if (parsed.cat && parsed.cat !== p.cat) { p.cat = parsed.cat; changed = true; }
       if (parsed.wt  && parsed.wt  !== p.wt)  { p.wt  = parsed.wt;  changed = true; }
       if (parsed.tag && !p.tag)                { p.tag = parsed.tag; changed = true; }
-      if (changed) { await savePhotoToDB(p); updated++; }
+      if (changed) {
+        await savePhotoToDB(p);
+        if (p.cloud_url) syncMetaToCloud(p); // 자동분류 결과도 클라우드에 반영해야 다른 기기에서도 보임
+        updated++;
+      }
     } catch (e) {}
 
     document.getElementById('batchBar').style.width = Math.round(((i + 1) / total) * 100) + '%';
