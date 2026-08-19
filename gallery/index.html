@@ -220,7 +220,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
     <div class="hdr-crumb" id="hdrCrumb"><span class="cc">전체 사진</span></div>
     <div class="spacer"></div>
     <button class="btn btn-ghost" id="folderBtn" onclick="loadFromFolder()" title="PC 폴더에서 사진 불러오기" style="display:none">📂 폴더</button>
-    <button class="btn btn-ghost" id="syncBtn" onclick="syncFromSupabase()" title="클라우드에서 사진 가져오기">☁️ 동기화</button>
+    <button class="btn btn-ghost" id="syncBtn" onclick="openSyncModal()" title="클라우드에서 사진 가져오기">☁️ 동기화</button>
     <button class="btn btn-ghost" onclick="openBatch()" title="OCR로 전체 자동 분류">🔄 자동 분류</button>
     <button class="btn btn-ghost" onclick="openSettings()" title="설정">⚙️</button>
     <span id="hdrUserChip" style="font-size:0.78rem;color:var(--tx2);padding:0 4px;white-space:nowrap;"></span>
@@ -530,6 +530,46 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
   </div>
 </div>
 
+<!-- 동기화 범위 선택 모달 -->
+<div class="overlay" id="syncOverlay">
+  <div class="modal" style="width:420px;">
+    <button class="m-close" onclick="closeSyncModal()">✕</button>
+    <div class="m-title">☁️ 동기화</div>
+    <div style="font-size:0.74rem;color:var(--tx3);margin-bottom:16px;line-height:1.6;">
+      사진이 계속 쌓여서 한 번에 전부 받으면 느리고 무거울 수 있습니다.<br>
+      받아올 기간·분류를 골라주세요.
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <div style="font-size:0.8rem;font-weight:700;color:var(--tx2);margin-bottom:8px;">기간</div>
+      <select id="syncPeriod" style="width:100%;" onchange="onSyncPeriodChange()">
+        <option value="all">전체 기간</option>
+        <option value="7">최근 7일</option>
+        <option value="30" selected>최근 30일</option>
+        <option value="90">최근 90일</option>
+        <option value="custom">직접 지정</option>
+      </select>
+      <div id="syncCustomRange" style="display:none;margin-top:8px;gap:6px;align-items:center;">
+        <input type="date" id="syncStartDate" style="flex:1;">
+        <span style="color:var(--tx3);">~</span>
+        <input type="date" id="syncEndDate" style="flex:1;">
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <div style="font-size:0.8rem;font-weight:700;color:var(--tx2);margin-bottom:8px;">작업 분류</div>
+      <select id="syncCat" style="width:100%;">
+        <option value="">전체 분류</option>
+      </select>
+    </div>
+
+    <div class="m-footer">
+      <button class="btn btn-ghost" onclick="closeSyncModal()">취소</button>
+      <button class="btn btn-primary" onclick="startSyncFromModal()" id="syncStartBtn">☁️ 동기화 시작</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── 인증 체크 ─────────────────────────────────────────
 (function(){
@@ -578,13 +618,45 @@ function revokePhotoUrl(id){
   if (u) { URL.revokeObjectURL(u); photoUrlCache.delete(id); }
 }
 
-async function syncFromSupabase(){
+// ── 동기화 범위 선택 ──────────────────────────────────
+function fmtDate(d){ return d.toISOString().slice(0,10); }
+function openSyncModal(){
+  const sel=document.getElementById('syncCat');
+  sel.innerHTML='<option value="">전체 분류</option>'+cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  onSyncPeriodChange();
+  document.getElementById('syncOverlay').classList.add('show');
+}
+function closeSyncModal(){ document.getElementById('syncOverlay').classList.remove('show'); }
+function onSyncPeriodChange(){
+  const custom=document.getElementById('syncPeriod').value==='custom';
+  document.getElementById('syncCustomRange').style.display=custom?'flex':'none';
+}
+function startSyncFromModal(){
+  const period=document.getElementById('syncPeriod').value;
+  const cat=document.getElementById('syncCat').value;
+  let startDate=null, endDate=null;
+  if(period==='custom'){
+    startDate=document.getElementById('syncStartDate').value||null;
+    endDate=document.getElementById('syncEndDate').value||null;
+  }else if(period!=='all'){
+    const d=new Date(); d.setDate(d.getDate()-Number(period));
+    startDate=fmtDate(d);
+  }
+  closeSyncModal();
+  syncFromSupabase({startDate,endDate,cat});
+}
+
+async function syncFromSupabase(opts){
+  opts=opts||{};
   if(!sbClient){ alert('Supabase 연결 실패'); return; }
   const btn=document.getElementById('syncBtn');
   btn.disabled=true; btn.textContent='⏳ 동기화 중...';
   try {
-    const {data:records,error}=await sbClient
-      .from('work_photos').select('*').order('date',{ascending:false});
+    let q=sbClient.from('work_photos').select('*').order('date',{ascending:false});
+    if(opts.startDate) q=q.gte('date',opts.startDate);
+    if(opts.endDate)   q=q.lte('date',opts.endDate);
+    if(opts.cat)        q=q.eq('cat',opts.cat);
+    const {data:records,error}=await q;
     if(error) throw error;
     if(!records||records.length===0){ alert('클라우드에 사진이 없습니다.'); return; }
 
