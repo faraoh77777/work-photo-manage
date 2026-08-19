@@ -519,6 +519,12 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
       </div>
     </div>
 
+    <div style="margin-bottom:18px;">
+      <div style="font-size:0.8rem;font-weight:700;color:var(--tx2);margin-bottom:8px;">클라우드 재동기화</div>
+      <div style="font-size:0.74rem;color:var(--tx3);margin-bottom:8px;line-height:1.6;">이 기기에서 사진 정보를 수정했는데 서버에 반영이 안 된 것 같으면 눌러주세요.</div>
+      <button class="btn btn-ghost" id="resyncAllBtn" onclick="resyncAllMetaToCloud()">♻️ 로컬 수정 내용 서버로 재동기화</button>
+    </div>
+
     <div style="border-top:1px solid var(--bd);padding-top:14px;">
       <div style="font-size:0.8rem;font-weight:700;color:var(--tx2);margin-bottom:10px;">위험 구역</div>
       <button class="btn btn-danger" onclick="clearAll()">🗑 모든 사진 삭제</button>
@@ -660,26 +666,36 @@ async function syncFromSupabase(opts){
     if(error) throw error;
     if(!records||records.length===0){ alert('클라우드에 사진이 없습니다.'); return; }
 
-    // 기존 사진에 team/name 업데이트 (sender가 새로 생긴 경우)
+    // 기존 사진에 team/name/cloud_id 업데이트 (sender가 새로 생기거나 cloud_id가 아직 없는 경우)
+    const recordsById={};
+    records.forEach(r=>{ if(r.id!=null) recordsById[r.id]=r; });
+    const recordsByUrl={};
+    records.forEach(r=>{ if(r.photo_url) recordsByUrl[r.photo_url]=r; });
     const mn0=localStorage.getItem('member_name')||'';
     let updated=0;
-    for(const rec of records){
-      if(!rec.photo_url) continue;
-      const ex=photos.find(p=>p.cloud_url===rec.photo_url);
-      if(!ex) continue;
+    for(const p of photos){
+      if(!p.cloud_url) continue;
+      const rec=(p.cloud_id!=null?recordsById[p.cloud_id]:null)||recordsByUrl[p.cloud_url];
+      if(!rec) continue;
       const sender0=rec.sender||mn0;
       let changed=false;
-      if(!ex.team&&sender0){ex.team=sender0;changed=true;}
-      if(sender0&&!ex.name.includes(sender0)){
-        ex.name=ex.name.replace(/\.jpg$/i,`_${sender0}.jpg`);
+      if(!p.team&&sender0){p.team=sender0;changed=true;}
+      if(sender0&&!p.name.includes(sender0)){
+        p.name=p.name.replace(/\.jpg$/i,`_${sender0}.jpg`);
         changed=true;
       }
-      if(changed){await savePhotoToDB(ex);updated++;}
+      if(p.cloud_id==null&&rec.id!=null){p.cloud_id=rec.id;changed=true;}
+      if(changed){await savePhotoToDB(p);updated++;}
     }
 
-    // photo_url 기준으로 중복 제거
+    // id(없으면 url) 기준으로 이미 로컬에 있는 사진은 걸러낸다
+    const localIds=new Set(photos.filter(p=>p.cloud_id!=null).map(p=>p.cloud_id));
     const localUrls=new Set(photos.filter(p=>p.cloud_url).map(p=>p.cloud_url));
-    const newRecs=records.filter(r=>r.photo_url&&!localUrls.has(r.photo_url));
+    const newRecs=records.filter(r=>{
+      if(r.id!=null&&localIds.has(r.id)) return false;
+      if(r.photo_url&&localUrls.has(r.photo_url)) return false;
+      return true;
+    });
     if(newRecs.length===0){
       if(updated>0){
         photos.sort((a,b)=>(b.date+b.created).localeCompare(a.date+a.created));
@@ -729,7 +745,7 @@ async function syncFromSupabase(opts){
           area:rec.loc||fnP.area||'', note:rec.note||'', name:displayName,
           size:blob.size, blob,
           created:rec.created_at||rec.date||new Date().toISOString(),
-          source:'cloud', cloud_url:rec.photo_url
+          source:'cloud', cloud_url:rec.photo_url, cloud_id:rec.id!=null?rec.id:null
         };
         await savePhotoToDB(photo);
         photos.unshift(photo);
@@ -754,6 +770,74 @@ async function syncFromSupabase(opts){
   }finally{
     btn.disabled=false; btn.textContent='☁️ 동기화';
   }
+}
+
+// gallery에서 사진 정보를 수정하면 로컬 저장만 하고 끝나서, 다른 기기에서 재동기화하면
+// 고치기 전 값이 그대로 다시 내려오는 문제가 있었다. 수정 즉시 클라우드 원본 행도 같이
+// 갱신한다. daesun gallery(work-gallery-daesun)의 syncEditToCloud를 참고했으나, 파일명이
+// 메타데이터와 안 맞아지더라도 스토리지 파일을 옮기는(rename) 위험한 동작은 하지 않고
+// 데이터 컬럼만 갱신한다 — 실패해도 파일명 불일치만 남을 뿐 사진 손실 위험이 없다.
+async function syncMetaToCloud(p){
+  if(!p.cloud_url||!sbClient) return;
+  try{
+    const match = p.cloud_id!=null ? {column:'id',value:p.cloud_id} : {column:'photo_url',value:p.cloud_url};
+    const {error}=await sbClient.from('work_photos').update({
+      date:p.date||'', time:p.time||'', tag:p.tag||'',
+      cat:p.cat||'', loc:p.area||'', work_type:p.wt||'',
+      note:p.note||'', sender:p.team||''
+    }).eq(match.column,match.value);
+    if(error) console.warn('[클라우드 동기화] 메타데이터 반영 실패:',error.message);
+  }catch(e){ console.warn('[클라우드 동기화] 예외:',e); }
+}
+
+// Storage 업로드 경로에 한글이 섞이면 Supabase가 "Invalid key"로 거부한다(work-shoot에서
+// 실제로 겪은 버그, index.html의 sanitizeForStorageKey와 동일한 처리).
+function sanitizeForStorageKey(name){
+  const dot=name.lastIndexOf('.');
+  const base=dot>=0?name.slice(0,dot):name;
+  const ext=dot>=0?name.slice(dot):'';
+  const cleaned=base.replace(/[^\x00-\x7F]/g,'').replace(/_{2,}/g,'_').replace(/^_+|_+$/g,'');
+  return (cleaned||'photo')+ext;
+}
+
+// gallery에서 새로 추가한 사진(폴더 불러오기/직접 업로드)은 지금까지 로컬에만 저장되고
+// 클라우드에는 안 올라갔다 — 이 기기가 아니면 그 사진을 아무도 못 보는 문제가 있어서,
+// 클라우드에도 함께 올리도록 한다. 실패해도 로컬 저장은 이미 되어 있으니 조용히 넘어간다.
+async function uploadPhotoToCloud(p, file){
+  if(!sbClient) return;
+  try{
+    const fname=sanitizeForStorageKey(p.name||('photo_'+Date.now()+'.jpg'));
+    const filePath=`${p.date||'nodate'}/${fname}`;
+    const {error:stErr}=await sbClient.storage.from('work-photo').upload(filePath,file,{contentType:file.type||'image/jpeg',upsert:true});
+    if(stErr){ console.warn('[업로드] 클라우드 저장 실패, 로컬에만 저장됨:',stErr.message); return; }
+    const photoUrl=sbClient.storage.from('work-photo').getPublicUrl(filePath).data.publicUrl;
+    const {data:inserted,error:dbErr}=await sbClient.from('work_photos').insert({
+      date:p.date||'', time:p.time||'', tag:p.tag||'',
+      cat:p.cat||'', loc:p.area||'', work_type:p.wt||'',
+      note:p.note||'', photo_url:photoUrl, sender:p.team||''
+    }).select();
+    if(dbErr){ console.warn('[업로드] 클라우드 DB 반영 실패, 로컬에만 저장됨:',dbErr.message); return; }
+    p.cloud_url=photoUrl;
+    p.cloud_id=(inserted&&inserted[0]&&inserted[0].id!=null)?inserted[0].id:null;
+    await savePhotoToDB(p);
+  }catch(e){ console.warn('[업로드] 클라우드 업로드 예외, 로컬에만 저장됨:',e); }
+}
+
+// 예전에 로컬에서만 수정되고 클라우드엔 반영 안 된 사진들을 한 번에 복구하는 수동 버튼.
+// (daesun gallery에서 실제로 이 배선이 빠졌던 적이 있어— 같은 실수를 대비한 안전장치)
+async function resyncAllMetaToCloud(){
+  if(!sbClient){ alert('클라우드 연결이 되어 있지 않습니다.'); return; }
+  const targets=photos.filter(p=>p.cloud_url);
+  if(!targets.length){ alert('클라우드와 연결된 사진이 없습니다.'); return; }
+  if(!confirm(`클라우드에 연결된 사진 ${targets.length}장의 현재 값(기기번호/분류/작업구역/날짜/특이사항 등)을 서버로 다시 올릴까요?`)) return;
+  const btn=document.getElementById('resyncAllBtn');
+  if(btn) btn.disabled=true;
+  for(let i=0;i<targets.length;i++){
+    if(btn) btn.textContent=`⏳ 재동기화 중 (${i+1}/${targets.length})...`;
+    await syncMetaToCloud(targets[i]);
+  }
+  if(btn){ btn.disabled=false; btn.textContent='♻️ 로컬 수정 내용 서버로 재동기화'; }
+  alert(`✅ ${targets.length}장 서버 재동기화 완료`);
 }
 
 // ── PC 폴더 저장 ────────────────────────────────────
@@ -1595,6 +1679,7 @@ async function savePhotos(){
     document.getElementById('upProgLbl').textContent=`${i+1} / ${total}장 저장 중...`;
     const p={id:Date.now()+Math.random(),date,time,tag,wt,cat,area,team,note,name:f.name,size:f.size,blob:f,created:new Date().toISOString()};
     await savePhotoToDB(p); photos.unshift(p);
+    await uploadPhotoToCloud(p, f);
     bar.style.width=`${((i+1)/total)*100}%`;
   }
 
@@ -1777,6 +1862,7 @@ async function saveDetailEdit() {
   p.team = document.getElementById('eTeam').value;
   p.area = document.getElementById('eArea').value;
   await savePhotoToDB(p);
+  if (p.cloud_url) syncMetaToCloud(p); // 클라우드 원본에도 반영 — 실패해도 로컬 저장은 이미 끝났으니 조용히 넘어감
   photos.sort((a,b)=>(b.date+b.created).localeCompare(a.date+a.created));
   cancelDetailEdit();
   openDetail(String(p.id));
