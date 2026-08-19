@@ -1122,9 +1122,28 @@ function saveSettings() {
   populateSelects();
 }
 
+// 폴더 스캔 버그 등으로 예전에 쌓인 중복 사진을 gallery를 열 때마다 자동으로 정리한다.
+// (같은 클라우드 사진이 여러 개면 최신 것만 남김)
+async function dedupePhotosOnLoad(list){
+  const keyOf = p => p.cloud_url ? ('url:' + p.cloud_url)
+                   : ('local:' + (p.name || '') + ':' + (p.tag || '') + ':' + (p.date || ''));
+  const groups = {};
+  list.forEach(p => { const k = keyOf(p); (groups[k] = groups[k] || []).push(p); });
+  const toDeleteIds = new Set();
+  Object.values(groups).forEach(g => {
+    if (g.length <= 1) return;
+    g.sort((a,b) => (b.created||'').localeCompare(a.created||''));
+    g.slice(1).forEach(p => toDeleteIds.add(p.id));
+  });
+  if (toDeleteIds.size === 0) return list;
+  for (const id of toDeleteIds) { await deletePhotoDB(id); }
+  console.warn(`[중복 정리] ${toDeleteIds.size}개의 중복 사진을 삭제했습니다.`);
+  return list.filter(p => !toDeleteIds.has(p.id));
+}
+
 function loadPhotos() {
-  txStore('photos').getAll().onsuccess = e => {
-    photos = e.target.result || [];
+  txStore('photos').getAll().onsuccess = async e => {
+    photos = await dedupePhotosOnLoad(e.target.result || []);
     photos.sort((a,b) => (b.date+b.created).localeCompare(a.date+a.created));
     populateSelects();
     populateDateFilter();
