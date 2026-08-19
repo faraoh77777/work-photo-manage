@@ -1104,7 +1104,17 @@ function getFiltered() {
   );
 }
 
-function renderPhotos() {
+// 사진마다 base64 원본을 그대로 그려서, 쌓인 사진 전부를 한 번에 렌더링하면
+// 문자열/이미지 디코딩 메모리가 감당 못 할 만큼 커져 탭이 다운(Out of Memory)되는
+// 문제가 있었다. 한 번에는 최근 것부터 일부만 그리고, '더보기'로 늘려나간다.
+const PHOTO_RENDER_BASE = 120;
+let photoRenderLimit = PHOTO_RENDER_BASE;
+function loadMorePhotosInGrid(){
+  photoRenderLimit += PHOTO_RENDER_BASE;
+  renderPhotos(true);
+}
+function renderPhotos(keepLimit) {
+  if (!keepLimit) photoRenderLimit = PHOTO_RENDER_BASE;
   const filtered = getFiltered();
   const base = selCat === null ? photos.length
              : selWt  === null ? photos.filter(p=>(p.cat||'Others')===selCat).length
@@ -1122,18 +1132,22 @@ function renderPhotos() {
     vc.innerHTML = `<div class="empty"><div class="ei">${base?'🔍':'📂'}</div><p>${msg}</p></div>`;
     return;
   }
+  const toRender = filtered.slice(0, photoRenderLimit);
   const showCatHeader = selCat === null;
   let html = '';
   if (showCatHeader) {
     const groups = {};
-    filtered.forEach(p => { const k=p.cat||'Others'; if(!groups[k])groups[k]=[]; groups[k].push(p); });
+    toRender.forEach(p => { const k=p.cat||'Others'; if(!groups[k])groups[k]=[]; groups[k].push(p); });
     const sortedKeys = Object.keys(groups).sort((a,b)=>(cats.indexOf(a)<0?999:cats.indexOf(a))-(cats.indexOf(b)<0?999:cats.indexOf(b)));
     sortedKeys.forEach(k => {
       html += `<div style="margin-bottom:6px;margin-top:14px;font-size:0.75rem;font-weight:700;color:var(--tx2);">${CAT_ICON[k]||'📁'} ${k} <span style="font-weight:400;color:var(--tx3);">${groups[k].length}장</span></div>`;
       html += `<div class="photo-grid" style="margin-bottom:4px;">${groups[k].map(p=>photoCard(p)).join('')}</div>`;
     });
   } else {
-    html = `<div class="photo-grid">${filtered.map(p=>photoCard(p)).join('')}</div>`;
+    html = `<div class="photo-grid">${toRender.map(p=>photoCard(p)).join('')}</div>`;
+  }
+  if (filtered.length > toRender.length) {
+    html += `<button class="btn btn-ghost" style="width:100%;height:auto;margin:12px 0;padding:12px;" onclick="loadMorePhotosInGrid()">더보기 (${filtered.length - toRender.length}장 더)</button>`;
   }
   vc.innerHTML = html;
 }
