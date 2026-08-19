@@ -182,8 +182,13 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 .pt-post { border-color: rgba(47,129,247,.35); color: var(--ac2); background: rgba(47,129,247,.08); }
 
 /* 사진 상세 모달 */
-.det-img-wrap { border-radius: 8px; overflow: hidden; margin-bottom: 16px; background: var(--bg); }
-.det-img-wrap img { width: 100%; max-height: 380px; object-fit: contain; display: block; }
+.det-img-wrap { position: relative; border-radius: 8px; overflow: hidden; margin-bottom: 16px; background: var(--bg); }
+.det-img-wrap img { width: 100%; max-height: 380px; object-fit: contain; display: block; transform-origin: center center; transition: transform 0.15s ease-out; touch-action: none; }
+.det-img-wrap img.dragging { transition: none; cursor: grabbing; }
+.det-img-wrap img.zoomed { cursor: grab; }
+.det-zoom-ctrl { position: absolute; top: 8px; left: 8px; display: flex; align-items: center; gap: 4px; z-index: 5; }
+.det-zoom-btn { min-width: 28px; height: 28px; padding: 0 6px; border: none; border-radius: 6px; background: rgba(0,0,0,0.55); color: #fff; font-size: 0.85rem; line-height: 1; cursor: pointer; }
+.det-zoom-btn:hover { background: rgba(0,0,0,0.75); }
 .det-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 0.8rem; }
 .det-row { display: flex; flex-direction: column; gap: 2px; }
 .det-lbl { font-size: 0.66rem; color: var(--tx3); font-weight: 600; }
@@ -222,6 +227,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
     <button class="btn btn-ghost" id="folderBtn" onclick="loadFromFolder()" title="PC 폴더에서 사진 불러오기" style="display:none">📂 폴더</button>
     <button class="btn btn-ghost" id="syncBtn" onclick="openSyncModal()" title="클라우드에서 사진 가져오기">☁️ 동기화</button>
     <button class="btn btn-ghost" onclick="openBatch()" title="OCR로 전체 자동 분류">🔄 자동 분류</button>
+    <button class="btn btn-ghost" onclick="openPhotoSheet()" title="이 PC에서 사진대지 생성기(work-log)가 실행 중이어야 열립니다">🖨️ 사진대지</button>
     <button class="btn btn-ghost" id="dupFilterBtn" onclick="toggleDupFilter()" title="같은 기기번호가 여러 장인 사진만 모아보기" style="display:none;color:var(--orange);border-color:rgba(240,136,62,.4);"></button>
     <button class="btn btn-ghost" id="incompleteFilterBtn" onclick="toggleIncompleteFilter()" title="작업분류·기기번호·작업구역·팀명 중 하나라도 비어있는 사진만 모아보기" style="display:none;color:var(--orange);border-color:rgba(240,136,62,.4);"></button>
     <button class="btn btn-ghost" onclick="openSettings()" title="설정">⚙️</button>
@@ -400,9 +406,16 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 
 <!-- 사진 상세 모달 -->
 <div class="overlay" id="detOverlay">
-  <div class="modal" style="width:620px;">
+  <div class="modal" id="detModal" style="width:620px;">
     <button class="m-close" onclick="closeDetail()">✕</button>
-    <div class="det-img-wrap"><img id="detImg" src="" alt=""></div>
+    <div class="det-img-wrap" id="detImgWrap">
+      <img id="detImg" src="" alt="">
+      <div class="det-zoom-ctrl">
+        <button type="button" class="det-zoom-btn" onclick="zoomDetBy(-0.4)" title="축소">−</button>
+        <button type="button" class="det-zoom-btn" id="detZoomPct" onclick="resetDetZoom()" title="원래 크기로">100%</button>
+        <button type="button" class="det-zoom-btn" onclick="zoomDetBy(0.4)" title="확대">+</button>
+      </div>
+    </div>
 
     <!-- 보기 모드 -->
     <div id="detView">
@@ -414,6 +427,10 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
         <div class="det-row"><div class="det-lbl">작업구역</div><div class="det-val" id="dArea"></div></div>
         <div class="det-row" style="grid-column:1/-1"><div class="det-lbl">특이사항</div><div class="det-val" id="dNote"></div></div>
         <div class="det-row"><div class="det-lbl">파일명</div><div class="det-val" id="dName" style="font-size:0.72rem;color:var(--tx2)"></div></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+        <button class="btn btn-ghost" onclick="navigateDetail(-1)">◀ 이전</button>
+        <button class="btn btn-ghost" onclick="navigateDetail(1)">다음 ▶</button>
       </div>
       <div class="m-footer">
         <button class="btn btn-danger" onclick="deletePhoto()">🗑 삭제</button>
@@ -1261,6 +1278,13 @@ async function dedupePhotosOnLoad(list){
   return list.filter(p => !toDeleteIds.has(p.id));
 }
 
+// 사진대지 생성기(work-log)는 이 버튼을 누르는 PC에서 도는 로컬 Flask 서버(포트 5183).
+// gallery는 GitHub Pages 등 어디서 서빙되든 항상 127.0.0.1로 접속을 시도 — 이 PC에 work-log가
+// 켜져 있으면 정상 연결되고, 꺼져 있으면 새 탭에서 접속 실패로 뜬다.
+function openPhotoSheet(){
+  window.open('http://127.0.0.1:5183/', '_blank');
+}
+
 function loadPhotos() {
   txStore('photos').getAll().onsuccess = async e => {
     photos = await dedupePhotosOnLoad(e.target.result || []);
@@ -1960,11 +1984,56 @@ async function downloadSelected() {
 }
 
 // ── 사진 상세 모달 ───────────────────────────────────
+// ── 상세보기 확대/축소·이동 ──────────────────────────
+let detZoom=1, detPanX=0, detPanY=0, detDragging=false;
+let detDragStartX=0, detDragStartY=0, detPanStartX=0, detPanStartY=0;
+const DET_ZOOM_MIN=1, DET_ZOOM_MAX=4;
+let currentDetailIndex=-1;
+function sizeDetModal(img){
+  const iw=img.naturalWidth, ih=img.naturalHeight;
+  if(!iw||!ih)return;
+  const maxImgH=Math.min(window.innerHeight*0.6,560);
+  const w=Math.max(320,Math.min(Math.round(maxImgH*iw/ih),620));
+  document.getElementById('detModal').style.width=w+'px';
+  const meta=document.querySelector('#detModal .det-meta');
+  if(meta) meta.style.gridTemplateColumns=w<440?'1fr':'1fr 1fr';
+}
+function applyDetTransform(){
+  const img=document.getElementById('detImg');
+  if(!img)return;
+  img.style.transform=`translate(${detPanX}px,${detPanY}px) scale(${detZoom})`;
+  img.classList.toggle('zoomed', detZoom>1);
+  const pct=document.getElementById('detZoomPct');
+  if(pct) pct.textContent=Math.round(detZoom*100)+'%';
+}
+function clampDetPan(){
+  const wrap=document.getElementById('detImgWrap');
+  if(!wrap)return;
+  const maxOffX=wrap.clientWidth*(detZoom-1)/2+40;
+  const maxOffY=wrap.clientHeight*(detZoom-1)/2+40;
+  detPanX=Math.max(-maxOffX,Math.min(maxOffX,detPanX));
+  detPanY=Math.max(-maxOffY,Math.min(maxOffY,detPanY));
+}
+function resetDetZoom(){
+  detZoom=1; detPanX=0; detPanY=0;
+  applyDetTransform();
+}
+function zoomDetBy(delta){
+  detZoom=Math.max(DET_ZOOM_MIN,Math.min(DET_ZOOM_MAX,detZoom+delta));
+  if(detZoom<=1){detZoom=1;detPanX=0;detPanY=0;}
+  clampDetPan();
+  applyDetTransform();
+}
 function openDetail(id){
   if (selMode) { toggleSelect(String(id)); return; }
   const p=photos.find(x=>String(x.id)===String(id));if(!p)return;
   currentDetailId=p.id;
-  document.getElementById('detImg').src=photoImgSrc(p);
+  const idxInList=getFiltered().findIndex(x=>x.id===p.id);
+  if(idxInList!==-1) currentDetailIndex=idxInList;
+  resetDetZoom();
+  const img=document.getElementById('detImg');
+  img.onload=()=>sizeDetModal(img);
+  img.src=photoImgSrc(p);
   const m=WT_META[p.wt]||{};
   document.getElementById('dPath').innerHTML=`<span class="pt pt-cat">${CAT_ICON[p.cat]||''} ${p.cat||'—'}</span><span class="pt ${m.ptCls||''}">${m.icon||''} ${p.wt||'—'}</span>`;
   document.getElementById('dTag').textContent=p.tag||'—';
@@ -1975,10 +2044,59 @@ function openDetail(id){
   document.getElementById('dName').textContent=p.name||'';
   document.getElementById('detOverlay').classList.add('show');
 }
+function navigateDetail(dir){
+  const list=getFiltered();
+  let idx=list.findIndex(p=>p.id===currentDetailId);
+  if(idx===-1) idx=currentDetailIndex;
+  if(idx===-1)return;
+  const nextIdx=idx+dir;
+  if(nextIdx<0||nextIdx>=list.length)return;
+  cancelDetailEdit();
+  openDetail(String(list[nextIdx].id));
+}
 function closeDetail(){
   document.getElementById('detOverlay').classList.remove('show');
   cancelDetailEdit();
+  resetDetZoom();
 }
+window.addEventListener('resize', () => {
+  if (document.getElementById('detOverlay').classList.contains('show')) {
+    sizeDetModal(document.getElementById('detImg'));
+  }
+});
+(function initDetZoomEvents(){
+  const wrap=document.getElementById('detImgWrap');
+  const img=document.getElementById('detImg');
+  if(!wrap||!img)return;
+  wrap.addEventListener('wheel',(e)=>{
+    if(!document.getElementById('detOverlay').classList.contains('show'))return;
+    e.preventDefault();
+    zoomDetBy(e.deltaY<0?0.25:-0.25);
+  },{passive:false});
+  wrap.addEventListener('contextmenu',(e)=>{ e.preventDefault(); });
+  wrap.addEventListener('pointerdown',(e)=>{
+    if(detZoom<=1)return;
+    detDragging=true;
+    detDragStartX=e.clientX; detDragStartY=e.clientY;
+    detPanStartX=detPanX; detPanStartY=detPanY;
+    img.classList.add('dragging');
+    wrap.setPointerCapture(e.pointerId);
+  });
+  wrap.addEventListener('pointermove',(e)=>{
+    if(!detDragging)return;
+    detPanX=detPanStartX+(e.clientX-detDragStartX);
+    detPanY=detPanStartY+(e.clientY-detDragStartY);
+    clampDetPan();
+    applyDetTransform();
+  });
+  function endDetDrag(){
+    if(!detDragging)return;
+    detDragging=false;
+    img.classList.remove('dragging');
+  }
+  wrap.addEventListener('pointerup',endDetDrag);
+  wrap.addEventListener('pointercancel',endDetDrag);
+})();
 
 function openDetailEdit() {
   const p = photos.find(x => x.id === currentDetailId); if (!p) return;
