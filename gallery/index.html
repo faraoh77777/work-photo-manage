@@ -600,14 +600,21 @@ async function syncFromSupabase(){
       return;
     }
 
+    // 새 기기에서 처음 동기화하면 미보유 사진이 한꺼번에 수백 장일 수 있는데,
+    // 전부 dataURL로 변환해 메모리에 들고 있다가 탭이 다운(Out of Memory)되는 문제가 있었다.
+    // 한 번에 받는 양을 제한하고, 남은 건 동기화를 다시 눌러 이어받게 한다.
+    const BATCH_LIMIT=60;
+    const recsToProcess=newRecs.slice(0,BATCH_LIMIT);
+    const remaining=newRecs.length-recsToProcess.length;
+
     // 폴더 저장 권한 사전 확인 (루프마다 팝업 방지 — user gesture 컨텍스트 유지)
     const folderOk = dirHandle ? await verifyFolderPermission() : false;
     if (dirHandle && !folderOk) console.warn('[동기화] 폴더 권한 없음 — 파일 저장 건너뜀');
 
     let saved=0, folderSaved=0;
-    for(let i=0;i<newRecs.length;i++){
-      const rec=newRecs[i];
-      btn.textContent='⏳ '+(i+1)+'/'+newRecs.length+'장 다운로드...';
+    for(let i=0;i<recsToProcess.length;i++){
+      const rec=recsToProcess[i];
+      btn.textContent='⏳ '+(i+1)+'/'+recsToProcess.length+'장 다운로드...';
       try{
         const resp=await fetch(rec.photo_url);
         if(!resp.ok) throw new Error('HTTP '+resp.status);
@@ -651,6 +658,7 @@ async function syncFromSupabase(){
         ? `\n💾 ${folderSaved}장 PC 폴더 저장 완료 (${dirHandle.name})`
         : '\n⚠️ PC 폴더 저장 실패 — 설정에서 🔓 허용 버튼을 클릭 후 재시도해 주세요.';
     }
+    if (remaining>0) msg += `\n📥 ${remaining}장 더 남았습니다 — 동기화 버튼을 다시 눌러 이어받아 주세요.`;
     alert(msg);
   }catch(e){
     console.error('동기화 오류:',e);
