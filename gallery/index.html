@@ -31,16 +31,11 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 
 /* 상위 메뉴 */
 .menu-tabs { display: flex; align-items: center; gap: 6px; background: var(--sf); border-bottom: 1px solid var(--bd); padding: 8px 14px; flex-shrink: 0; flex-wrap: wrap; }
-.menu-tab { flex: 0 0 auto; padding: 6px 16px; border-radius: 6px; border: 1px solid var(--bd); background: var(--bg); color: var(--tx2); font-size: 0.8rem; font-weight: 700; cursor: pointer; font-family: inherit; }
-.menu-tab.active { background: var(--ac); border-color: var(--ac); color: #fff; }
-.menu-tab[data-menu="자재"] { border-color: rgba(160,112,58,.45); color: #C9986B; }
-.menu-tab[data-menu="안전"] { border-color: rgba(243,156,18,.45); color: #F5B041; }
-.menu-tab[data-menu="품질"] { border-color: rgba(39,174,96,.45); color: #58D68D; }
-.menu-tab[data-menu="화기/유도"] { border-color: rgba(192,57,43,.45); color: #EC7063; }
-.menu-tab.active[data-menu="자재"] { background: #A0703A; border-color: #A0703A; color: #fff; }
-.menu-tab.active[data-menu="안전"] { background: #F39C12; border-color: #F39C12; color:#1A2332; }
-.menu-tab.active[data-menu="품질"] { background: #1B7A43; border-color: #1B7A43; color: #fff; }
-.menu-tab.active[data-menu="화기/유도"] { background: #C0392B; border-color: #C0392B; color: #fff; }
+.menu-select { flex: 0 0 auto; padding: 7px 30px 7px 14px; border-radius: 6px; border: 1px solid var(--ac); background: var(--ac); color: #fff; font-size: 0.82rem; font-weight: 700; cursor: pointer; font-family: inherit; appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='white'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 8px center; background-size: 16px; }
+.menu-select:focus { outline: none; }
+.menu-select option { background: var(--sf); color: var(--tx); }
 .btn { border: none; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600; padding: 5px 13px; font-family: inherit; height: 30px; white-space: nowrap; }
 .btn-primary { background: var(--ac); color: #fff; }
 .btn-primary:hover { background: var(--ac2); }
@@ -245,11 +240,13 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 
 <!-- 상위 메뉴 -->
 <div class="menu-tabs" id="menuTabs">
-  <button type="button" class="menu-tab" data-menu="시공" onclick="setActiveMenu('시공')">시공</button>
-  <button type="button" class="menu-tab" data-menu="품질" onclick="setActiveMenu('품질')">품질</button>
-  <button type="button" class="menu-tab" data-menu="자재" onclick="setActiveMenu('자재')">자재</button>
-  <button type="button" class="menu-tab" data-menu="안전" onclick="setActiveMenu('안전')">안전</button>
-  <button type="button" class="menu-tab" data-menu="화기/유도" onclick="setActiveMenu('화기/유도')">화기/유도</button>
+  <select id="menuSelect" class="menu-select" onchange="setActiveMenu(this.value)">
+    <option value="시공">시공</option>
+    <option value="품질">품질</option>
+    <option value="자재">자재</option>
+    <option value="안전">안전</option>
+    <option value="화기/유도">화기/유도</option>
+  </select>
   <div class="spacer"></div>
   <button class="btn btn-ghost" id="folderBtn" onclick="loadFromFolder()" title="PC 폴더에서 사진 불러오기" style="display:none">📂 폴더</button>
   <button class="btn btn-ghost" id="syncBtn" onclick="openSyncModal()" title="클라우드에서 사진 가져오기">☁️ 동기화</button>
@@ -1226,9 +1223,8 @@ function setActiveMenu(menu){
   cats=catsByMenu[activeMenu];
   enabledCats=new Set(cats);
   localStorage.setItem("gallery_active_menu",menu);
-  document.querySelectorAll(".menu-tab").forEach(btn=>{
-    btn.classList.toggle("active",btn.getAttribute("data-menu")===menu);
-  });
+  const sel=document.getElementById("menuSelect");
+  if(sel) sel.value=menu;
   applyMenuTheme(activeMenu);
   selCat=null; selWt=null; dupFilterOn=false; incompleteFilterOn=false;
   populateSelects();
@@ -2409,9 +2405,7 @@ document.addEventListener('keydown', e => {
 });
 
 // ── 시작 ─────────────────────────────────────────────
-document.querySelectorAll(".menu-tab").forEach(btn=>{
-  btn.classList.toggle("active",btn.getAttribute("data-menu")===activeMenu);
-});
+document.getElementById("menuSelect").value=activeMenu;
 applyMenuTheme(activeMenu);
 initDB();
 fetchSettingsFromSupabase();
