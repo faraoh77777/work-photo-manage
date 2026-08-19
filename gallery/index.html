@@ -691,10 +691,10 @@ async function syncFromSupabase(opts){
       return;
     }
 
-    // 새 기기에서 처음 동기화하면 미보유 사진이 한꺼번에 수백 장일 수 있는데,
-    // 전부 dataURL로 변환해 메모리에 들고 있다가 탭이 다운(Out of Memory)되는 문제가 있었다.
-    // 한 번에 받는 양을 제한하고, 남은 건 동기화를 다시 눌러 이어받게 한다.
-    const BATCH_LIMIT=60;
+    // 이제 원본을 base64가 아니라 Blob으로 저장해서(메모리 부담이 훨씬 적음) +
+    // 동기화 전에 기간/분류를 먼저 골라서 범위가 좁혀지므로, 한도를 넉넉히 올려도 된다.
+    // 그래도 "전체 기간"처럼 아주 넓게 고른 경우를 대비해 안전장치는 남겨둔다.
+    const BATCH_LIMIT=200;
     const recsToProcess=newRecs.slice(0,BATCH_LIMIT);
     const remaining=newRecs.length-recsToProcess.length;
 
