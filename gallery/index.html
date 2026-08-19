@@ -28,6 +28,19 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 .hdr-crumb .cc { color: var(--tx); font-weight: 600; }
 .hdr-crumb .cs { color: var(--tx3); font-size: 0.75rem; }
 .spacer { flex: 1; }
+
+/* 상위 메뉴 */
+.menu-tabs { display: flex; align-items: center; gap: 6px; background: var(--sf); border-bottom: 1px solid var(--bd); padding: 8px 14px; flex-shrink: 0; flex-wrap: wrap; }
+.menu-tab { flex: 0 0 auto; padding: 6px 16px; border-radius: 6px; border: 1px solid var(--bd); background: var(--bg); color: var(--tx2); font-size: 0.8rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+.menu-tab.active { background: var(--ac); border-color: var(--ac); color: #fff; }
+.menu-tab[data-menu="자재"] { border-color: rgba(160,112,58,.45); color: #C9986B; }
+.menu-tab[data-menu="안전"] { border-color: rgba(243,156,18,.45); color: #F5B041; }
+.menu-tab[data-menu="품질"] { border-color: rgba(39,174,96,.45); color: #58D68D; }
+.menu-tab[data-menu="화기/유도"] { border-color: rgba(192,57,43,.45); color: #EC7063; }
+.menu-tab.active[data-menu="자재"] { background: #A0703A; border-color: #A0703A; color: #fff; }
+.menu-tab.active[data-menu="안전"] { background: #F39C12; border-color: #F39C12; color:#1A2332; }
+.menu-tab.active[data-menu="품질"] { background: #1B7A43; border-color: #1B7A43; color: #fff; }
+.menu-tab.active[data-menu="화기/유도"] { background: #C0392B; border-color: #C0392B; color: #fff; }
 .btn { border: none; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600; padding: 5px 13px; font-family: inherit; height: 30px; white-space: nowrap; }
 .btn-primary { background: var(--ac); color: #fff; }
 .btn-primary:hover { background: var(--ac2); }
@@ -224,17 +237,27 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
   <div class="hdr-right">
     <div class="hdr-crumb" id="hdrCrumb"><span class="cc">전체 사진</span></div>
     <div class="spacer"></div>
-    <button class="btn btn-ghost" id="folderBtn" onclick="loadFromFolder()" title="PC 폴더에서 사진 불러오기" style="display:none">📂 폴더</button>
-    <button class="btn btn-ghost" id="syncBtn" onclick="openSyncModal()" title="클라우드에서 사진 가져오기">☁️ 동기화</button>
-    <button class="btn btn-ghost" onclick="openBatch()" title="OCR로 전체 자동 분류">🔄 자동 분류</button>
-    <button class="btn btn-ghost" onclick="openPhotoSheet()" title="이 PC에서 사진대지 생성기(work-log)가 실행 중이어야 열립니다">🖨️ 사진대지</button>
-    <button class="btn btn-ghost" id="dupFilterBtn" onclick="toggleDupFilter()" title="같은 기기번호가 여러 장인 사진만 모아보기" style="display:none;color:var(--orange);border-color:rgba(240,136,62,.4);"></button>
-    <button class="btn btn-ghost" id="incompleteFilterBtn" onclick="toggleIncompleteFilter()" title="작업분류·기기번호·작업구역·팀명 중 하나라도 비어있는 사진만 모아보기" style="display:none;color:var(--orange);border-color:rgba(240,136,62,.4);"></button>
     <button class="btn btn-ghost" onclick="openSettings()" title="설정">⚙️</button>
     <span id="hdrUserChip" style="font-size:0.78rem;color:var(--tx2);padding:0 4px;white-space:nowrap;"></span>
     <button class="btn btn-ghost" onclick="galleryLogout()" title="로그아웃" style="color:var(--red);border-color:var(--red);">로그아웃</button>
-    <button class="btn btn-primary" onclick="openUpload()">+ 사진 추가</button>
   </div>
+</div>
+
+<!-- 상위 메뉴 -->
+<div class="menu-tabs" id="menuTabs">
+  <button type="button" class="menu-tab" data-menu="시공" onclick="setActiveMenu('시공')">시공</button>
+  <button type="button" class="menu-tab" data-menu="품질" onclick="setActiveMenu('품질')">품질</button>
+  <button type="button" class="menu-tab" data-menu="자재" onclick="setActiveMenu('자재')">자재</button>
+  <button type="button" class="menu-tab" data-menu="안전" onclick="setActiveMenu('안전')">안전</button>
+  <button type="button" class="menu-tab" data-menu="화기/유도" onclick="setActiveMenu('화기/유도')">화기/유도</button>
+  <div class="spacer"></div>
+  <button class="btn btn-ghost" id="folderBtn" onclick="loadFromFolder()" title="PC 폴더에서 사진 불러오기" style="display:none">📂 폴더</button>
+  <button class="btn btn-ghost" id="syncBtn" onclick="openSyncModal()" title="클라우드에서 사진 가져오기">☁️ 동기화</button>
+  <button class="btn btn-ghost" onclick="openBatch()" title="OCR로 전체 자동 분류">🔄 자동 분류</button>
+  <button class="btn btn-ghost" onclick="openPhotoSheet()" title="이 PC에서 사진대지 생성기(work-log)가 실행 중이어야 열립니다">🖨️ 사진대지</button>
+  <button class="btn btn-ghost" id="dupFilterBtn" onclick="toggleDupFilter()" title="같은 기기번호가 여러 장인 사진만 모아보기" style="display:none;color:var(--orange);border-color:rgba(240,136,62,.4);"></button>
+  <button class="btn btn-ghost" id="incompleteFilterBtn" onclick="toggleIncompleteFilter()" title="작업분류·기기번호·작업구역·팀명 중 하나라도 비어있는 사진만 모아보기" style="display:none;color:var(--orange);border-color:rgba(240,136,62,.4);"></button>
+  <button class="btn btn-primary" onclick="openUpload()">+ 사진 추가</button>
 </div>
 
 <!-- 앱 바디 -->
@@ -705,6 +728,50 @@ function startSyncFromModal(){
   syncFromSupabase({startDate,endDate,cat});
 }
 
+// ── 작업분류/구역 설정을 index.html·admin.html과 공유(app_settings) ──
+async function pushSettingsToSupabase(){
+  if(!sbClient)return;
+  try{
+    const res=await sbClient.from('app_settings').upsert({
+      id:'global', cats_by_menu:catsByMenu, areas, updated_at:new Date().toISOString()
+    });
+    if(res.error) console.error("설정 클라우드 동기화 실패",res.error.message);
+  }catch(e){console.error("설정 클라우드 동기화 실패",e);}
+}
+function applyRemoteSettings(data){
+  let changed=false;
+  if(data.cats_by_menu){
+    MENUS.forEach(m=>{
+      if(Array.isArray(data.cats_by_menu[m])&&data.cats_by_menu[m].length){
+        catsByMenu[m]=data.cats_by_menu[m];
+        changed=true;
+      }
+    });
+  }
+  if(Array.isArray(data.areas)&&data.areas.length){ areas=data.areas; changed=true; }
+  if(changed){
+    saveCatsByMenu(); saveAreas();
+    cats=catsByMenu[activeMenu];
+    populateSelects(); renderSidebar(); renderPhotos(); renderFolderList(); renderAreaChips();
+  }
+}
+async function fetchSettingsFromSupabase(){
+  if(!sbClient)return;
+  try{
+    const res=await sbClient.from('app_settings').select('*').eq('id','global').single();
+    if(res.error||!res.data)return;
+    applyRemoteSettings(res.data);
+  }catch(e){console.error("설정 클라우드 불러오기 실패",e);}
+}
+function subscribeSettingsRealtime(){
+  if(!sbClient||!sbClient.channel)return;
+  sbClient.channel('app_settings_changes_gallery')
+    .on('postgres_changes',{event:'*',schema:'public',table:'app_settings',filter:'id=eq.global'},payload=>{
+      if(payload.new) applyRemoteSettings(payload.new);
+    })
+    .subscribe();
+}
+
 async function syncFromSupabase(opts){
   opts=opts||{};
   if(!sbClient){ alert('Supabase 연결 실패'); return; }
@@ -728,7 +795,7 @@ async function syncFromSupabase(opts){
     const recordsByUrl={};
     records.forEach(r=>{ if(r.photo_url) recordsByUrl[r.photo_url]=r; });
     const mn0=localStorage.getItem('member_name')||'';
-    const FIELD_MAP=[['date','date'],['time','time'],['tag','tag'],['cat','cat'],['area','loc'],['wt','work_type'],['note','note']];
+    const FIELD_MAP=[['date','date'],['time','time'],['tag','tag'],['cat','cat'],['area','loc'],['wt','work_type'],['note','note'],['menu','menu']];
     let updated=0;
     for(const p of photos){
       if(!p.cloud_url) continue;
@@ -806,7 +873,7 @@ async function syncFromSupabase(opts){
           date:rec.date||fnP.date||'', time:rec.time||fnP.time||'', tag:rec.tag||fnP.tag||'',
           cat:rec.cat||fnP.cat||'', wt:rec.work_type||fnP.wt||'', team:sender,
           area:rec.loc||fnP.area||'', note:rec.note||'', name:displayName,
-          size:blob.size, blob,
+          size:blob.size, blob, menu:rec.menu||'시공',
           created:rec.created_at||rec.date||new Date().toISOString(),
           source:'cloud', cloud_url:rec.photo_url, cloud_id:rec.id!=null?rec.id:null
         };
@@ -847,7 +914,7 @@ async function syncMetaToCloud(p){
     const {error}=await sbClient.from('work_photos').update({
       date:p.date||'', time:p.time||'', tag:p.tag||'',
       cat:p.cat||'', loc:p.area||'', work_type:p.wt||'',
-      note:p.note||'', sender:p.team||''
+      note:p.note||'', sender:p.team||'', menu:p.menu||activeMenu
     }).eq(match.column,match.value);
     if(error) console.warn('[클라우드 동기화] 메타데이터 반영 실패:',error.message);
   }catch(e){ console.warn('[클라우드 동기화] 예외:',e); }
@@ -877,7 +944,7 @@ async function uploadPhotoToCloud(p, file){
     const {data:inserted,error:dbErr}=await sbClient.from('work_photos').insert({
       date:p.date||'', time:p.time||'', tag:p.tag||'',
       cat:p.cat||'', loc:p.area||'', work_type:p.wt||'',
-      note:p.note||'', photo_url:photoUrl, sender:p.team||''
+      note:p.note||'', photo_url:photoUrl, sender:p.team||'', menu:p.menu||activeMenu
     }).select();
     if(dbErr){ console.warn('[업로드] 클라우드 DB 반영 실패, 로컬에만 저장됨:',dbErr.message); return; }
     p.cloud_url=photoUrl;
@@ -1051,7 +1118,7 @@ async function loadFromFolder() {
         name, date: parsed.date||'', time: parsed.time||'',
         tag: parsed.tag||'', wt: parsed.wt||'',
         cat: cat || parsed.cat || '',
-        team:'', area:'', note:'',
+        team:'', area:'', note:'', menu: activeMenu,
         size: file.size, blob: file,
         created: file.lastModified
           ? new Date(file.lastModified).toISOString()
@@ -1110,16 +1177,63 @@ let currentDetailId = null;
 let ocrWorker = null, currentOCRAbort = false, currentAnalysisFile = null;
 
 let teams = ['A팀','B팀','C팀','D팀'];
-let areas = ['SCC','U&O'];
 let notePresets = [];
-let cats = [
-  'DCS Panel','LCP','Junction Box','Field Instrument',
-  'Cable Duct','Cable Tray','Conduit Pipe','Air Pipe',
-  'Hook Up','Stanchion','Support','Connection',
-  'Line Check','Loop Test','Leak Test',
-  'Instrument Calibration','Steam Tracing Tube','Steam Tracing Insulation',
-  'Scaffolding','Toe Plate','Others'
-];
+
+// ── 상위 메뉴(시공/품질/자재/안전/화기유도) — index.html/admin.html과 동일한 구조 ──
+const MENUS=["시공","품질","자재","안전","화기/유도"];
+const MENU_THEMES={
+  '시공':['#2f81f7','#58a6ff'],
+  '품질':['#27AE60','#58D68D'],
+  '자재':['#A0703A','#C9986B'],
+  '안전':['#F39C12','#F5B041'],
+  '화기/유도':['#C0392B','#EC7063']
+};
+const DEFAULT_CATS_시공=['DCS Panel','LCP','Junction Box','Field Instrument','Cable Duct','Cable Tray',
+  'Conduit Pipe','Air Pipe','Hook Up','Stanchion','Support','Connection','Line Check','Loop Test',
+  'Leak Test','Instrument Calibration','Steam Tracing Tube','Steam Tracing Insulation','Scaffolding','Toe Plate','Others','관리자'];
+const DEFAULT_CATS_안전=['개인보호구','안전난간','소화기','전기안전','고소작업','위험물보관','비상통로','중장비안전','밀폐공간','낙하물방지','기타'];
+const DEFAULT_CATS_화기유도=['용접작업','절단작업','화재감시','가연물제거','방화포','가스누출점검','소화기배치','유도원배치','차량유도','작업구간통제','기타'];
+const DEFAULT_CATS_BY_MENU={"시공":DEFAULT_CATS_시공,"자재":DEFAULT_CATS_시공,"안전":DEFAULT_CATS_안전,"품질":DEFAULT_CATS_시공,"화기/유도":DEFAULT_CATS_화기유도};
+const DEFAULT_AREAS=["SCC","U&O"];
+function loadCatsByMenu(){
+  try{
+    const v=JSON.parse(localStorage.getItem("custom_categories_by_menu"));
+    if(v&&typeof v==="object"){
+      MENUS.forEach(m=>{ if(!Array.isArray(v[m])||!v[m].length) v[m]=DEFAULT_CATS_BY_MENU[m].slice(); });
+      return v;
+    }
+  }catch(e){}
+  const obj={};
+  MENUS.forEach(m=>{ obj[m]=DEFAULT_CATS_BY_MENU[m].slice(); });
+  return obj;
+}
+function saveCatsByMenu(){ localStorage.setItem("custom_categories_by_menu",JSON.stringify(catsByMenu)); }
+let catsByMenu=loadCatsByMenu();
+let areas=(()=>{ try{ const v=JSON.parse(localStorage.getItem("custom_areas")); return (Array.isArray(v)&&v.length)?v:DEFAULT_AREAS.slice(); }catch(e){ return DEFAULT_AREAS.slice(); } })();
+function saveAreas(){ localStorage.setItem("custom_areas",JSON.stringify(areas)); }
+let activeMenu=(MENUS.indexOf(localStorage.getItem("gallery_active_menu"))!==-1)?localStorage.getItem("gallery_active_menu"):"시공";
+// 기존 코드 전체가 'cats'를 그대로 참조하므로, cats는 항상 catsByMenu[activeMenu]와 같은
+// 배열을 가리키게 한다(별도 복사본이 아님 — addCat/removeCat이 catsByMenu도 같이 바뀌게 됨).
+let cats=catsByMenu[activeMenu];
+function applyMenuTheme(menu){
+  const t=MENU_THEMES[menu]||MENU_THEMES['시공'];
+  document.documentElement.style.setProperty('--ac',t[0]);
+  document.documentElement.style.setProperty('--ac2',t[1]);
+}
+function setActiveMenu(menu){
+  if(MENUS.indexOf(menu)===-1)return;
+  activeMenu=menu;
+  cats=catsByMenu[activeMenu];
+  enabledCats=new Set(cats);
+  localStorage.setItem("gallery_active_menu",menu);
+  document.querySelectorAll(".menu-tab").forEach(btn=>{
+    btn.classList.toggle("active",btn.getAttribute("data-menu")===menu);
+  });
+  applyMenuTheme(activeMenu);
+  selCat=null; selWt=null; dupFilterOn=false; incompleteFilterOn=false;
+  populateSelects();
+  renderSidebar(); renderPhotos(); updateHeader();
+}
 
 const CAT_ICON = {
   'DCS Panel':'🖥️','LCP':'🔌','Junction Box':'📦','Field Instrument':'🎛️',
@@ -1151,9 +1265,10 @@ function openBatch() {
 
 async function startBatch() {
   const mode = document.querySelector('input[name="batchMode"]:checked').value;
+  const menuPhotos = photos.filter(p => (p.menu||'시공')===activeMenu);
   const targets = mode === 'uncat'
-    ? photos.filter(p => !p.cat || p.cat === 'Others')
-    : [...photos];
+    ? menuPhotos.filter(p => !p.cat || p.cat === 'Others')
+    : menuPhotos;
 
   if (targets.length === 0) {
     alert('분석할 사진이 없습니다.');
@@ -1247,6 +1362,9 @@ function initDB() {
 }
 function txStore(name,mode='readonly'){ return db.transaction(name,mode).objectStore(name); }
 
+// cats/areas는 이제 localStorage(custom_categories_by_menu/custom_areas)+클라우드(app_settings)로
+// index.html/admin.html과 공유해서 관리한다 — 이 IndexedDB 설정은 gallery 전용 항목(teams/notePresets/
+// enabledCats)만 남는다.
 function loadSettings() {
   return new Promise(res => {
     const r = txStore('settings').get('cfg');
@@ -1254,8 +1372,6 @@ function loadSettings() {
       const d = e.target.result;
       if (d) {
         if (d.teams) teams = d.teams;
-        if (d.cats)  cats  = d.cats;
-        if (d.areas) areas = d.areas;
         if (d.notePresets) notePresets = d.notePresets;
         if (d.enabledCats) enabledCats = new Set(d.enabledCats);
         else enabledCats = new Set(cats);
@@ -1269,7 +1385,7 @@ function loadSettings() {
 }
 
 function saveSettings() {
-  txStore('settings','readwrite').put({ key:'cfg', teams, cats, areas, notePresets, enabledCats:[...enabledCats] });
+  txStore('settings','readwrite').put({ key:'cfg', teams, notePresets, enabledCats:[...enabledCats] });
   populateSelects();
 }
 
@@ -1327,13 +1443,14 @@ document.addEventListener('drop', e => {
 // ── 사이드바 ─────────────────────────────────────────
 function renderSidebar() {
   document.getElementById('sbAll').classList.toggle('sel', selCat === null);
-  document.getElementById('sbAllCnt').textContent = photos.length;
+  const menuPhotos = photos.filter(p => (p.menu||'시공')===activeMenu);
+  document.getElementById('sbAllCnt').textContent = menuPhotos.length;
 
   const list = document.getElementById('sbList');
   const enabledList = cats.filter(c => enabledCats.has(c));
 
   list.innerHTML = enabledList.map(cat => {
-    const cps = photos.filter(p => (p.cat||'Others') === cat);
+    const cps = menuPhotos.filter(p => (p.cat||'Others') === cat);
     const sel = selCat === cat;
 
     return `<div class="sb-cat${sel?' sel':''}" onclick='selectCat(${J(cat)})'>
@@ -1361,6 +1478,7 @@ function normTag(t){ return (t||'').trim(); }
 function getDuplicateTagSet(){
   const counts = {};
   photos.forEach(p=>{
+    if((p.menu||'시공')!==activeMenu) return;
     const t = normTag(p.tag);
     if(!t || t==='-') return;
     counts[t] = (counts[t]||0)+1;
@@ -1377,7 +1495,7 @@ function updateDupBadge(){
   const btn = document.getElementById('dupFilterBtn');
   if(!btn) return;
   const dupSet = getDuplicateTagSet();
-  const count = photos.filter(p=>dupSet.has(normTag(p.tag))).length;
+  const count = photos.filter(p=>(p.menu||'시공')===activeMenu && dupSet.has(normTag(p.tag))).length;
   if(count>0){
     btn.style.display='';
     btn.textContent = dupFilterOn ? '✕ 중복 보기 해제' : `⚠️ 중복 ${count}`;
@@ -1400,7 +1518,7 @@ function toggleIncompleteFilter(){
 function updateIncompleteBadge(){
   const btn = document.getElementById('incompleteFilterBtn');
   if(!btn) return;
-  const count = photos.filter(isIncomplete).length;
+  const count = photos.filter(p=>(p.menu||'시공')===activeMenu && isIncomplete(p)).length;
   if(count>0){
     btn.style.display='';
     btn.textContent = incompleteFilterOn ? '✕ 미입력 보기 해제' : `📝 미입력 ${count}`;
@@ -1415,18 +1533,19 @@ function getFiltered() {
   if(dupFilterOn){
     const dupSet = getDuplicateTagSet();
     return photos
-      .filter(p => dupSet.has(normTag(p.tag)) && (!search || (p.tag||'').toLowerCase().includes(search)))
+      .filter(p => (p.menu||'시공')===activeMenu && dupSet.has(normTag(p.tag)) && (!search || (p.tag||'').toLowerCase().includes(search)))
       .sort((a,b) => normTag(a.tag).localeCompare(normTag(b.tag)) || (b.date+b.created).localeCompare(a.date+a.created));
   }
   if(incompleteFilterOn){
     return photos
-      .filter(p => isIncomplete(p) && (!search || (p.tag||'').toLowerCase().includes(search)))
+      .filter(p => (p.menu||'시공')===activeMenu && isIncomplete(p) && (!search || (p.tag||'').toLowerCase().includes(search)))
       .sort((a,b) => (b.date+b.created).localeCompare(a.date+a.created));
   }
   const date   = document.getElementById('fDate').value;
   const team   = document.getElementById('fTeam').value;
   const wt     = document.getElementById('fWt').value;
   return photos.filter(p =>
+    (p.menu||'시공') === activeMenu &&
     (selCat === null || (p.cat||'Others') === selCat) &&
     (selWt  === null || p.wt === selWt) &&
     (!date   || p.date === date) &&
@@ -1450,16 +1569,17 @@ function renderPhotos(keepLimit) {
   updateIncompleteBadge();
   if (!keepLimit) photoRenderLimit = PHOTO_RENDER_BASE;
   const filtered = getFiltered();
+  const menuPhotos = photos.filter(p=>(p.menu||'시공')===activeMenu);
   let base;
   if (dupFilterOn) {
     const dupSet = getDuplicateTagSet();
-    base = photos.filter(p=>dupSet.has(normTag(p.tag))).length;
+    base = menuPhotos.filter(p=>dupSet.has(normTag(p.tag))).length;
   } else if (incompleteFilterOn) {
-    base = photos.filter(isIncomplete).length;
+    base = menuPhotos.filter(isIncomplete).length;
   } else {
-    base = selCat === null ? photos.length
-         : selWt  === null ? photos.filter(p=>(p.cat||'Others')===selCat).length
-         : photos.filter(p=>(p.cat||'Others')===selCat&&p.wt===selWt).length;
+    base = selCat === null ? menuPhotos.length
+         : selWt  === null ? menuPhotos.filter(p=>(p.cat||'Others')===selCat).length
+         : menuPhotos.filter(p=>(p.cat||'Others')===selCat&&p.wt===selWt).length;
   }
   document.getElementById('fCount').textContent = filtered.length !== base
     ? `${filtered.length} / ${base}장` : `${base}장`;
@@ -1531,7 +1651,10 @@ function downloadPhoto(id) {
 // ── 헤더 브레드크럼 ──────────────────────────────────
 function updateHeader() {
   const el = document.getElementById('hdrCrumb');
-  if (!selCat) { el.innerHTML = `<span class="cc">전체 사진</span><span class="cs">&nbsp;총 ${photos.length}장</span>`; return; }
+  if (!selCat) {
+    const cnt=photos.filter(p=>(p.menu||'시공')===activeMenu).length;
+    el.innerHTML = `<span class="cc">전체 사진</span><span class="cs">&nbsp;총 ${cnt}장</span>`; return;
+  }
   const m = selWt ? (WT_META[selWt]||{icon:'📷'}) : null;
   el.innerHTML = `<span class="cc">${CAT_ICON[selCat]||'📁'} ${selCat}</span>` +
     (selWt ? `<span class="cs">›</span><span class="cc">${m.icon} ${selWt}</span>` : '');
@@ -1826,7 +1949,7 @@ async function savePhotos(){
   for(let i=0;i<total;i++){
     const f=pendingFiles[i];
     document.getElementById('upProgLbl').textContent=`${i+1} / ${total}장 저장 중...`;
-    const p={id:Date.now()+Math.random(),date,time,tag,wt,cat,area,team,note,name:f.name,size:f.size,blob:f,created:new Date().toISOString()};
+    const p={id:Date.now()+Math.random(),date,time,tag,wt,cat,area,team,note,menu:activeMenu,name:f.name,size:f.size,blob:f,created:new Date().toISOString()};
     await savePhotoToDB(p); photos.unshift(p);
     await uploadPhotoToCloud(p, f);
     bar.style.width=`${((i+1)/total)*100}%`;
@@ -2179,7 +2302,7 @@ function closeSettings(){ document.getElementById('setOverlay').classList.remove
 function renderFolderList(){
   const el=document.getElementById('folderList');
   el.innerHTML=cats.map((cat,i)=>{
-    const cnt=photos.filter(p=>(p.cat||'Others')===cat).length;
+    const cnt=photos.filter(p=>(p.menu||'시공')===activeMenu&&(p.cat||'Others')===cat).length;
     return`<div class="folder-item">
       <label>
         <input type="checkbox" ${enabledCats.has(cat)?'checked':''} onchange='toggleFolder(${J(cat)},this.checked)'>
@@ -2206,8 +2329,8 @@ function removeTeam(i){if(teams.length<=1)return;teams.splice(i,1);saveSettings(
 function renderAreaChips(){
   document.getElementById('areaChips').innerHTML=areas.map((a,i)=>`<div class="chip">${a}<button onclick="removeArea(${i})">✕</button></div>`).join('');
 }
-function addArea(){const v=document.getElementById('newArea').value.trim();if(!v||areas.includes(v))return;areas.push(v);document.getElementById('newArea').value='';saveSettings();renderAreaChips();}
-function removeArea(i){areas.splice(i,1);saveSettings();renderAreaChips();}
+function addArea(){const v=document.getElementById('newArea').value.trim();if(!v||areas.includes(v))return;areas.push(v);document.getElementById('newArea').value='';saveAreas();pushSettingsToSupabase();populateSelects();renderAreaChips();}
+function removeArea(i){areas.splice(i,1);saveAreas();pushSettingsToSupabase();populateSelects();renderAreaChips();}
 
 function renderNotePresetChips(){
   document.getElementById('notePresetChips').innerHTML=notePresets.map((n,i)=>`<div class="chip">${n}<button onclick="removeNotePreset(${i})">✕</button></div>`).join('');
@@ -2219,13 +2342,13 @@ function addCat(){
   if(!v||cats.includes(v))return;
   cats.push(v); enabledCats.add(v);
   document.getElementById('newCat').value='';
-  saveSettings(); renderSidebar(); renderFolderList();
+  saveCatsByMenu(); pushSettingsToSupabase(); saveSettings(); renderSidebar(); renderFolderList();
 }
 function removeCat(i){
   const cat=cats[i];
-  if(photos.some(p=>(p.cat||'Others')===cat)){alert(`"${cat}"에 사진이 있어 삭제할 수 없습니다.`);return;}
+  if(photos.some(p=>(p.menu||'시공')===activeMenu&&(p.cat||'Others')===cat)){alert(`"${cat}"에 사진이 있어 삭제할 수 없습니다.`);return;}
   cats.splice(i,1); enabledCats.delete(cat);
-  saveSettings(); renderSidebar(); renderFolderList();
+  saveCatsByMenu(); pushSettingsToSupabase(); saveSettings(); renderSidebar(); renderFolderList();
 }
 function clearAll(){
   if(!confirm('모든 사진과 설정을 삭제합니다.\n이 작업은 되돌릴 수 없습니다.'))return;
@@ -2291,7 +2414,13 @@ document.addEventListener('keydown', e => {
 });
 
 // ── 시작 ─────────────────────────────────────────────
+document.querySelectorAll(".menu-tab").forEach(btn=>{
+  btn.classList.toggle("active",btn.getAttribute("data-menu")===activeMenu);
+});
+applyMenuTheme(activeMenu);
 initDB();
+fetchSettingsFromSupabase();
+subscribeSettingsRealtime();
 // OCR 워커 미리 초기화 (사진 선택 시 즉시 인식 시작)
 setTimeout(() => getOCRWorker(() => {}).catch(() => {}), 800);
 </script>
