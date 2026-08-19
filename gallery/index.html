@@ -921,7 +921,11 @@ async function loadFromFolder() {
   try {
     for await (const [name, handle] of dirHandle.entries()) {
       if (handle.kind === 'directory') {
-        // 작업분류 서브폴더 스캔
+        // 알려진 작업분류 이름의 폴더만 스캔한다. 엉뚱한 폴더(예: 사진첩, 다운로드 등)를
+        // 통째로 선택했을 때 그 안의 무관한 하위폴더/사진까지 전부 끌려 들어오는 걸 막기 위함
+        // — 예전엔 이 검사가 없어서 폴더 이름이 뭐든 그대로 '작업분류'로 취급했다.
+        const isKnownCat = name === 'Others' || cats.some(c => c.toLowerCase() === name.toLowerCase());
+        if (!isKnownCat) continue;
         const cat = (name === 'Others') ? '' : name;
         for await (const [subName, subHandle] of handle.entries()) {
           if (subHandle.kind !== 'file') continue;
