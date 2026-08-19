@@ -66,6 +66,11 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 .sb-cat-nm  { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.78rem; }
 .sb-cnt { font-size: 0.62rem; color: var(--tx3); background: var(--bg); border-radius: 8px; padding: 1px 5px; min-width: 16px; text-align: center; flex-shrink: 0; }
 .sb-cnt.has { color: var(--ac2); background: rgba(47,129,247,0.1); }
+.sb-wt-group { margin-bottom: 3px; }
+.sb-caret { font-size: 0.6rem; color: var(--tx3); margin-left: 4px; flex-shrink: 0; }
+.sb-cat-dropdown { width: 100%; margin: 3px 0 6px; background: var(--bg); border: 1px solid var(--bd);
+  border-radius: 5px; color: var(--tx); font-size: 0.75rem; padding: 5px 7px; font-family: inherit; }
+.sb-cat-dropdown:focus { outline: none; border-color: var(--ac); }
 
 
 /* 컨텐츠 영역 */
@@ -270,7 +275,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
       </div>
     </div>
     <div class="sb-sep"></div>
-    <div class="sb-section-lbl">작업 분류</div>
+    <div class="sb-section-lbl">작업 구분</div>
     <div class="sb-list" id="sbList"></div>
   </div>
 
@@ -1167,7 +1172,7 @@ async function loadFromFolder() {
 
 // ── 상태 ────────────────────────────────────────────
 let db, photos = [], pendingFiles = [], selectedFileIndex = 0;
-let selCat = null, selWt = null;
+let selCat = null, selWt = null, selOtherFolder = false, sbOpenWt = null;
 let batchAbort = false;
 let enabledCats = new Set();
 let currentDetailId = null;
@@ -1226,7 +1231,7 @@ function setActiveMenu(menu){
   const sel=document.getElementById("menuSelect");
   if(sel) sel.value=menu;
   applyMenuTheme(activeMenu);
-  selCat=null; selWt=null; dupFilterOn=false; incompleteFilterOn=false;
+  selCat=null; selWt=null; selOtherFolder=false; sbOpenWt=null; dupFilterOn=false; incompleteFilterOn=false;
   populateSelects();
   renderSidebar(); renderPhotos(); updateHeader();
 }
@@ -1432,34 +1437,78 @@ document.addEventListener('drop', e => {
 });
 
 // ── 사이드바 ─────────────────────────────────────────
+// daesun gallery와 동일하게, 사이드바는 작업분류가 아니라 작업구분(신규/수정/기타)이
+// 1차 탐색 기준이다 — 폴더를 펼치면 그 안에서 작업분류로 다시 좁힐 수 있는 드롭다운이 나온다.
+function workTypeFolderName(wt){
+  if(wt==='작업전'||wt==='작업후') return '수정';
+  if(wt==='신규') return '신규';
+  return wt||'기타';
+}
+function isOtherFolder(p){
+  const f=workTypeFolderName(p.wt);
+  return f!=='신규' && f!=='수정';
+}
 function renderSidebar() {
-  document.getElementById('sbAll').classList.toggle('sel', selCat === null);
+  document.getElementById('sbAll').classList.toggle('sel', selCat===null && selWt===null && !selOtherFolder);
   const menuPhotos = photos.filter(p => (p.menu||'시공')===activeMenu);
   document.getElementById('sbAllCnt').textContent = menuPhotos.length;
 
-  const list = document.getElementById('sbList');
+  const wtFolders = ['신규','수정'];
   const enabledList = cats.filter(c => enabledCats.has(c));
+  const otherCount = menuPhotos.filter(isOtherFolder).length;
 
-  list.innerHTML = enabledList.map(cat => {
-    const cps = menuPhotos.filter(p => (p.cat||'Others') === cat);
-    const sel = selCat === cat;
-
-    return `<div class="sb-cat${sel?' sel':''}" onclick='selectCat(${J(cat)})'>
-      <span class="sb-cat-ico">${CAT_ICON[cat]||'📁'}</span>
-      <span class="sb-cat-nm">${cat}</span>
-      ${cps.length?`<span class="sb-cnt has">${cps.length}</span>`:''}
+  const list = document.getElementById('sbList');
+  list.innerHTML = wtFolders.map(wt => {
+    const wtPhotos = menuPhotos.filter(p => workTypeFolderName(p.wt) === wt);
+    const isOpen = sbOpenWt === wt;
+    const sel = selWt === wt && selCat === null;
+    const dropdown = isOpen ? `
+      <select class="sb-cat-dropdown" onchange='selectCatUnderWt(${J(wt)}, this.value)'>
+        <option value="">-- 분류 전체 --</option>
+        ${enabledList.map(c => {
+          const cnt = wtPhotos.filter(p => (p.cat||'Others') === c).length;
+          return `<option value="${c}"${selCat===c?' selected':''}>${c}${cnt?` (${cnt})`:''}</option>`;
+        }).join('')}
+      </select>` : '';
+    return `<div class="sb-wt-group">
+      <div class="sb-cat${sel?' sel':''}" onclick='toggleWtFolder(${J(wt)})'>
+        <span class="sb-cat-ico">📁</span>
+        <span class="sb-cat-nm">${wt}</span>
+        ${wtPhotos.length?`<span class="sb-cnt has">${wtPhotos.length}</span>`:''}
+        <span class="sb-caret">${isOpen?'▾':'▸'}</span>
+      </div>
+      ${dropdown}
     </div>`;
-  }).join('');
+  }).join('') + `
+    <div class="sb-wt-group">
+      <div class="sb-cat${selOtherFolder?' sel':''}" onclick='toggleOtherFolder()'>
+        <span class="sb-cat-ico">📁</span>
+        <span class="sb-cat-nm">기타</span>
+        ${otherCount?`<span class="sb-cnt has">${otherCount}</span>`:''}
+      </div>
+    </div>`;
 }
 
 function J(v){ return JSON.stringify(v); }
 
 function selectAllCat() {
-  selCat = null; selWt = null;
+  selCat = null; selWt = null; sbOpenWt = null; selOtherFolder = false;
   renderSidebar(); renderPhotos(); updateHeader();
 }
-function selectCat(cat) {
-  selCat = cat; selWt = null;
+function toggleWtFolder(wt) {
+  sbOpenWt = (sbOpenWt === wt) ? null : wt;
+  selWt = wt; selCat = null; selOtherFolder = false;
+  renderSidebar(); renderPhotos(); updateHeader();
+}
+function selectCatUnderWt(wt, cat) {
+  selWt = wt;
+  selCat = cat || null;
+  selOtherFolder = false;
+  renderSidebar(); renderPhotos(); updateHeader();
+}
+function toggleOtherFolder() {
+  selOtherFolder = true;
+  selCat = null; selWt = null; sbOpenWt = null;
   renderSidebar(); renderPhotos(); updateHeader();
 }
 
@@ -1479,7 +1528,7 @@ function getDuplicateTagSet(){
 let dupFilterOn = false;
 function toggleDupFilter(){
   dupFilterOn = !dupFilterOn;
-  if(dupFilterOn){ selCat=null; selWt=null; incompleteFilterOn=false; }
+  if(dupFilterOn){ selCat=null; selWt=null; selOtherFolder=false; sbOpenWt=null; incompleteFilterOn=false; }
   renderSidebar(); renderPhotos(); updateHeader();
 }
 function updateDupBadge(){
@@ -1503,7 +1552,7 @@ function isIncomplete(p){
 let incompleteFilterOn = false;
 function toggleIncompleteFilter(){
   incompleteFilterOn = !incompleteFilterOn;
-  if(incompleteFilterOn){ selCat=null; selWt=null; dupFilterOn=false; }
+  if(incompleteFilterOn){ selCat=null; selWt=null; selOtherFolder=false; sbOpenWt=null; dupFilterOn=false; }
   renderSidebar(); renderPhotos(); updateHeader();
 }
 function updateIncompleteBadge(){
@@ -1537,8 +1586,9 @@ function getFiltered() {
   const wt     = document.getElementById('fWt').value;
   return photos.filter(p =>
     (p.menu||'시공') === activeMenu &&
-    (selCat === null || (p.cat||'Others') === selCat) &&
-    (selWt  === null || p.wt === selWt) &&
+    (!selOtherFolder || isOtherFolder(p)) &&
+    (selOtherFolder || selCat === null || (p.cat||'Others') === selCat) &&
+    (selOtherFolder || selWt === null || workTypeFolderName(p.wt) === selWt) &&
     (!date   || p.date === date) &&
     (!team   || p.team === team) &&
     (!wt     || p.wt   === wt) &&
@@ -1567,10 +1617,13 @@ function renderPhotos(keepLimit) {
     base = menuPhotos.filter(p=>dupSet.has(normTag(p.tag))).length;
   } else if (incompleteFilterOn) {
     base = menuPhotos.filter(isIncomplete).length;
+  } else if (selOtherFolder) {
+    base = menuPhotos.filter(isOtherFolder).length;
   } else {
-    base = selCat === null ? menuPhotos.length
+    base = selCat === null && selWt === null ? menuPhotos.length
+         : selCat === null ? menuPhotos.filter(p=>workTypeFolderName(p.wt)===selWt).length
          : selWt  === null ? menuPhotos.filter(p=>(p.cat||'Others')===selCat).length
-         : menuPhotos.filter(p=>(p.cat||'Others')===selCat&&p.wt===selWt).length;
+         : menuPhotos.filter(p=>(p.cat||'Others')===selCat&&workTypeFolderName(p.wt)===selWt).length;
   }
   document.getElementById('fCount').textContent = filtered.length !== base
     ? `${filtered.length} / ${base}장` : `${base}장`;
@@ -1586,7 +1639,7 @@ function renderPhotos(keepLimit) {
     return;
   }
   const toRender = filtered.slice(0, photoRenderLimit);
-  const showCatHeader = selCat === null && !dupFilterOn && !incompleteFilterOn;
+  const showCatHeader = selCat === null && !selOtherFolder && !dupFilterOn && !incompleteFilterOn;
   let html = '';
   if (showCatHeader) {
     const groups = {};
@@ -1642,10 +1695,12 @@ function downloadPhoto(id) {
 // ── 헤더 브레드크럼 ──────────────────────────────────
 function updateHeader() {
   const el = document.getElementById('hdrCrumb');
-  if (!selCat) {
+  if (selOtherFolder) { el.innerHTML = `<span class="cc">📁 기타</span>`; return; }
+  if (!selCat && !selWt) {
     const cnt=photos.filter(p=>(p.menu||'시공')===activeMenu).length;
     el.innerHTML = `<span class="cc">전체 사진</span><span class="cs">&nbsp;총 ${cnt}장</span>`; return;
   }
+  if (!selCat) { el.innerHTML = `<span class="cc">📁 ${selWt}</span>`; return; }
   const m = selWt ? (WT_META[selWt]||{icon:'📷'}) : null;
   el.innerHTML = `<span class="cc">${CAT_ICON[selCat]||'📁'} ${selCat}</span>` +
     (selWt ? `<span class="cs">›</span><span class="cc">${m.icon} ${selWt}</span>` : '');
