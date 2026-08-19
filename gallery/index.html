@@ -222,6 +222,8 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
     <button class="btn btn-ghost" id="folderBtn" onclick="loadFromFolder()" title="PC 폴더에서 사진 불러오기" style="display:none">📂 폴더</button>
     <button class="btn btn-ghost" id="syncBtn" onclick="openSyncModal()" title="클라우드에서 사진 가져오기">☁️ 동기화</button>
     <button class="btn btn-ghost" onclick="openBatch()" title="OCR로 전체 자동 분류">🔄 자동 분류</button>
+    <button class="btn btn-ghost" id="dupFilterBtn" onclick="toggleDupFilter()" title="같은 기기번호가 여러 장인 사진만 모아보기" style="display:none;color:var(--orange);border-color:rgba(240,136,62,.4);"></button>
+    <button class="btn btn-ghost" id="incompleteFilterBtn" onclick="toggleIncompleteFilter()" title="작업분류·기기번호·작업구역·팀명 중 하나라도 비어있는 사진만 모아보기" style="display:none;color:var(--orange);border-color:rgba(240,136,62,.4);"></button>
     <button class="btn btn-ghost" onclick="openSettings()" title="설정">⚙️</button>
     <span id="hdrUserChip" style="font-size:0.78rem;color:var(--tx2);padding:0 4px;white-space:nowrap;"></span>
     <button class="btn btn-ghost" onclick="galleryLogout()" title="로그아웃" style="color:var(--red);border-color:var(--red);">로그아웃</button>
@@ -273,6 +275,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 <div class="sel-bar" id="selBar">
   <button class="btn btn-ghost" id="selAllBtn" onclick="selectAllFiltered()">전체 선택</button>
   <button class="btn btn-danger" id="delSelBtn" onclick="deleteSelected()" disabled>🗑 삭제</button>
+  <button class="btn btn-ghost" id="beBtn" onclick="openBatchEdit()" disabled>✏️ 일괄 수정</button>
   <span id="selCount" style="font-size:0.82rem;color:var(--tx2);">0장 선택됨</span>
   <button class="btn btn-ghost" onclick="exitSelMode()">취소</button>
   <button class="btn btn-primary" id="dlSelBtn" onclick="downloadSelected()" disabled>⬇️ 다운로드</button>
@@ -358,6 +361,39 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
     <div class="m-footer">
       <button class="btn btn-ghost" onclick="closeUpload()">취소</button>
       <button class="btn btn-primary" id="upSaveBtn" onclick="savePhotos()">💾 저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 선택 일괄 수정 모달 -->
+<div class="overlay" id="batchEditOverlay">
+  <div class="modal" style="width:480px;max-width:96vw;">
+    <button class="m-close" onclick="closeBatchEdit()">✕</button>
+    <div class="m-title">✏️ 선택 일괄 수정 (<span id="beCount">0</span>장)</div>
+    <p style="font-size:0.78rem;color:var(--tx3);margin-bottom:14px;line-height:1.6;">
+      값을 지정한 항목만 선택된 사진 전체에 적용됩니다.<br>"-- 변경 안함 --" 또는 빈 칸으로 두면 그대로 유지됩니다.
+    </p>
+    <div class="fg">
+      <label>작업 구분</label>
+      <select id="beWt">
+        <option value="">-- 변경 안함 --</option>
+        <option value="신규">신규</option>
+        <option value="작업전">작업전</option>
+        <option value="작업후">작업후</option>
+      </select>
+    </div>
+    <div class="fg"><label>작업 분류</label><select id="beCat"></select></div>
+    <div class="fg-row">
+      <div class="fg"><label>팀명</label><select id="beTeam"></select></div>
+      <div class="fg"><label>작업구역</label><select id="beArea"></select></div>
+    </div>
+    <div class="fg">
+      <label>특이사항 (비워두면 변경 안함)</label>
+      <textarea id="beNote" placeholder="비워두면 변경하지 않습니다"></textarea>
+    </div>
+    <div class="m-footer">
+      <button class="btn btn-ghost" onclick="closeBatchEdit()">취소</button>
+      <button class="btn btn-primary" id="beSaveBtn" onclick="saveBatchEdit()">💾 적용</button>
     </div>
   </div>
 </div>
@@ -1282,9 +1318,74 @@ function selectCat(cat) {
 }
 
 // ── 사진 그리드 ──────────────────────────────────────
+// ── 기기번호(TAG NO) 중복 확인 ─────────────────────────
+function normTag(t){ return (t||'').trim(); }
+function getDuplicateTagSet(){
+  const counts = {};
+  photos.forEach(p=>{
+    const t = normTag(p.tag);
+    if(!t || t==='-') return;
+    counts[t] = (counts[t]||0)+1;
+  });
+  return new Set(Object.keys(counts).filter(t=>counts[t]>1));
+}
+let dupFilterOn = false;
+function toggleDupFilter(){
+  dupFilterOn = !dupFilterOn;
+  if(dupFilterOn){ selCat=null; selWt=null; incompleteFilterOn=false; }
+  renderSidebar(); renderPhotos(); updateHeader();
+}
+function updateDupBadge(){
+  const btn = document.getElementById('dupFilterBtn');
+  if(!btn) return;
+  const dupSet = getDuplicateTagSet();
+  const count = photos.filter(p=>dupSet.has(normTag(p.tag))).length;
+  if(count>0){
+    btn.style.display='';
+    btn.textContent = dupFilterOn ? '✕ 중복 보기 해제' : `⚠️ 중복 ${count}`;
+  } else {
+    btn.style.display='none';
+    if(dupFilterOn){ dupFilterOn=false; }
+  }
+}
+
+// ── 작업분류·기기번호·작업구역·팀명 미입력 확인 ─────────
+function isIncomplete(p){
+  return !p.cat || p.cat==='Others' || !normTag(p.tag) || normTag(p.tag)==='-' || !p.area || !p.team;
+}
+let incompleteFilterOn = false;
+function toggleIncompleteFilter(){
+  incompleteFilterOn = !incompleteFilterOn;
+  if(incompleteFilterOn){ selCat=null; selWt=null; dupFilterOn=false; }
+  renderSidebar(); renderPhotos(); updateHeader();
+}
+function updateIncompleteBadge(){
+  const btn = document.getElementById('incompleteFilterBtn');
+  if(!btn) return;
+  const count = photos.filter(isIncomplete).length;
+  if(count>0){
+    btn.style.display='';
+    btn.textContent = incompleteFilterOn ? '✕ 미입력 보기 해제' : `📝 미입력 ${count}`;
+  } else {
+    btn.style.display='none';
+    if(incompleteFilterOn){ incompleteFilterOn=false; }
+  }
+}
+
 function getFiltered() {
-  const date   = document.getElementById('fDate').value;
   const search = document.getElementById('fSearch').value.toLowerCase().trim();
+  if(dupFilterOn){
+    const dupSet = getDuplicateTagSet();
+    return photos
+      .filter(p => dupSet.has(normTag(p.tag)) && (!search || (p.tag||'').toLowerCase().includes(search)))
+      .sort((a,b) => normTag(a.tag).localeCompare(normTag(b.tag)) || (b.date+b.created).localeCompare(a.date+a.created));
+  }
+  if(incompleteFilterOn){
+    return photos
+      .filter(p => isIncomplete(p) && (!search || (p.tag||'').toLowerCase().includes(search)))
+      .sort((a,b) => (b.date+b.created).localeCompare(a.date+a.created));
+  }
+  const date   = document.getElementById('fDate').value;
   const team   = document.getElementById('fTeam').value;
   const wt     = document.getElementById('fWt').value;
   return photos.filter(p =>
@@ -1307,11 +1408,21 @@ function loadMorePhotosInGrid(){
   renderPhotos(true);
 }
 function renderPhotos(keepLimit) {
+  updateDupBadge();
+  updateIncompleteBadge();
   if (!keepLimit) photoRenderLimit = PHOTO_RENDER_BASE;
   const filtered = getFiltered();
-  const base = selCat === null ? photos.length
-             : selWt  === null ? photos.filter(p=>(p.cat||'Others')===selCat).length
-             : photos.filter(p=>(p.cat||'Others')===selCat&&p.wt===selWt).length;
+  let base;
+  if (dupFilterOn) {
+    const dupSet = getDuplicateTagSet();
+    base = photos.filter(p=>dupSet.has(normTag(p.tag))).length;
+  } else if (incompleteFilterOn) {
+    base = photos.filter(isIncomplete).length;
+  } else {
+    base = selCat === null ? photos.length
+         : selWt  === null ? photos.filter(p=>(p.cat||'Others')===selCat).length
+         : photos.filter(p=>(p.cat||'Others')===selCat&&p.wt===selWt).length;
+  }
   document.getElementById('fCount').textContent = filtered.length !== base
     ? `${filtered.length} / ${base}장` : `${base}장`;
   const vc = document.getElementById('viewContent');
@@ -1326,7 +1437,7 @@ function renderPhotos(keepLimit) {
     return;
   }
   const toRender = filtered.slice(0, photoRenderLimit);
-  const showCatHeader = selCat === null;
+  const showCatHeader = selCat === null && !dupFilterOn && !incompleteFilterOn;
   let html = '';
   if (showCatHeader) {
     const groups = {};
@@ -1761,6 +1872,7 @@ function updateSelBar() {
   document.getElementById('selCount').textContent = count + '장 선택됨';
   document.getElementById('dlSelBtn').disabled = count === 0;
   document.getElementById('delSelBtn').disabled = count === 0;
+  document.getElementById('beBtn').disabled = count === 0;
   const filtered = getFiltered();
   const allSel = filtered.length > 0 && filtered.every(p => selectedIds.has(String(p.id)));
   document.getElementById('selAllBtn').textContent = allSel ? '전체 해제' : '전체 선택';
@@ -1776,6 +1888,49 @@ async function deleteSelected() {
   }
   photos = photos.filter(p => !selectedIds.has(String(p.id)));
   exitSelMode();
+  renderSidebar(); renderPhotos(); updateHeader();
+}
+
+// ── 선택 일괄 수정 ────────────────────────────────────
+function openBatchEdit(){
+  if (!selectedIds.size) return;
+  document.getElementById('beCount').textContent = selectedIds.size;
+  document.getElementById('beWt').value = '';
+  document.getElementById('beCat').innerHTML  = '<option value="">-- 변경 안함 --</option>'+cats.map(v=>`<option>${v}</option>`).join('');
+  document.getElementById('beCat').value = '';
+  document.getElementById('beTeam').innerHTML = '<option value="">-- 변경 안함 --</option>'+teams.map(v=>`<option>${v}</option>`).join('');
+  document.getElementById('beTeam').value = '';
+  document.getElementById('beArea').innerHTML = '<option value="">-- 변경 안함 --</option>'+areas.map(v=>`<option>${v}</option>`).join('');
+  document.getElementById('beArea').value = '';
+  document.getElementById('beNote').value = '';
+  document.getElementById('batchEditOverlay').classList.add('show');
+}
+function closeBatchEdit(){
+  document.getElementById('batchEditOverlay').classList.remove('show');
+}
+async function saveBatchEdit(){
+  const wt   = document.getElementById('beWt').value;
+  const cat  = document.getElementById('beCat').value;
+  const team = document.getElementById('beTeam').value;
+  const area = document.getElementById('beArea').value;
+  const note = document.getElementById('beNote').value.trim();
+  const ids  = [...selectedIds];
+  const btn  = document.getElementById('beSaveBtn');
+  btn.disabled = true; btn.textContent = '⏳ 적용 중...';
+  for (const sid of ids) {
+    const p = photos.find(x => String(x.id) === sid);
+    if (!p) continue;
+    if (wt)   p.wt   = wt;
+    if (cat)  p.cat  = cat;
+    if (team) p.team = team;
+    if (area) p.area = area;
+    if (note) p.note = note;
+    await savePhotoToDB(p);
+    if (p.cloud_url) syncMetaToCloud(p);
+  }
+  btn.disabled = false; btn.textContent = '💾 적용';
+  closeBatchEdit();
+  photos.sort((a,b) => (b.date+b.created).localeCompare(a.date+a.created));
   renderSidebar(); renderPhotos(); updateHeader();
 }
 
@@ -1984,7 +2139,7 @@ document.getElementById('newNotePreset').addEventListener('keydown',e=>{if(e.key
 // ── 키보드 ESC ───────────────────────────────────────
 document.addEventListener('keydown', e => {
   if(e.key==='Escape'){
-    ['upOverlay','detOverlay','setOverlay','batchOverlay'].forEach(id=>{
+    ['upOverlay','detOverlay','setOverlay','batchOverlay','batchEditOverlay'].forEach(id=>{
       document.getElementById(id).classList.remove('show');
     });
     currentOCRAbort=true;
@@ -1993,7 +2148,7 @@ document.addEventListener('keydown', e => {
 });
 
 // ── 오버레이 바깥 클릭 닫기 ─────────────────────────
-['upOverlay','detOverlay','setOverlay','batchOverlay'].forEach(id=>{
+['upOverlay','detOverlay','setOverlay','batchOverlay','batchEditOverlay'].forEach(id=>{
   document.getElementById(id).addEventListener('click', e=>{
     if(e.target.id===id){
       e.target.classList.remove('show');
