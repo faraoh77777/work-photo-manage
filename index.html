@@ -306,13 +306,16 @@ textarea.f{resize:none;height:48px;}
   var c=localStorage.getItem('member_company')||'';
   if(p) document.getElementById('hdrProject').textContent=p;
   if(c) document.getElementById('hdrCompany').textContent=c;
-  // ⚙️ 설정 버튼은 관리자 화면으로 가는 통로일 뿐이라 관리자 계정에만 보여준다.
-  if(localStorage.getItem('member_category')==='관리자'){
+  // ⚙️ 설정 버튼은 관리자 화면으로 가는 통로일 뿐이라 관리자/운영자 계정에만 보여준다.
+  // role 컬럼 도입 전 가입한 옛 계정은 category==='관리자'로 대체 판정(하위호환).
+  var _cat=localStorage.getItem('member_category');
+  var _role=localStorage.getItem('member_role')||(_cat==='관리자'?'관리자':'');
+  if(_role==='관리자'||_role==='운영자'){
     document.getElementById('settingsBtn').style.display='';
   }
 })();
 function logout(){
-  ['member_id','member_name','member_company','member_project','member_phone','member_category','senderName'].forEach(function(k){localStorage.removeItem(k);});
+  ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','senderName'].forEach(function(k){localStorage.removeItem(k);});
   location.href='login.html';
 }
 function fireIconEffect(el){
@@ -332,7 +335,7 @@ async function withdrawMember(){
     try{ await sbClient.from('members').delete().eq('id',memberId); }
     catch(e){ console.error('회원 탈퇴 실패',e); showTE('회원 탈퇴 실패: '+(e.message||e)); return; }
   }
-  ['member_id','member_name','member_company','member_project','member_phone','member_category','senderName'].forEach(function(k){localStorage.removeItem(k);});
+  ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','senderName'].forEach(function(k){localStorage.removeItem(k);});
   location.href='login.html';
 }
 

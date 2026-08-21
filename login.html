@@ -111,8 +111,14 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
         <option value="Steam Tracing Insulation">Steam Tracing Insulation</option>
         <option value="Scaffolding">Scaffolding</option>
         <option value="Others">Others</option>
-        <option value="관리자">관리자</option>
       </select>
+      <div class="flbl">이 현장에서의 역할</div>
+      <select id="regRole" class="f">
+        <option value="근로자" selected>근로자</option>
+        <option value="관리자">관리자</option>
+        <option value="운영자">운영자</option>
+      </select>
+      <div class="hint" style="font-size:12px;color:#7A9AB8;line-height:1.6;margin-top:4px;">현장 최초 개설자가 아니라면 선택하신 역할과 무관하게 운영자 승인을 거쳐야 합니다.</div>
       <label class="agree">
         <input type="checkbox" id="regAgree"/>
         <span><a href="privacy.html" id="privacyLink" onclick="return openPrivacyModal(event)">개인정보 수집·이용</a>에 동의합니다 (필수)</span>
@@ -151,8 +157,10 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
     while(b64.length%4)b64+='=';
     var cfg=JSON.parse(decodeURIComponent(escape(atob(b64))));
     if(cfg.u&&cfg.k){
-      // 다른 현장으로 전환하는 것이므로 이전 현장 로그인 세션은 지운다
-      ['member_id','member_name','member_company','member_project','member_phone','member_category','senderName'].forEach(function(k){localStorage.removeItem(k);});
+      // 다른 현장으로 전환하는 것이므로 이전 현장 로그인 세션은 지운다.
+      // 초대 링크로 들어온 사람은 그 현장을 만든 사람이 아니라 초대받은 직원이므로,
+      // site_setup_creator(운영자 자동승격 표시)가 남아있더라도 여기서 반드시 지운다.
+      ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','site_setup_creator','senderName'].forEach(function(k){localStorage.removeItem(k);});
       localStorage.setItem('site_supabase_url',cfg.u);
       localStorage.setItem('site_supabase_key',cfg.k);
       if(cfg.n)localStorage.setItem('site_name',cfg.n);
@@ -295,6 +303,7 @@ async function doSignup(){
   var pin=document.getElementById('regPin').value.trim();
   var pinConfirm=document.getElementById('regPinConfirm').value.trim();
   var category=document.getElementById('regCategory').value;
+  var wantedRole=document.getElementById('regRole').value;
   if(!company||!project||!name||phone.length<10){showTE('모든 항목을 입력해 주세요.');return;}
   if(!/^\d{4}$/.test(pin)){showTE('비밀번호 4자리를 입력해 주세요.');return;}
   if(pin!==pinConfirm){showTE('비밀번호가 서로 다릅니다.');return;}
@@ -302,20 +311,27 @@ async function doSignup(){
   showT('가입 중...');
   var pinHash=await sha256Hex(pin);
 
-  // 이 현장에 회원이 한 명도 없으면(=새 현장의 첫 가입자) 자동으로 승인 처리한다.
-  // 승인은 로그인한 사람만 할 수 있는데, 승인된 사람이 한 명도 없으면 아무도 로그인할
-  // 수 없어 영원히 막히기 때문 — 첫 가입자만 예외로 스스로 승인시킨다.
+  // 운영자 자동승격 대상 판단.
+  // ① site-setup.html에서 "비어있는 새 현장"을 방금 연결한 사람 (site_setup_creator 표시)
+  // ② 그 표시가 없는 상태에서도 members 테이블이 실제로 비어있는 경우
+  //    (기본 공유 현장이 완전히 초기화된 경우 등, 잠금 방지용 안전장치)
+  // 둘 다 아니면 본인이 무엇을 선택했든 role은 참고용일 뿐, 반드시 운영자 승인을 거친다.
+  var isSiteCreator=localStorage.getItem('site_setup_creator')==='1';
   var existingCheck=await sbClient.from('members').select('id').limit(1);
-  var isFirstMember=!existingCheck.error && (!existingCheck.data || existingCheck.data.length===0);
+  var isEmptyTable=!existingCheck.error && (!existingCheck.data || existingCheck.data.length===0);
+  var autoPromote=isSiteCreator||isEmptyTable;
+  var finalRole=autoPromote?'운영자':wantedRole;
 
-  var insertData={company:company,project:project,name:name,phone:phone,category:category,pin_hash:pinHash,approved:isFirstMember};
+  var insertData={company:company,project:project,name:name,phone:phone,category:category,role:finalRole,pin_hash:pinHash,approved:autoPromote};
   var res=await sbClient.from('members').insert(insertData).select().single();
   if(res.error){
     var msg=res.error.message||'';
-    if(msg.toLowerCase().includes('category')){
-      var d2=Object.assign({},insertData); delete d2.category;
+    if(msg.toLowerCase().includes('category')||msg.toLowerCase().includes('role')){
+      var d2=Object.assign({},insertData);
+      if(msg.toLowerCase().includes('category'))delete d2.category;
+      if(msg.toLowerCase().includes('role'))delete d2.role;
       res=await sbClient.from('members').insert(d2).select().single();
-      if(res.data) res.data.category=category;
+      if(res.data){ res.data.category=category; res.data.role=finalRole; }
     }
     if(res.error){
       var msg2=res.error.message||'';
@@ -324,15 +340,16 @@ async function doSignup(){
       return;
     }
   }
-  if(isFirstMember){
-    // 첫 가입자는 바로 로그인까지 시켜준다 (승인해줄 사람이 없으니 대기시킬 이유가 없음)
+  if(isSiteCreator)localStorage.removeItem('site_setup_creator');
+  if(autoPromote){
+    // 현장 개설자(또는 완전히 빈 현장의 첫 가입자)는 바로 로그인까지 시켜준다.
     saveSession(res.data);
-    showT('가입 완료! 이 현장의 첫 회원이라 자동으로 승인되었습니다. 환영합니다, '+res.data.name+'님!');
+    showT('가입 완료! 이 현장의 운영자로 자동 등록되었습니다. 환영합니다, '+res.data.name+'님!');
     setTimeout(function(){location.href='index.html';},1200);
     return;
   }
   // 가입 즉시 로그인시키지 않고 승인 대기 안내 후 로그인 탭으로 전환
-  showT('가입 완료! 관리자 승인 후 이용 가능합니다.');
+  showT('가입 완료! 운영자 승인 후 이용 가능합니다.');
   setTimeout(function(){
     switchTab('login');
     document.getElementById('loginPhone').value=phone;
@@ -347,6 +364,7 @@ function saveSession(m){
   localStorage.setItem('member_phone',m.phone);
   localStorage.setItem('senderName',m.name);
   if(m.category) localStorage.setItem('member_category',m.category);
+  localStorage.setItem('member_role',m.role||'근로자');
 }
 
 function showT(m){var t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none';},2500);}

@@ -671,7 +671,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
   if(chip&&(n||c)) chip.textContent='👤 '+(n||'')+(c?' · '+c:'');
 })();
 function galleryLogout(){
-  ['member_id','member_name','member_company','member_project','member_phone','senderName'].forEach(k=>localStorage.removeItem(k));
+  ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','senderName'].forEach(k=>localStorage.removeItem(k));
   location.href='../login.html';
 }
 

@@ -128,6 +128,7 @@ var SCHEMA_SQL = "-- work-shoot(작업사진) 신규 현장용 스키마\n"
 +"  name text not null,\n"
 +"  phone text not null unique,\n"
 +"  category text,\n"
++"  role text not null default '근로자',\n"
 +"  pin_hash text,\n"
 +"  approved boolean not null default false,\n"
 +"  created_at timestamptz not null default now()\n"
@@ -184,7 +185,7 @@ refreshCurrentSiteUI();
 
 function resetToDefault(){
   if(!confirm('기본 현장으로 되돌릴까요? (이 기기에서만 적용됩니다)'))return;
-  ['site_supabase_url','site_supabase_key','site_name','member_id','member_name','member_company','member_project','member_phone','member_category','senderName'].forEach(function(k){localStorage.removeItem(k);});
+  ['site_supabase_url','site_supabase_key','site_name','site_setup_creator','member_id','member_name','member_company','member_project','member_phone','member_category','member_role','senderName'].forEach(function(k){localStorage.removeItem(k);});
   refreshCurrentSiteUI();
   alert('기본 현장으로 되돌렸습니다.');
 }
@@ -240,10 +241,20 @@ async function testAndSave(){
       }
       return;
     }
+    // members 테이블이 비어 있으면(=진짜 새로 만든 현장) 이 사람을 그 현장의 운영자로 확정한다.
+    // 이미 회원이 있는 현장의 URL/key를 나중에 다시 붙여넣는 경우(재연결)까지 운영자로
+    // 만들어주면 남의 현장을 가로챌 수 있으므로, 반드시 "비어있을 때"만 적용한다.
+    var isEmptySite=!res.data||res.data.length===0;
     localStorage.setItem('site_supabase_url',url);
     localStorage.setItem('site_supabase_key',key);
     if(name)localStorage.setItem('site_name',name);
-    showStatus('ok','연결 확인 완료! 이 현장으로 전환되었습니다. 잠시 후 회원가입 화면으로 이동합니다.');
+    if(isEmptySite){
+      localStorage.setItem('site_setup_creator','1');
+      showStatus('ok','연결 확인 완료! 새 현장으로 연결되었습니다. 잠시 후 회원가입 화면으로 이동합니다 — 다음 가입자(본인)가 이 현장의 운영자로 자동 등록됩니다.');
+    }else{
+      localStorage.removeItem('site_setup_creator');
+      showStatus('ok','연결 확인 완료! 이 현장으로 전환되었습니다. 이미 회원이 있는 현장이라 기존 절차(가입 후 운영자 승인)를 따릅니다.');
+    }
     refreshCurrentSiteUI();
     setTimeout(function(){location.href='login.html';},1500);
   }catch(e){
