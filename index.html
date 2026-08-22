@@ -317,6 +317,10 @@ textarea.f{resize:none;height:48px;}
   }
 })();
 function logout(){
+  // 미전송 사진이 남은 채로 로그아웃하면(현장 폰을 다른 근로자에게 그냥 넘기는 경우 등),
+  // 다음에 로그인하는 사람 화면에 그 사진들이 복원되어 실수로 남의 사진을 자기 이름으로
+  // 전송할 위험이 있었다(2026-08-23 발견) — 경고 없이 바로 로그아웃되지 않게 확인을 넣는다.
+  if(savedPhotos.length && !confirm('아직 전송하지 않은 사진이 '+savedPhotos.length+'장 있습니다.\n그래도 로그아웃하시겠습니까? (사진은 남아있지만, 다음에 로그인하는 사람 화면에 보일 수 있습니다)')) return;
   ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','senderName'].forEach(function(k){localStorage.removeItem(k);});
   location.href='login.html';
 }
@@ -331,6 +335,7 @@ document.addEventListener('animationend',function(e){
 });
 
 async function withdrawMember(){
+  if(savedPhotos.length && !confirm('아직 전송하지 않은 사진이 '+savedPhotos.length+'장 있습니다.\n탈퇴하면 이 사진들을 다시 볼 방법이 없어질 수 있습니다. 그래도 탈퇴하시겠습니까?')) return;
   if(!confirm('정말 회원 탈퇴하시겠습니까? 계정 정보가 삭제되며 되돌릴 수 없습니다.'))return;
   var memberId=localStorage.getItem('member_id');
   if(memberId&&sbClient){
@@ -546,9 +551,11 @@ function finishSend(photos){
     document.getElementById('fileInput').value='';
     document.getElementById('inTag').value='';
     document.getElementById('inNote').value='';
-    document.getElementById('wtNew').checked=true;
-    togglePhaseSelect();
-    if(customAreas.length)document.getElementById('inLoc').value=customAreas[0];
+    // 예전엔 여기서 작업구분을 "신규"로, 작업구역을 목록 첫 값으로 강제로 되돌렸다 —
+    // "수정"/"U&O"로 한동안 계속 작업 중인 근로자가 전송 직후 그걸 못 보고 다음 사진을
+    // 찍으면 조용히 "신규"/"SCC"로 잘못 분류돼 올라갔다(2026-08-23 발견). 기기번호·
+    // 특이사항처럼 사진마다 바뀌는 값과 달리 이 둘은 한동안 유지되는 값이라, 전송 후에도
+    // 근로자가 마지막으로 고른 값을 그대로 둔다.
     resetCam();
   }
   updateList();
@@ -826,7 +833,10 @@ async function dbAddPhoto(p){
   var db=await openDB();
   return new Promise(function(resolve,reject){
     var tx=db.transaction(STORE_NAME,"readwrite");
-    var req=tx.objectStore(STORE_NAME).add({filename:p.filename,blob:p.blob,info:p.info});
+    // owner(촬영 당시 로그인돼있던 member_id)를 같이 저장해둔다 — 예전엔 이게 없어서,
+    // 현장 폰을 여러 근로자가 돌려쓸 때 A가 찍고 안 보낸 사진이 B 로그인 화면에도
+    // 그대로 복원돼 B의 이름으로 잘못 전송될 수 있었다(2026-08-23 발견).
+    var req=tx.objectStore(STORE_NAME).add({filename:p.filename,blob:p.blob,info:p.info,owner:localStorage.getItem('member_id')||null});
     req.onsuccess=function(){resolve(req.result);};
     req.onerror=function(){reject(req.error);};
   });
@@ -860,7 +870,14 @@ async function restoreSavedPhotos(){
       req.onerror=function(){reject(req.error);};
     });
     if(!rows.length)return;
-    savedPhotos=rows.map(function(r){
+    // 이 기기에 남아있는 미전송 사진 전부가 아니라, 지금 로그인한 사람이 찍은 것만
+    // 복원한다 — 그래야 폰을 돌려쓸 때 다른 사람이 찍은 사진이 내 화면에 뜨는 걸 막는다.
+    // (이 수정 이전에 저장된 owner 없는 옛 기록은 아무에게도 복원되지 않는다 — 남의
+    // 사진으로 잘못 전송되는 것보다 그 편이 안전하다.)
+    var myId=localStorage.getItem('member_id');
+    var mine=rows.filter(function(r){return r.owner===myId;});
+    if(!mine.length)return;
+    savedPhotos=mine.map(function(r){
       return {dataUrl:URL.createObjectURL(r.blob),filename:r.filename,blob:r.blob,info:r.info,dbId:r.id};
     });
     updateList();
@@ -917,42 +934,53 @@ window.addEventListener("orientationchange",function(){
     if(document.getElementById("camModal").style.display==="flex")sizeCamViewport();
   },250);
 });
+// 탭한 순간부터 카메라 스트림이 실제로 열릴 때까지 화면에 아무 표시가 없어서, 장갑
+// 낀 손으로 조작하는 현장에서 반응이 없어 보여 재탭하기 쉬웠다 — 재진입을 막지 않으면
+// 두 번째 호출이 camStream을 덮어써서 첫 번째 스트림이 stop() 안 된 채 계속 켜져
+// 있는 채로 새게 된다(2026-08-23 발견).
+var camOpening=false;
 async function openCamera(){
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
     document.getElementById("fileInput").click();
     return;
   }
-  var stream=null;
-  var videoConstraints={facingMode:{exact:"environment"},aspectRatio:{ideal:captureRatio},width:{ideal:1920},height:{ideal:1920}};
+  if(camOpening||camStream)return;
+  camOpening=true;
   try{
-    stream=await navigator.mediaDevices.getUserMedia({video:videoConstraints,audio:false});
-  }catch(e1){
+    var stream=null;
+    var videoConstraints={facingMode:{exact:"environment"},aspectRatio:{ideal:captureRatio},width:{ideal:1920},height:{ideal:1920}};
     try{
-      videoConstraints.facingMode="environment";
       stream=await navigator.mediaDevices.getUserMedia({video:videoConstraints,audio:false});
-    }catch(e2){
+    }catch(e1){
       try{
-        stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
-      }catch(e3){
-        // 권한이 거부된 경우엔 아래 fileInput(capture="environment") 경로도 같이 막힌다.
-        // 그대로 폴백하면 탭해도 아무 반응이 없어 보여서, 원스토어에 반려됐던
-        // "사진 촬영 버튼 선택 시 반응 없음"과 똑같은 증상이 된다. 안내를 띄운다.
-        if(e3&&(e3.name==="NotAllowedError"||e3.name==="SecurityError")){
-          showTE("카메라 권한이 거부되어 촬영할 수 없습니다. 설정 > 애플리케이션 > 작업사진 > 권한에서 카메라를 허용해 주세요.");
+        videoConstraints.facingMode="environment";
+        stream=await navigator.mediaDevices.getUserMedia({video:videoConstraints,audio:false});
+      }catch(e2){
+        try{
+          stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+        }catch(e3){
+          // 권한이 거부된 경우엔 아래 fileInput(capture="environment") 경로도 같이 막힌다.
+          // 그대로 폴백하면 탭해도 아무 반응이 없어 보여서, 원스토어에 반려됐던
+          // "사진 촬영 버튼 선택 시 반응 없음"과 똑같은 증상이 된다. 안내를 띄운다.
+          if(e3&&(e3.name==="NotAllowedError"||e3.name==="SecurityError")){
+            showTE("카메라 권한이 거부되어 촬영할 수 없습니다. 설정 > 애플리케이션 > 작업사진 > 권한에서 카메라를 허용해 주세요.");
+            return;
+          }
+          document.getElementById("fileInput").click();
           return;
         }
-        document.getElementById("fileInput").click();
-        return;
       }
     }
+    camStream=stream;
+    camTrack=stream.getVideoTracks()[0]||null;
+    document.getElementById("camVideo").srcObject=stream;
+    document.getElementById("camRatioBadge").textContent=normRatioMode(localStorage.getItem("capture_ratio"));
+    sizeCamViewport();
+    setupZoom();
+    document.getElementById("camModal").style.display="flex";
+  }finally{
+    camOpening=false;
   }
-  camStream=stream;
-  camTrack=stream.getVideoTracks()[0]||null;
-  document.getElementById("camVideo").srcObject=stream;
-  document.getElementById("camRatioBadge").textContent=normRatioMode(localStorage.getItem("capture_ratio"));
-  sizeCamViewport();
-  setupZoom();
-  document.getElementById("camModal").style.display="flex";
 }
 function closeCamera(){
   if(camStream){camStream.getTracks().forEach(function(t){t.stop();});camStream=null;camTrack=null;}
@@ -1456,6 +1484,11 @@ function autoAddPhoto(loadedImg){
   updateList();
   showT("추가 완료! 총 "+savedPhotos.length+"장");
   document.getElementById("inNote").value="";
+  // 기기번호는 특이사항과 달리 안 지워져서, 여러 기기를 옮겨다니며 배치로 찍을 때
+  // 앞 기기번호를 안 고치고 다음 기기를 찍으면 그대로 잘못 저장됐다(2026-08-23 발견).
+  // 같은 기기를 여러 각도로 이어 찍는 경우엔 다시 입력하는 수고가 늘지만, 서로 다른
+  // 기기에 잘못된 번호가 찍히는 쪽이 훨씬 더 큰 문제라 특이사항과 동일하게 비운다.
+  document.getElementById("inTag").value="";
   setTimeout(resetCam,800);
   // 화면엔 이미 "저장됨"으로 뜨지만, 기기 백업(IndexedDB) 자체는 뒤늦게 비동기로 끝난다.
   // 예전엔 이게 실패해도 콘솔에만 로그가 남아서, 저장공간이 꽉 찬 상태로 오프라인에서
