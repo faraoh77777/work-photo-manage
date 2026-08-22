@@ -165,7 +165,7 @@ textarea.f{resize:none;height:48px;}
 </div>
 
 <!-- 상위 메뉴 -->
-<div class="card" style="padding:8px;">
+<div class="card" style="padding:8px;" id="menuTabsCard">
   <div class="menu-tabs" id="menuTabs">
     <button type="button" class="menu-tab" data-menu="시공" onclick="setActiveMenu('시공')">시공</button>
     <button type="button" class="menu-tab" data-menu="품질" onclick="setActiveMenu('품질')">품질</button>
@@ -310,10 +310,10 @@ textarea.f{resize:none;height:48px;}
   if(isPrivilegedRole()){
     document.getElementById('settingsBtn').style.display='';
   }else{
-    // 근로자는 가입 때 고른 주 메뉴 하나만 쓰면 되니 메뉴탭 자체를 숨긴다
+    // 근로자는 가입 때 고른 주 메뉴 하나만 쓰면 되니 메뉴탭 카드 자체를 숨긴다
     // (activeMenu를 그 메뉴로 고정하는 로직은 아래 activeMenu 계산부에 있음).
-    var tabs=document.getElementById('menuTabs');
-    if(tabs) tabs.style.display='none';
+    var tabsCard=document.getElementById('menuTabsCard');
+    if(tabsCard) tabsCard.style.display='none';
   }
 })();
 function logout(){
