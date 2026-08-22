@@ -439,8 +439,11 @@ async function shareToKakao(){
     showT('사진 '+savedPhotos.length+'장 저장됨 → 카카오톡에서 직접 전송하세요');
   }
 
+  // title(텍스트)을 같이 보내면 카카오톡이 "이미지 공유"가 아니라 "텍스트/링크 공유"로
+  // 받아들여서 정상적인 받는사람(친구) 선택 화면 대신 다른 화면을 띄우는 경우가 있어,
+  // 사진만 순수하게 넘긴다.
   var files=savedPhotos.map(function(p){return new File([p.blob],p.filename,{type:'image/jpeg'});});
-  var shareData={files:files,title:'작업 사진 '+savedPhotos.length+'장'};
+  var shareData={files:files};
 
   if(!navigator.share||!navigator.canShare||!navigator.canShare(shareData)){
     fallbackDownload();
