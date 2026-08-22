@@ -204,12 +204,12 @@ textarea.f{resize:none;height:48px;}
   <select id="inPhase" class="f" style="display:none;margin-bottom:4px;"></select>
 
   <div class="row2">
-    <div>
+    <div id="catField">
       <div class="flbl" id="lblCat">작업 분류</div>
       <select id="inCat" class="f"></select>
       <div class="cat-bar" id="catBar"></div>
     </div>
-    <div>
+    <div id="locField">
       <div class="flbl" id="lblLoc">작업 구역</div>
       <select id="inLoc" class="f"></select>
     </div>
@@ -696,8 +696,13 @@ function populateCatSelect(preserve){
   var list=restrict?[myCat]:customCats;
   el.innerHTML=list.map(optionHtml).join('');
   el.disabled=restrict;
-  el.title=restrict?"가입 시 등록한 공종("+myCat+")만 선택할 수 있습니다":"";
   if(prev&&list.indexOf(prev)!==-1) el.value=prev;
+  // 근로자 본인 공종으로 고정될 때는 어차피 바꿀 수 없는 값이니 필드 자체를 숨기고,
+  // 옆의 작업 구역이 남는 공간을 채우도록 한다.
+  var catField=document.getElementById("catField");
+  var locField=document.getElementById("locField");
+  if(catField) catField.style.display=restrict?"none":"";
+  if(locField) locField.style.gridColumn=restrict?"1 / -1":"";
   updCat();
 }
 function populateAreaSelect(preserve){
