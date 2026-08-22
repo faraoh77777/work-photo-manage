@@ -1366,10 +1366,13 @@ function workTypeFolderName(wt){
 var WT_EN={'신규':'new','진행중':'in-progress','완료':'done','변경전':'mod-before','변경후':'mod-after','도급':'contract','사급':'owner-supply','현장안전점검':'safety-check','안전용품':'safety-gear','화기감시자':'fire-watch','유도원':'guide'};
 
 function buildFileName(idx){
-  var wt=WT_EN[lockedInfo.wt]||sanitizeForFilename(lockedInfo.wt)||'work';
-  var cat=sanitizeForFilename(lockedInfo.cat)||'etc';
-  var tag=sanitizeForFilename(lockedInfo.tag)||'NONAME';
-  var loc=sanitizeForFilename(lockedInfo.loc)||'LOC';
+  // cat/tag/loc은 안전·화기유도 메뉴처럼 한글 값("개인보호구" 등)일 수 있어서,
+  // 한글을 통째로 지워버리는 sanitizeForFilename 대신 한글을 남기는
+  // sanitizeForFilenameKr을 써야 워터마크에 찍히는 내용과 파일명이 일치한다.
+  var wt=WT_EN[lockedInfo.wt]||sanitizeForFilenameKr(lockedInfo.wt)||'work';
+  var cat=sanitizeForFilenameKr(lockedInfo.cat)||'etc';
+  var tag=sanitizeForFilenameKr(lockedInfo.tag)||'NONAME';
+  var loc=sanitizeForFilenameKr(lockedInfo.loc)||'LOC';
   var name=sanitizeForFilenameKr(localStorage.getItem("member_name")||"");
   var note=sanitizeForFilenameKr(lockedInfo.note);
   var parts=["WORK",
