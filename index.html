@@ -680,11 +680,24 @@ function optionHtml(v){
   var esc=String(v).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
   return '<option value="'+esc+'">'+esc+'</option>';
 }
+// 공종(작업 분류) 목록이 원래 가입 시 고른 공종(시공/자재/품질은 같은 공종 목록을 씀)과
+// 같은 의미인 메뉴에서만 근로자 계정을 본인 공종으로 제한한다. 관리자/운영자는 제한 없음.
+var TRADE_MENUS=["시공","자재","품질"];
+function isPrivilegedRole(){
+  var cat=localStorage.getItem('member_category');
+  var role=localStorage.getItem('member_role')||(cat==='관리자'?'관리자':'');
+  return role==='관리자'||role==='운영자';
+}
 function populateCatSelect(preserve){
   var el=document.getElementById("inCat");
   var prev=preserve?el.value:(localStorage.getItem("last_category")||localStorage.getItem("member_category"));
-  el.innerHTML=customCats.map(optionHtml).join('');
-  if(prev&&customCats.indexOf(prev)!==-1) el.value=prev;
+  var myCat=localStorage.getItem("member_category");
+  var restrict=!isPrivilegedRole()&&TRADE_MENUS.indexOf(activeMenu)!==-1&&myCat&&customCats.indexOf(myCat)!==-1;
+  var list=restrict?[myCat]:customCats;
+  el.innerHTML=list.map(optionHtml).join('');
+  el.disabled=restrict;
+  el.title=restrict?"가입 시 등록한 공종("+myCat+")만 선택할 수 있습니다":"";
+  if(prev&&list.indexOf(prev)!==-1) el.value=prev;
   updCat();
 }
 function populateAreaSelect(preserve){
