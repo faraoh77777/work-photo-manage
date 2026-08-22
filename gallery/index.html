@@ -659,9 +659,15 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 // ── 인증 체크 ─────────────────────────────────────────
 (function(){
   if(!localStorage.getItem('member_id')){location.href='../login.html';return;}
-  // 사진/일보 열람은 관리자 화면(admin.html)에서 들어오는 관리자 전용 도구로 통합됨
-  if(localStorage.getItem('member_category')!=='관리자'){
-    alert('관리자 권한이 있는 계정으로만 볼 수 있는 화면입니다.');
+  // 사진/일보 열람은 관리자 화면(admin.html)에서 들어오는 관리자 전용 도구로 통합됨.
+  // admin.html과 동일하게 role(관리자/운영자) 기준으로 판정 — role 컬럼 도입 전 옛 계정은
+  // role이 없을 수 있으므로 그 경우엔 예전 방식대로 category==='관리자'였는지로 대체 판정한다.
+  // (예전엔 category만 봤는데, 회원가입 작업분류 목록에 "관리자" 선택지가 사라지면서
+  // role이 관리자/운영자인 신규 계정도 전부 여기서 막히는 버그가 있었다 — 2026-08-23 수정)
+  var category=localStorage.getItem('member_category');
+  var role=localStorage.getItem('member_role')||(category==='관리자'?'관리자':'');
+  if(role!=='관리자'&&role!=='운영자'){
+    alert('관리자 또는 운영자 권한이 있는 계정으로만 볼 수 있는 화면입니다.');
     location.href='../index.html';
     return;
   }
