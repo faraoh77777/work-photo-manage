@@ -134,7 +134,7 @@ function showT(m){var t=document.getElementById('toast');t.textContent=m;t.style
 function showTE(m){var t=document.getElementById('toastE');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none';},6000);}
 
 function logout(){
-  ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','senderName'].forEach(function(k){localStorage.removeItem(k);});
+  ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','senderName'].forEach(function(k){localStorage.removeItem(k);});
   location.href='login.html';
 }
 

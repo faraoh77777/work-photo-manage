@@ -204,12 +204,12 @@ textarea.f{resize:none;height:48px;}
   <select id="inPhase" class="f" style="display:none;margin-bottom:4px;"></select>
 
   <div class="row2">
-    <div id="catField">
+    <div>
       <div class="flbl" id="lblCat">작업 분류</div>
       <select id="inCat" class="f"></select>
       <div class="cat-bar" id="catBar"></div>
     </div>
-    <div id="locField">
+    <div>
       <div class="flbl" id="lblLoc">작업 구역</div>
       <select id="inLoc" class="f"></select>
     </div>
@@ -307,15 +307,17 @@ textarea.f{resize:none;height:48px;}
   if(p) document.getElementById('hdrProject').textContent=p;
   if(c) document.getElementById('hdrCompany').textContent=c;
   // ⚙️ 설정 버튼은 관리자 화면으로 가는 통로일 뿐이라 관리자/운영자 계정에만 보여준다.
-  // role 컬럼 도입 전 가입한 옛 계정은 category==='관리자'로 대체 판정(하위호환).
-  var _cat=localStorage.getItem('member_category');
-  var _role=localStorage.getItem('member_role')||(_cat==='관리자'?'관리자':'');
-  if(_role==='관리자'||_role==='운영자'){
+  if(isPrivilegedRole()){
     document.getElementById('settingsBtn').style.display='';
+  }else{
+    // 근로자는 가입 때 고른 주 메뉴 하나만 쓰면 되니 메뉴탭 자체를 숨긴다
+    // (activeMenu를 그 메뉴로 고정하는 로직은 아래 activeMenu 계산부에 있음).
+    var tabs=document.getElementById('menuTabs');
+    if(tabs) tabs.style.display='none';
   }
 })();
 function logout(){
-  ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','senderName'].forEach(function(k){localStorage.removeItem(k);});
+  ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','senderName'].forEach(function(k){localStorage.removeItem(k);});
   location.href='login.html';
 }
 function fireIconEffect(el){
@@ -335,7 +337,7 @@ async function withdrawMember(){
     try{ await sbClient.from('members').delete().eq('id',memberId); }
     catch(e){ console.error('회원 탈퇴 실패',e); showTE('회원 탈퇴 실패: '+(e.message||e)); return; }
   }
-  ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','senderName'].forEach(function(k){localStorage.removeItem(k);});
+  ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','senderName'].forEach(function(k){localStorage.removeItem(k);});
   location.href='login.html';
 }
 
@@ -625,7 +627,11 @@ function loadCatsByMenu(){
 function saveCatsByMenu(){ localStorage.setItem("custom_categories_by_menu",JSON.stringify(catsByMenu)); }
 
 var catsByMenu=loadCatsByMenu();
-var activeMenu=(MENUS.indexOf(localStorage.getItem("active_menu"))!==-1)?localStorage.getItem("active_menu"):"시공";
+// 근로자는 메뉴탭이 안 보이니 가입 때 고른 주 메뉴로 고정하고, 관리자/운영자는
+// 예전처럼 마지막으로 쓰던 메뉴(없으면 시공)를 그대로 이어서 쓴다.
+var _mainMenu=localStorage.getItem("member_main_menu");
+var activeMenu=(!isPrivilegedRole()&&MENUS.indexOf(_mainMenu)!==-1)?_mainMenu
+  :(MENUS.indexOf(localStorage.getItem("active_menu"))!==-1)?localStorage.getItem("active_menu"):"시공";
 var customCats=catsByMenu[activeMenu];
 var customAreas=loadList("custom_areas",DEFAULT_AREAS);
 saveCatsByMenu();
@@ -680,9 +686,6 @@ function optionHtml(v){
   var esc=String(v).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
   return '<option value="'+esc+'">'+esc+'</option>';
 }
-// 공종(작업 분류) 목록이 원래 가입 시 고른 공종(시공/자재/품질은 같은 공종 목록을 씀)과
-// 같은 의미인 메뉴에서만 근로자 계정을 본인 공종으로 제한한다. 관리자/운영자는 제한 없음.
-var TRADE_MENUS=["시공","자재","품질"];
 function isPrivilegedRole(){
   var cat=localStorage.getItem('member_category');
   var role=localStorage.getItem('member_role')||(cat==='관리자'?'관리자':'');
@@ -691,18 +694,8 @@ function isPrivilegedRole(){
 function populateCatSelect(preserve){
   var el=document.getElementById("inCat");
   var prev=preserve?el.value:(localStorage.getItem("last_category")||localStorage.getItem("member_category"));
-  var myCat=localStorage.getItem("member_category");
-  var restrict=!isPrivilegedRole()&&TRADE_MENUS.indexOf(activeMenu)!==-1&&myCat&&customCats.indexOf(myCat)!==-1;
-  var list=restrict?[myCat]:customCats;
-  el.innerHTML=list.map(optionHtml).join('');
-  el.disabled=restrict;
-  if(prev&&list.indexOf(prev)!==-1) el.value=prev;
-  // 근로자 본인 공종으로 고정될 때는 어차피 바꿀 수 없는 값이니 필드 자체를 숨기고,
-  // 옆의 작업 구역이 남는 공간을 채우도록 한다.
-  var catField=document.getElementById("catField");
-  var locField=document.getElementById("locField");
-  if(catField) catField.style.display=restrict?"none":"";
-  if(locField) locField.style.gridColumn=restrict?"1 / -1":"";
+  el.innerHTML=customCats.map(optionHtml).join('');
+  if(prev&&customCats.indexOf(prev)!==-1) el.value=prev;
   updCat();
 }
 function populateAreaSelect(preserve){
