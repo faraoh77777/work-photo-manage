@@ -397,6 +397,12 @@ async function sendToSupabase(){
       }
       if(dbRes.error){ failed.push({p:p,err:'[DB] '+dbRes.error.message}); continue; }
       succeeded.push(p);
+      // 예전엔 이 사진의 로컬 백업(IndexedDB) 정리가 배치 전체가 끝난 뒤(기기저장 등까지 다
+      // 마친 후) 한꺼번에 일어났다 — 그 사이 신호가 끊기거나 화면을 벗어나 중단되면, 이미
+      // 클라우드 업로드는 성공했는데 로컬엔 "미전송"으로 남아 다음 시도 때 같은 사진이
+      // work_photos에 중복으로 또 insert됐다(사진 자체는 upsert라 안전, 행만 중복).
+      // 업로드가 확정되는 즉시(배치가 마저 끝나길 기다리지 않고) 로컬 백업부터 지운다.
+      if(p.dbId!=null){ dbDeletePhoto(p.dbId).catch(function(e){console.error("로컬 백업 정리 실패",e);}); p.dbId=null; }
     }catch(e){ failed.push({p:p,err:e.message||String(e)}); }
   }
   btn.disabled=false;
@@ -770,6 +776,10 @@ function subscribeSettingsRealtime(){
 }
 
 var savedPhotos=[], lockedInfo=null;
+// buildFileName의 idx가 세션 안 순번이라 배치 전송 성공 후 리셋될 수 있어, Date.now()만으론
+// 같은 밀리초 안에 연속 촬영/재시도가 겹칠 이론적 여지가 남는다 — 페이지가 떠 있는 동안은
+// 절대 되풀이되지 않는 카운터를 더해 확실히 구분한다.
+var _fnameUniqCounter=0;
 
 // ── 미전송 사진 보존 (IndexedDB) ───────────────────────
 var DB_NAME="work-photo-db", DB_VERSION=2, STORE_NAME="photos", SETTINGS_STORE="settings", dbPromise=null;
@@ -1333,11 +1343,14 @@ function sanitizeForFilename(str){
 // 촬영자 이름·특이사항은 한글이 대부분이라 위 sanitizeForFilename(ASCII만 허용)을 쓰면
 // 값이 통째로 사라지므로, 예약문자만 치환하고 한글은 남기는 전용 함수를 따로 둔다.
 function sanitizeForFilenameKr(str){
-  return str?String(str).trim()
+  if(!str) return "";
+  var cleaned=String(str).trim()
     .replace(/[\\\/:*?"<>|&]/g,"")
     .replace(/\s+/g,"_")
-    .replace(/^[_\-]+|[_\-]+$/g,"")
-    .slice(0,30):"";
+    .replace(/^[_\-]+|[_\-]+$/g,"");
+  // 이모지 등 서로게이트 페어 문자가 30번째 자리 경계에 걸리면 slice()가 코드유닛
+  // 단위로 반쪽만 잘라 깨진 문자를 남길 수 있어, Array.from으로 문자 단위(코드포인트)로 자른다.
+  return Array.from(cleaned).slice(0,30).join("");
 }
 
 // Supabase Storage 키는 비-ASCII(한글 등)를 거부하므로, 표시/저장용 한글 파일명과
@@ -1381,7 +1394,11 @@ function buildFileName(idx){
     wt, cat, tag, loc];
   if(name) parts.push(name);
   if(note) parts.push(note);
-  parts.push(idx);
+  // idx만으로는 세션 안 순번일 뿐이라, 배치 전송에 성공해 목록이 비워진 뒤 같은
+  // 분(minute)에 같은 조건으로 재촬영하면 idx가 다시 1부터 시작해 파일명이 완전히
+  // 똑같아질 수 있었다 — Storage 업로드가 upsert:true라 그 경우 앞 사진이 조용히
+  // 덮어써짐(2026-08-23 발견). Date.now() 토큰을 더해 실제 촬영 시각 단위로 구분한다.
+  parts.push(idx+"-"+Date.now().toString(36)+(_fnameUniqCounter++).toString(36));
   var fname=parts.join("_")+".jpg";
   return fname.length>200?fname.slice(0,196)+".jpg":fname;
 }
@@ -1440,7 +1457,16 @@ function autoAddPhoto(loadedImg){
   showT("추가 완료! 총 "+savedPhotos.length+"장");
   document.getElementById("inNote").value="";
   setTimeout(resetCam,800);
-  dbAddPhoto(photo).then(function(id){photo.dbId=id;}).catch(function(e){console.error("사진 저장 실패",e);});
+  // 화면엔 이미 "저장됨"으로 뜨지만, 기기 백업(IndexedDB) 자체는 뒤늦게 비동기로 끝난다.
+  // 예전엔 이게 실패해도 콘솔에만 로그가 남아서, 저장공간이 꽉 찬 상태로 오프라인에서
+  // 며칠 찍다 보면 화면엔 "저장됨"으로 보이던 사진이 새로고침하면 조용히 사라질 수 있었다
+  // — 실패를 화면에서도 바로 알 수 있게 사진 썸네일에 경고 표시를 남긴다(2026-08-23).
+  dbAddPhoto(photo).then(function(id){photo.dbId=id;}).catch(function(e){
+    console.error("사진 저장 실패",e);
+    photo.dbFailed=true;
+    updateList();
+    showTE("⚠️ 방금 사진이 기기에 백업되지 못했습니다 — 전송 전에 앱을 끄거나 새로고침하지 마세요.");
+  });
 }
 
 function updateList(){
@@ -1454,6 +1480,7 @@ function updateList(){
       +'<img src="'+p.dataUrl+'"/>'
       +'<button class="del-btn" onclick="removePhoto('+i+')">&#10005;</button>'
       +'<span class="num-badge">'+(i+1)+'</span>'
+      +(p.dbFailed?'<span class="num-badge" style="left:auto;right:4px;bottom:auto;top:2px;color:#FDEDEC;background:rgba(231,76,60,0.85);border-radius:4px;padding:1px 4px;" title="기기 백업 실패 — 전송 전까지 앱을 끄지 마세요">⚠️</span>':'')
       +'</div>';
   });
   list.innerHTML=html||'<div style="grid-column:span 4;text-align:center;padding:12px;color:#A0BBD4;font-size:13px;">촬영된 사진이 없습니다</div>';

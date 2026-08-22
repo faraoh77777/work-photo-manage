@@ -262,12 +262,50 @@ function showPinSetupUI(show){
   document.getElementById('pinSetupNotice').style.display=show?'':'none';
 }
 
+// ── PIN 무제한 시도 방지 (2026-08-23 추가) ──────────────
+// 4자리 PIN(1만 가지)에 시도 횟수 제한이 전혀 없어서, 분실·방치된 폰에서 전화번호만
+// 알면 브라우저에서 반복 시도로 뚫을 수 있었다. 서버(Supabase)에 손대지 않고도
+// 막을 수 있는 만큼은 이 기기 localStorage 기준으로 잠가둔다 — 완전한 방어는 아니지만
+// (localStorage를 지우면 풀림) 일반적인 무차별 대입은 현실적으로 막는다.
+var LOGIN_LOCK_KEY='login_lock_attempts';
+var LOGIN_LOCK_THRESHOLD=5;      // 이 횟수를 틀리면 잠금 시작
+var LOGIN_LOCK_BASE_MS=30*1000;  // 첫 잠금 30초, 이후 잠길 때마다 2배씩(최대 10분)
+var LOGIN_LOCK_MAX_MS=10*60*1000;
+function loadLockMap(){ try{ return JSON.parse(localStorage.getItem(LOGIN_LOCK_KEY))||{}; }catch(e){ return {}; } }
+function saveLockMap(map){ localStorage.setItem(LOGIN_LOCK_KEY, JSON.stringify(map)); }
+function checkLoginLock(phone){
+  var rec=loadLockMap()[phone];
+  if(rec && rec.lockUntil && rec.lockUntil>Date.now()){
+    return Math.ceil((rec.lockUntil-Date.now())/1000);
+  }
+  return 0;
+}
+function recordFailedLogin(phone){
+  var map=loadLockMap();
+  var rec=map[phone]||{count:0, stage:0};
+  rec.count++;
+  if(rec.count>=LOGIN_LOCK_THRESHOLD){
+    rec.lockUntil=Date.now()+Math.min(LOGIN_LOCK_BASE_MS*Math.pow(2,rec.stage), LOGIN_LOCK_MAX_MS);
+    rec.stage++;
+    rec.count=0;
+  }
+  map[phone]=rec;
+  saveLockMap(map);
+  return rec.lockUntil||0;
+}
+function clearLoginAttempts(phone){
+  var map=loadLockMap();
+  if(map[phone]){ delete map[phone]; saveLockMap(map); }
+}
+
 async function doLogin(){
   var phone=normPhone(document.getElementById('loginPhone').value.trim());
   var pin=document.getElementById('loginPin').value.trim();
   document.getElementById('approvalNotice').style.display='none';
   if(phone.length<10){showTE('전화번호를 입력해 주세요.');return;}
   if(!/^\d{4}$/.test(pin)){showTE('비밀번호 4자리를 입력해 주세요.');return;}
+  var lockedSec=checkLoginLock(phone);
+  if(lockedSec>0){ showTE('비밀번호를 여러 번 틀려 '+lockedSec+'초 후 다시 시도할 수 있습니다.'); return; }
   showT('확인 중...');
   var res=await sbClient.from('members').select('*').eq('phone',phone).single();
   if(res.error||!res.data){showTE('등록된 번호가 없습니다. 회원가입 해주세요.');return;}
@@ -290,9 +328,18 @@ async function doLogin(){
     showPinSetupUI(false);
   }else{
     var hash2=await sha256Hex(pin);
-    if(hash2!==m.pin_hash){showTE('비밀번호가 올바르지 않습니다.');return;}
+    if(hash2!==m.pin_hash){
+      var newLockUntil=recordFailedLogin(phone);
+      if(newLockUntil>Date.now()){
+        showTE('비밀번호를 여러 번 틀렸습니다. '+Math.ceil((newLockUntil-Date.now())/1000)+'초 후 다시 시도해 주세요.');
+      }else{
+        showTE('비밀번호가 올바르지 않습니다.');
+      }
+      return;
+    }
   }
 
+  clearLoginAttempts(phone);
   if(!m.approved){
     document.getElementById('approvalNotice').style.display='';
     showTE('관리자 승인 대기 중입니다. 승인 후 다시 로그인해 주세요.');
