@@ -11,7 +11,7 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
   padding:16px;font-size:16px;}
 .wrap{max-width:460px;margin:0 auto;}
 .app-header{background:linear-gradient(135deg,#1E3A5F,#2E5F9E);border-radius:14px;
-  padding:16px 18px;margin-bottom:16px;color:#fff;display:flex;justify-content:space-between;align-items:center;}
+  padding:16px 18px;margin-bottom:16px;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:10px;}
 .app-title{font-size:22px;font-weight:800;letter-spacing:1px;display:flex;align-items:center;gap:8px;}
 .app-title img{width:36px;height:36px;border-radius:8px;}
 .app-sub{font-size:11px;opacity:0.75;margin-top:2px;}
@@ -67,12 +67,15 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
 
   <div id="adminBody" style="display:none;">
     <div class="app-header">
-      <div>
+      <div style="min-width:0;flex:1;overflow:hidden;">
         <div class="app-title"><img src="Work%20photo_icon/icon-192.png" alt=""/> 관리자</div>
-        <div class="app-sub" id="hdrWho"></div>
+        <!-- 이름·회사명·프로젝트명을 다 붙이면 길어질 수 있어(특히 프로젝트명 추가 후) 한 줄로
+             잘리게 하고, 옆 버튼들과 안 부딪히게 이 블록 자체를 줄어들 수 있게 함(2026-08-23). -->
+        <div class="app-sub" id="hdrWho" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
       </div>
-      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
-        <button class="hdr-btn" onclick="logout()">로그아웃</button>
+      <!-- 로그아웃은 작업사진 화면(index.html)의 이름 팝업 안에만 두기로 함 — 관리자
+           화면에선 계정 관련 액션이 아니라 작업사진 화면으로 돌아가는 것만 필요(2026-08-23). -->
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex:none;">
         <a class="hdr-btn" href="index.html">작업사진 화면</a>
       </div>
     </div>
@@ -132,11 +135,6 @@ try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }catch(e){consol
 
 function showT(m){var t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none';},2500);}
 function showTE(m){var t=document.getElementById('toastE');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none';},6000);}
-
-function logout(){
-  ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','senderName'].forEach(function(k){localStorage.removeItem(k);});
-  location.href='login.html';
-}
 
 // ── 권한 게이트: 로그인 + role이 관리자/운영자여야 통과 ──
 // role 컬럼 도입 전 가입한 옛 계정은 role이 없을 수 있으므로, 그 경우엔
