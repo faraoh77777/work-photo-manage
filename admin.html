@@ -73,7 +73,7 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
         <button class="hdr-btn" onclick="logout()">로그아웃</button>
-        <a class="hdr-btn" href="index.html">근로자 화면</a>
+        <a class="hdr-btn" href="index.html">작업사진 화면</a>
       </div>
     </div>
 
@@ -151,7 +151,7 @@ function logout(){
     document.getElementById('gateCard').style.display='block';
     return;
   }
-  document.getElementById('hdrWho').textContent=(localStorage.getItem('member_name')||'')+' · '+(localStorage.getItem('member_company')||'');
+  document.getElementById('hdrWho').textContent=[localStorage.getItem('member_name'),localStorage.getItem('member_company'),localStorage.getItem('member_project')].filter(Boolean).join(' · ');
   document.getElementById('adminBody').style.display='block';
   initAdmin();
 })();

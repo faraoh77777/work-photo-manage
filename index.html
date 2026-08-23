@@ -202,7 +202,7 @@ textarea.f{resize:none;height:48px;}
       <span id="wtModLabel">수정</span>
     </label>
   </div>
-  <select id="inPhase" class="f" style="display:none;margin-bottom:4px;"></select>
+  <div id="inPhaseWrap" style="display:none;gap:8px;margin-bottom:4px;"></div>
 
   <div class="row2">
     <div>
@@ -1144,19 +1144,36 @@ function getWorkLabel(){
   var v=wt?wt.value:'신규';
   var d=LABELS_BY_MENU[activeMenu];
   var phases=wtPhasesFor(v,d);
-  if(phases) return document.getElementById('inPhase').value||phases[0];
+  if(phases){
+    var checkedPhase=document.querySelector('input[name="phaseChoice"]:checked');
+    return checkedPhase?checkedPhase.value:phases[0];
+  }
   return v;
+}
+// 진행중/완료(또는 변경전/변경후) 선택도 신규/수정과 같은 박스형 라디오로 통일한다(2026-08-23).
+var PHASE_BOX_COLORS=[["var(--brand-2)",""],["#E67E22",""]];
+function phaseBoxHtml(label,idx){
+  var color=PHASE_BOX_COLORS[idx%PHASE_BOX_COLORS.length][0];
+  var id="phaseOpt"+idx;
+  var esc=String(label).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+  return '<label for="'+id+'" style="flex:1;min-width:80px;display:flex;align-items:center;gap:6px;background:#F7FAFC;'
+    +'border:1.5px solid #C8D8E8;border-radius:8px;padding:9px 10px;cursor:pointer;'
+    +'font-size:17px;font-weight:700;color:'+color+';">'
+    +'<input type="radio" name="phaseChoice" id="'+id+'" value="'+esc+'"'+(idx===0?' checked':'')
+    +' style="width:16px;height:16px;accent-color:'+color+';"/>'
+    +'<span>'+esc+'</span></label>';
 }
 function togglePhaseSelect(){
   var checked=document.querySelector('input[name="workType"]:checked');
   var d=LABELS_BY_MENU[activeMenu];
   var phases=checked?wtPhasesFor(checked.value,d):null;
-  var sel=document.getElementById('inPhase');
+  var wrap=document.getElementById('inPhaseWrap');
   if(phases){
-    sel.innerHTML=phases.map(optionHtml).join('');
-    sel.style.display='';
+    wrap.innerHTML=phases.map(phaseBoxHtml).join('');
+    wrap.style.display='flex';
   }else{
-    sel.style.display='none';
+    wrap.innerHTML='';
+    wrap.style.display='none';
   }
 }
 document.querySelectorAll('input[name="workType"]').forEach(function(r){
