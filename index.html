@@ -156,6 +156,8 @@ textarea.f{resize:none;height:48px;}
           <!-- 관리자 화면 바로가기는 관리자/운영자 계정에만 보이게 함(아래 인증 스크립트에서 토글).
                예전엔 ⚙️ 설정 버튼 → 모달 → 이 링크, 총 2탭이었는데 이 팝업으로 흡수해 1탭으로 줄였다. -->
           <a id="accountAdminLink" href="admin.html" style="display:none;width:100%;box-sizing:border-box;text-align:left;background:none;border:none;border-bottom:1px solid #E8EEF4;padding:11px 14px;font-size:14px;font-weight:700;color:var(--brand-2);text-decoration:none;">🛠️ 관리자 화면</a>
+          <!-- 작업지시 공유는 근로자도 쓰는 기능이라 관리자 화면과 달리 항상 보임 -->
+          <a href="gallery/share.html" style="display:block;width:100%;box-sizing:border-box;text-align:left;background:none;border:none;border-bottom:1px solid #E8EEF4;padding:11px 14px;font-size:14px;font-weight:700;color:var(--brand-2);text-decoration:none;">📋 작업지시 공유</a>
           <button onclick="logout()" style="display:block;width:100%;text-align:left;background:none;border:none;padding:11px 14px;font-size:14px;font-weight:700;color:#1A2332;cursor:pointer;">로그아웃</button>
           <button onclick="withdrawMember()" style="display:block;width:100%;text-align:left;background:none;border:none;border-top:1px solid #E8EEF4;padding:9px 14px;font-size:12px;color:#E74C3C;cursor:pointer;">회원탈퇴</button>
         </div>

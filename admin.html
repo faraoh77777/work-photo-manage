@@ -123,6 +123,30 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
       <div class="hint">현재 현장에 올라온 사진과 작업 기록을 모아 보고, 분류별로 내려받을 수 있습니다.</div>
       <a class="link-btn" href="gallery/index.html">사진/일보 갤러리 열기</a>
     </div>
+
+    <div class="card">
+      <div class="card-title">📋 작업지시 공유</div>
+      <div class="hint">현장 사진과 작업지시 내용을 카톡·이메일로 보냅니다. (근로자도 사용 가능)</div>
+      <a class="link-btn" href="gallery/share.html">작업지시 공유 화면 열기</a>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📧 수신자 관리</div>
+      <div class="hint">작업지시 공유에서 이메일로 보낼 때 고를 수 있는 사람 목록입니다.</div>
+      <div class="chip-row" id="recipChips"></div>
+      <div class="add-row" style="margin-bottom:6px;">
+        <input type="text" id="newRecipName" class="f" placeholder="이름"/>
+      </div>
+      <div class="add-row">
+        <input type="text" id="newRecipEmail" class="f" placeholder="이메일 주소"/>
+        <button onclick="addRecipient()">추가</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🗂️ 작업지시 발송 기록 <span class="cnt" id="sentSharesCount">0</span></div>
+      <div id="sentSharesList"></div>
+    </div>
   </div>
 
 </div>
@@ -350,6 +374,65 @@ async function initAdmin(){
   // 화면이 잠깐이라도 잘못 보일 수 있었다 — Supabase에서 실제 값을 받아온 뒤에만 그린다.
   renderPendingMembers();
   await fetchSettingsFromSupabase();
+  renderRecipients();
+  renderSentShares();
+}
+
+// ── 📧 수신자 관리 (share_recipients) — gallery/share.html의 이메일 수신자 목록 ──
+async function renderRecipients(){
+  var box=document.getElementById('recipChips');
+  if(!sbClient)return;
+  try{
+    var res=await sbClient.from('share_recipients').select('*').order('name');
+    if(res.error){ box.innerHTML='<div style="font-size:13px;color:#E74C3C;">불러오기 실패: '+res.error.message+'</div>'; return; }
+    var rows=res.data||[];
+    if(!rows.length){ box.innerHTML='<div style="font-size:13px;color:#A0BBD4;">등록된 수신자가 없습니다.</div>'; return; }
+    box.innerHTML=rows.map(function(r){
+      var esc=String(r.name).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+      return '<span class="chip">'+esc+' <span style="color:#A0BBD4;font-size:11px;">('+r.email+')</span>'
+        +'<button onclick="removeRecipient(\''+r.id+'\')" title="삭제">&#10005;</button></span>';
+    }).join('');
+  }catch(e){ console.error(e); box.innerHTML='<div style="font-size:13px;color:#E74C3C;">불러오기 실패</div>'; }
+}
+async function addRecipient(){
+  var nameEl=document.getElementById('newRecipName'), emailEl=document.getElementById('newRecipEmail');
+  var name=nameEl.value.trim(), email=emailEl.value.trim();
+  if(!name||!email){ showTE('이름과 이메일을 모두 입력해 주세요.'); return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showTE('이메일 형식이 올바르지 않습니다.'); return; }
+  if(!sbClient)return;
+  var res=await sbClient.from('share_recipients').insert({name:name,email:email});
+  if(res.error){ showTE('추가 실패: '+res.error.message); return; }
+  nameEl.value=''; emailEl.value='';
+  showT('수신자를 추가했습니다'); renderRecipients();
+}
+async function removeRecipient(id){
+  if(!confirm('이 수신자를 삭제할까요?'))return;
+  var res=await sbClient.from('share_recipients').delete().eq('id',id);
+  if(res.error){ showTE('삭제 실패: '+res.error.message); return; }
+  showT('삭제했습니다'); renderRecipients();
+}
+
+// ── 🗂️ 작업지시 발송 기록 (sent_shares, 읽기 전용 로그) ──
+async function renderSentShares(){
+  var listEl=document.getElementById('sentSharesList'), countEl=document.getElementById('sentSharesCount');
+  if(!sbClient)return;
+  try{
+    var res=await sbClient.from('sent_shares').select('*').order('created_at',{ascending:false}).limit(20);
+    if(res.error){ listEl.innerHTML='<div style="font-size:13px;color:#E74C3C;">불러오기 실패: '+res.error.message+'</div>'; return; }
+    var rows=res.data||[];
+    countEl.textContent=rows.length;
+    if(!rows.length){ listEl.innerHTML='<div style="font-size:13px;color:#A0BBD4;">아직 발송 기록이 없습니다.</div>'; return; }
+    listEl.innerHTML=rows.map(function(s){
+      var methodLabel=s.method==='email'?'📧 이메일':'💬 카톡';
+      var when=(s.created_at||'').replace('T',' ').slice(0,16);
+      var esc=String(s.title||'(제목 없음)').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+      return '<div class="pending-item">'
+        +'<div class="pending-name">'+esc+'</div>'
+        +'<div class="pending-sub">'+methodLabel+' · '+(s.sender_name||'-')+' · 사진 '+(s.photo_count||0)+'장 · '+when+'</div>'
+        +(s.recipient_names?'<div class="pending-sub">받는사람: '+s.recipient_names+'</div>':'')
+        +'</div>';
+    }).join('');
+  }catch(e){ console.error(e); listEl.innerHTML='<div style="font-size:13px;color:#E74C3C;">불러오기 실패</div>'; }
 }
 </script>
 </body>

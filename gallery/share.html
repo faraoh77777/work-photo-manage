@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>작업지시 공유 — 작업 사진</title>
+<link rel="icon" type="image/png" href="../Work%20photo_icon/icon-192.png"/>
+<style>
+:root{--brand-1:#1E3A5F;--brand-2:#2E5F9E;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:100vh;
+  padding:8px;font-size:17px;}
+.wrap{max-width:460px;margin:0 auto;}
+.app-header{background:linear-gradient(135deg,var(--brand-1),var(--brand-2));border-radius:12px;
+  padding:12px 14px;margin-bottom:8px;color:#fff;}
+.app-title{font-size:22px;font-weight:800;letter-spacing:0.5px;display:flex;align-items:center;gap:8px;}
+.app-sub{font-size:12px;opacity:0.8;margin-top:3px;line-height:1.5;}
+.hdr-back{position:absolute;top:14px;right:14px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);
+  color:#fff;border-radius:8px;padding:5px 10px;font-size:12px;text-decoration:none;}
+.app-header{position:relative;}
+.card{background:#fff;border:1px solid #D1DCE8;border-radius:12px;
+  padding:12px;margin-bottom:8px;box-shadow:0 2px 6px rgba(0,0,0,0.06);}
+.flbl{font-size:11px;font-weight:700;color:#5A7A9A;letter-spacing:0.5px;
+  text-transform:uppercase;margin-bottom:6px;}
+.f{width:100%;background:#F7FAFC;border:1.5px solid #C8D8E8;border-radius:8px;
+  padding:9px 11px;color:#1A2332;font-size:16px;outline:none;font-family:Arial;}
+.f:focus{border-color:var(--brand-2);background:#fff;}
+textarea.f{resize:none;height:80px;line-height:1.5;}
+.cam-box{width:100%;height:64px;background:#EAF0F8;border:2px dashed #A0BBD4;
+  border-radius:12px;display:flex;align-items:center;justify-content:center;gap:8px;
+  cursor:pointer;color:#5A7A9A;font-size:13px;font-weight:700;}
+.cam-box:active{background:#DCE8F5;}
+.photo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px;}
+.photo-item{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;
+  background:#1A2332;border:2px solid #D1DCE8;box-shadow:0 1px 4px rgba(0,0,0,0.08);}
+.photo-item img{width:100%;height:100%;object-fit:cover;}
+.photo-del{position:absolute;top:2px;right:2px;background:rgba(231,76,60,0.92);
+  border:none;border-radius:50%;width:20px;height:20px;color:#fff;font-size:11px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:800;}
+.photo-count{font-size:11px;color:var(--brand-2);font-weight:800;margin-top:6px;}
+.recip-row{display:flex;align-items:center;gap:10px;background:#F7FAFC;border:1.5px solid #C8D8E8;
+  border-radius:8px;padding:9px 11px;cursor:pointer;margin-bottom:6px;}
+.recip-row.sel{background:#EAF0F8;border-color:var(--brand-2);}
+.recip-check{width:19px;height:19px;border-radius:5px;border:1.5px solid #A0BBD4;flex:none;
+  display:flex;align-items:center;justify-content:center;background:#fff;color:#fff;font-size:12px;font-weight:800;}
+.recip-row.sel .recip-check{background:var(--brand-2);border-color:var(--brand-2);}
+.recip-name{font-size:14px;font-weight:700;color:#1A2332;}
+.recip-email{font-size:11px;color:#7A9AB8;margin-top:1px;}
+.recip-empty,.recip-hint{font-size:12px;color:#A0BBD4;line-height:1.6;}
+.sbtn{width:100%;padding:12px;border:none;border-radius:10px;font-size:15px;
+  font-weight:800;cursor:pointer;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px;}
+.sbtn-kakao{background:#FEE500;color:#1A2332;}
+.sbtn-mail{background:linear-gradient(135deg,var(--brand-2),var(--brand-1));color:#fff;}
+.sbtn:disabled{opacity:0.55;cursor:not-allowed;}
+.footnote{font-size:11px;color:#A0BBD4;text-align:center;margin-top:10px;line-height:1.6;}
+#toast,#toastE{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  padding:10px 20px;border-radius:10px;font-size:14px;font-weight:700;
+  display:none;z-index:9998;white-space:nowrap;color:#fff;
+  box-shadow:0 4px 12px rgba(0,0,0,0.2);}
+#toast{background:#27AE60;}
+#toastE{background:#E74C3C;}
+
+/* PDF 렌더링용 숨은 템플릿(작업지시서 양식) — 화면엔 안 보이고 html2canvas가 캡처만 함 */
+#pdfTemplate{position:fixed;left:-9999px;top:0;width:794px;background:#fff;
+  font-family:'Malgun Gothic','Apple SD Gothic Neo',Arial,sans-serif;color:#1A2332;}
+#pdfTemplate .page{padding:48px 56px;}
+#pdfTemplate .doc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+#pdfTemplate .doc-title{font-size:30px;font-weight:800;letter-spacing:6px;color:#1A2332;}
+#pdfTemplate .doc-sub{font-size:12px;color:#7A9AB8;margin-top:6px;letter-spacing:0.5px;}
+#pdfTemplate .approval{border-collapse:collapse;flex:none;}
+#pdfTemplate .approval td{border:1px solid #1A2332;width:56px;height:26px;text-align:center;
+  font-size:11px;font-weight:700;color:#1A2332;vertical-align:middle;}
+#pdfTemplate .approval td.blank{height:44px;}
+#pdfTemplate .approval .lbl{background:#EAF0F8;}
+#pdfTemplate .brand-bar{height:4px;background:linear-gradient(90deg,#1E3A5F,#2E5F9E);margin:14px 0 22px;}
+#pdfTemplate .info-table{width:100%;border-collapse:collapse;margin-bottom:20px;}
+#pdfTemplate .info-table td{border:1px solid #C8D8E8;padding:8px 12px;font-size:13.5px;vertical-align:middle;}
+#pdfTemplate .info-table td.k{background:#F7FAFC;color:#5A7A9A;font-weight:700;width:108px;font-size:11.5px;
+  letter-spacing:0.3px;text-transform:uppercase;}
+#pdfTemplate .info-table td.v{color:#1A2332;font-weight:600;}
+#pdfTemplate .sec-lbl{font-size:12px;font-weight:800;color:#fff;background:#2E5F9E;letter-spacing:1px;
+  padding:6px 10px;display:inline-block;border-radius:3px 3px 0 0;}
+#pdfTemplate .sec-box{border:1.5px solid #2E5F9E;border-radius:0 6px 6px 6px;padding:14px 16px;margin-bottom:22px;}
+#pdfTemplate .instr-text{font-size:14.5px;line-height:1.85;color:#1A2332;white-space:pre-line;word-break:break-all;}
+#pdfTemplate .photo-grid2{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+#pdfTemplate .photo-cell{border:1.5px solid #D1DCE8;border-radius:6px;overflow:hidden;}
+#pdfTemplate .photo-img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;}
+#pdfTemplate .photo-cap{font-size:11px;color:#5A7A9A;padding:6px 8px;border-top:1px solid #D1DCE8;}
+#pdfTemplate .doc-footer{margin-top:30px;padding-top:14px;border-top:1px solid #D1DCE8;
+  display:flex;justify-content:space-between;font-size:10.5px;color:#A0BBD4;}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="app-header">
+    <a class="hdr-back" href="../index.html">← 작업사진</a>
+    <div class="app-title">📋 작업지시 공유</div>
+    <div class="app-sub">현장 사진과 작업지시 내용을 카톡·이메일로 바로 보냅니다</div>
+  </div>
+
+  <div class="card">
+    <div class="flbl">작업지시 제목</div>
+    <input class="f" type="text" id="inTitle" placeholder="예: SCC 3층 배관 보온재 교체 지시" style="margin-bottom:10px;"/>
+    <div class="flbl">작업지시 내용</div>
+    <textarea class="f" id="inContent" placeholder="지시 내용을 입력하세요..."></textarea>
+  </div>
+
+  <div class="card">
+    <div class="flbl">사진 첨부</div>
+    <div class="cam-box" id="camBox"><span>📷</span><span>탭하여 사진 추가</span></div>
+    <input type="file" id="fileInput" accept="image/*" multiple style="display:none"/>
+    <div class="photo-grid" id="photoGrid"></div>
+    <div class="photo-count" id="photoCount">0장 첨부됨</div>
+  </div>
+
+  <div class="card">
+    <div class="flbl">받는사람 (이메일) — 관리자가 등록한 목록</div>
+    <div id="recipList"></div>
+  </div>
+
+  <button class="sbtn sbtn-kakao" id="kakaoBtn" onclick="shareKakao()">💬 카톡·문자로 공유</button>
+  <button class="sbtn sbtn-mail" id="mailBtn" onclick="sendEmail()">📧 이메일로 보내기</button>
+
+  <div class="footnote">보낸 기록은 자동으로 저장됩니다.</div>
+</div>
+
+<div id="toast"></div>
+<div id="toastE"></div>
+
+<!-- html2canvas가 캡처할 숨은 작업지시서 템플릿 -->
+<div id="pdfTemplate">
+  <div class="page">
+    <div class="doc-head">
+      <div>
+        <div class="doc-title">현장 작업지시서</div>
+        <div class="doc-sub">SITE WORK INSTRUCTION</div>
+      </div>
+      <table class="approval">
+        <tr><td class="lbl">담당</td><td class="lbl">검토</td><td class="lbl">승인</td></tr>
+        <tr><td class="blank"></td><td class="blank"></td><td class="blank"></td></tr>
+      </table>
+    </div>
+    <div class="brand-bar"></div>
+    <table class="info-table">
+      <tr>
+        <td class="k">문서번호</td><td class="v" id="pdfDocNo"></td>
+        <td class="k">작성일자</td><td class="v" id="pdfDate"></td>
+      </tr>
+      <tr><td class="k">현장명</td><td class="v" colspan="3" id="pdfProject"></td></tr>
+      <tr><td class="k">발신</td><td class="v" colspan="3" id="pdfSender"></td></tr>
+      <tr><td class="k">수신</td><td class="v" colspan="3" id="pdfRecipients"></td></tr>
+      <tr><td class="k">작업제목</td><td class="v" colspan="3" id="pdfTitle"></td></tr>
+    </table>
+    <div>
+      <span class="sec-lbl">지시사항</span>
+      <div class="sec-box instr-text" id="pdfContent"></div>
+    </div>
+    <div>
+      <span class="sec-lbl" id="pdfPhotoLbl">첨부 사진</span>
+      <div class="sec-box"><div class="photo-grid2" id="pdfPhotoGrid"></div></div>
+    </div>
+    <div class="doc-footer">
+      <span>본 문서는 work-photo-manage 시스템에서 자동 생성되었습니다.</span>
+      <span id="pdfSentAt"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── 인증 체크: 근로자 포함 로그인한 모든 회원이 쓸 수 있음(관리자 전용 gallery와 다름) ──
+(function(){
+  if(!localStorage.getItem('member_id')){location.href='../login.html';return;}
+})();
+
+// ── Supabase ──
+var DEFAULT_SUPABASE_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
+var DEFAULT_SUPABASE_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
+var SUPABASE_URL=localStorage.getItem('site_supabase_url')||DEFAULT_SUPABASE_URL;
+var SUPABASE_KEY=localStorage.getItem('site_supabase_key')||DEFAULT_SUPABASE_KEY;
+var sbClient=null;
+try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }catch(e){console.error('Supabase 초기화 실패',e);}
+
+function showT(m){document.getElementById('toastE').style.display='none';var t=document.getElementById('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(function(){t.style.display='none';},2500);}
+function showTE(m){document.getElementById('toast').style.display='none';var t=document.getElementById('toastE');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(function(){t.style.display='none';},7000);}
+
+// ── 사진 첨부 ──
+var photos=[]; // {id, file, dataUrl}
+var photoSeq=1;
+document.getElementById('camBox').addEventListener('click',function(){document.getElementById('fileInput').click();});
+document.getElementById('fileInput').addEventListener('change',function(e){
+  var files=Array.prototype.slice.call(e.target.files||[]);
+  e.target.value='';
+  files.forEach(function(file){
+    var id=photoSeq++;
+    var reader=new FileReader();
+    reader.onload=function(ev){
+      photos.push({id:id,file:file,dataUrl:ev.target.result});
+      renderPhotos();
+    };
+    reader.readAsDataURL(file);
+  });
+});
+function removePhoto(id){ photos=photos.filter(function(p){return p.id!==id;}); renderPhotos(); }
+function renderPhotos(){
+  var grid=document.getElementById('photoGrid');
+  grid.innerHTML=photos.map(function(p){
+    return '<div class="photo-item"><img src="'+p.dataUrl+'"/>'
+      +'<button class="photo-del" onclick="removePhoto('+p.id+')">✕</button></div>';
+  }).join('');
+  document.getElementById('photoCount').textContent=photos.length+'장 첨부됨';
+}
+
+// ── 수신자 목록 (share_recipients, admin.html에서 관리) ──
+var recipients=[]; // {id,name,email,selected}
+async function loadRecipients(){
+  var listEl=document.getElementById('recipList');
+  if(!sbClient){ listEl.innerHTML='<div class="recip-empty">Supabase 연결 실패</div>'; return; }
+  try{
+    var res=await sbClient.from('share_recipients').select('*').order('name');
+    if(res.error){ listEl.innerHTML='<div class="recip-empty">수신자 목록을 불러오지 못했습니다.</div>'; return; }
+    recipients=(res.data||[]).map(function(r){ return {id:r.id,name:r.name,email:r.email,selected:false}; });
+    renderRecipients();
+  }catch(e){ console.error('수신자 목록 로드 실패',e); listEl.innerHTML='<div class="recip-empty">수신자 목록을 불러오지 못했습니다.</div>'; }
+}
+function toggleRecipient(id){
+  recipients=recipients.map(function(r){ return r.id===id?Object.assign({},r,{selected:!r.selected}):r; });
+  renderRecipients();
+}
+function renderRecipients(){
+  var listEl=document.getElementById('recipList');
+  if(!recipients.length){
+    listEl.innerHTML='<div class="recip-empty">등록된 수신자가 없습니다. admin.html → "수신자 관리"에서 먼저 등록해주세요.</div>';
+    return;
+  }
+  listEl.innerHTML=recipients.map(function(r){
+    var esc=String(r.name).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    return '<div class="recip-row '+(r.selected?'sel':'')+'" onclick="toggleRecipient(\''+r.id+'\')">'
+      +'<div class="recip-check">'+(r.selected?'✓':'')+'</div>'
+      +'<div><div class="recip-name">'+esc+'</div><div class="recip-email">'+r.email+'</div></div>'
+      +'</div>';
+  }).join('');
+}
+loadRecipients();
+
+// ── 발송 기록 로그 ──
+async function logSentShare(method, selectedRecipients){
+  if(!sbClient)return;
+  try{
+    await sbClient.from('sent_shares').insert({
+      title:document.getElementById('inTitle').value.trim(),
+      content:document.getElementById('inContent').value.trim(),
+      method:method,
+      recipient_names:selectedRecipients?selectedRecipients.map(function(r){return r.name;}).join(', '):null,
+      photo_count:photos.length,
+      sender_name:localStorage.getItem('member_name')||'',
+      sender_company:localStorage.getItem('member_company')||'',
+      project:localStorage.getItem('member_project')||'',
+    });
+  }catch(e){ console.error('발송 기록 저장 실패',e); }
+}
+
+// ── PDF 생성 (숨은 템플릿을 실 데이터로 채운 뒤 html2canvas로 캡처 → jsPDF로 조립) ──
+function buildDocNumber(){
+  var d=new Date();
+  var ds=d.toISOString().slice(0,10).replace(/-/g,'');
+  return 'WI-'+ds+'-'+String(d.getTime()).slice(-4);
+}
+async function generateInstructionPdf(selectedRecipients){
+  var title=document.getElementById('inTitle').value.trim()||'(제목 없음)';
+  var content=document.getElementById('inContent').value.trim()||'(내용 없음)';
+  var now=new Date();
+  document.getElementById('pdfDocNo').textContent=buildDocNumber();
+  document.getElementById('pdfDate').textContent=now.toISOString().slice(0,10);
+  document.getElementById('pdfProject').textContent=localStorage.getItem('member_project')||'-';
+  document.getElementById('pdfSender').textContent=(localStorage.getItem('member_name')||'-')+' ('+(localStorage.getItem('member_company')||'-')+')';
+  document.getElementById('pdfRecipients').textContent=selectedRecipients.length?selectedRecipients.map(function(r){return r.name;}).join(', '):'-';
+  document.getElementById('pdfTitle').textContent=title;
+  document.getElementById('pdfContent').textContent=content;
+  document.getElementById('pdfPhotoLbl').textContent='첨부 사진 ('+photos.length+'장)';
+  document.getElementById('pdfSentAt').textContent='발송일시 '+now.toISOString().slice(0,10)+' '+now.toTimeString().slice(0,5);
+  document.getElementById('pdfPhotoGrid').innerHTML=photos.map(function(p,i){
+    return '<div class="photo-cell"><img class="photo-img" src="'+p.dataUrl+'"/>'
+      +'<div class="photo-cap">사진 '+(i+1)+'</div></div>';
+  }).join('');
+
+  var el=document.getElementById('pdfTemplate');
+  var canvas=await html2canvas(el,{scale:2,useCORS:true,backgroundColor:'#ffffff'});
+  var imgData=canvas.toDataURL('image/jpeg',0.92);
+
+  var jsPDFCtor=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF;
+  var pdf=new jsPDFCtor('p','pt','a4');
+  var pageWidth=pdf.internal.pageSize.getWidth();
+  var pageHeight=pdf.internal.pageSize.getHeight();
+  var imgWidth=pageWidth;
+  var imgHeight=canvas.height*imgWidth/canvas.width;
+  var heightLeft=imgHeight, position=0;
+  pdf.addImage(imgData,'JPEG',0,position,imgWidth,imgHeight);
+  heightLeft-=pageHeight;
+  while(heightLeft>0){
+    position=heightLeft-imgHeight;
+    pdf.addPage();
+    pdf.addImage(imgData,'JPEG',0,position,imgWidth,imgHeight);
+    heightLeft-=pageHeight;
+  }
+  var base64=pdf.output('datauristring').split(',')[1];
+  return { base64:base64, filename:(title.replace(/[\\\/:*?"<>|]/g,'_').slice(0,40)||'작업지시서')+'.pdf' };
+}
+
+// ── 이메일 발송 (Supabase Edge Function → Resend) ──
+async function sendEmail(){
+  var selected=recipients.filter(function(r){return r.selected;});
+  if(!selected.length){ showTE('받는사람을 한 명 이상 선택해주세요.'); return; }
+  if(!photos.length){ showTE('사진을 1장 이상 첨부해주세요.'); return; }
+  var btn=document.getElementById('mailBtn');
+  btn.disabled=true; var origText=btn.textContent; btn.textContent='⏳ PDF 만드는 중...';
+  try{
+    var pdf=await generateInstructionPdf(selected);
+    btn.textContent='⏳ 이메일 발송 중...';
+    var title=document.getElementById('inTitle').value.trim()||'현장 작업지시서';
+    var resp=await fetch(SUPABASE_URL+'/functions/v1/send-instruction-email',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY},
+      body:JSON.stringify({
+        to:selected.map(function(r){return r.email;}),
+        subject:'[작업지시] '+title,
+        text:document.getElementById('inContent').value.trim()||'첨부된 작업지시서 PDF를 확인해 주세요.',
+        pdfBase64:pdf.base64,
+        filename:pdf.filename,
+      }),
+    });
+    var data=await resp.json().catch(function(){return {};});
+    if(!resp.ok||!data.ok){ throw new Error((data&&data.error)||('HTTP '+resp.status)); }
+    showT('✅ 이메일 발송 완료! ('+selected.length+'명)');
+    logSentShare('email',selected);
+  }catch(e){
+    console.error('이메일 발송 실패',e);
+    showTE('❌ 이메일 발송 실패: '+(e.message||e)+' — Edge Function 배포가 안 됐다면 SHARE_FEATURE_SETUP.md를 참고하세요.');
+  }finally{
+    btn.disabled=false; btn.textContent=origText;
+  }
+}
+
+// ── 카톡/문자 공유 (Web Share API, 서버 불필요) ──
+async function shareKakao(){
+  if(!photos.length){ showTE('사진을 1장 이상 첨부해주세요.'); return; }
+  var title=document.getElementById('inTitle').value.trim()||'현장 작업지시서';
+  var content=document.getElementById('inContent').value.trim();
+  var files=photos.map(function(p){ return new File([p.file],p.file.name||('photo_'+p.id+'.jpg'),{type:p.file.type||'image/jpeg'}); });
+  var shareData={files:files, title:title, text:content};
+  if(!navigator.share||!navigator.canShare||!navigator.canShare(shareData)){
+    // 공유 API 미지원 브라우저(주로 PC) 폴백: 사진을 각각 다운로드
+    photos.forEach(function(p){
+      var a=document.createElement('a'); a.href=p.dataUrl; a.download=p.file.name||('photo_'+p.id+'.jpg');
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    });
+    showT('사진 '+photos.length+'장 저장됨 → 카카오톡에서 직접 전송하세요');
+    logSentShare('kakao',null);
+    return;
+  }
+  var btn=document.getElementById('kakaoBtn');
+  btn.disabled=true;
+  try{
+    await navigator.share(shareData);
+    showT('카톡 공유 화면으로 전달했습니다.');
+    logSentShare('kakao',null);
+  }catch(e){
+    if(e.name!=='AbortError') showTE('공유 실패: '+(e.message||e));
+  }finally{
+    btn.disabled=false;
+  }
+}
+</script>
+</body>
+</html>
