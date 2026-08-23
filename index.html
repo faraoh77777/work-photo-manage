@@ -114,17 +114,6 @@ textarea.f{resize:none;height:48px;}
 .menu-tab.active[data-menu="안전"]{background:#F39C12;border-color:#F39C12;color:#fff;}
 .menu-tab.active[data-menu="품질"]{background:#27AE60;border-color:#27AE60;color:#fff;}
 .menu-tab.active[data-menu="화기/유도"]{background:#C0392B;border-color:#C0392B;color:#fff;}
-#settingsOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);
-  z-index:9997;align-items:center;justify-content:center;padding:16px;}
-#settingsBox{background:#fff;border-radius:14px;width:100%;max-width:420px;
-  max-height:86vh;overflow-y:auto;padding:16px;}
-.set-header{display:flex;justify-content:space-between;align-items:center;
-  font-size:16px;font-weight:800;color:#1A2332;margin-bottom:10px;}
-.set-header button{background:none;border:none;font-size:16px;color:#7A9AB8;cursor:pointer;}
-.set-section{margin-top:14px;padding-top:14px;border-top:1px solid #E8EEF4;}
-.set-section:first-of-type{margin-top:0;padding-top:0;border-top:none;}
-.set-title{font-size:12px;font-weight:800;color:#5A7A9A;text-transform:uppercase;
-  letter-spacing:0.5px;margin-bottom:8px;}
 .chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
 .chip{display:flex;align-items:center;gap:5px;background:#F7FAFC;border:1.5px solid #C8D8E8;
   border-radius:14px;padding:4px 6px 4px 12px;font-size:13px;color:#1A2332;}
@@ -164,12 +153,13 @@ textarea.f{resize:none;height:48px;}
           <span id="accountBtnName" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">계정</span><span style="font-size:9px;opacity:0.8;">▾</span>
         </button>
         <div id="accountMenu" style="display:none;position:absolute;top:calc(100% + 6px);right:0;background:#fff;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,0.25);overflow:hidden;min-width:140px;z-index:20;">
+          <!-- 관리자 화면 바로가기는 관리자/운영자 계정에만 보이게 함(아래 인증 스크립트에서 토글).
+               예전엔 ⚙️ 설정 버튼 → 모달 → 이 링크, 총 2탭이었는데 이 팝업으로 흡수해 1탭으로 줄였다. -->
+          <a id="accountAdminLink" href="admin.html" style="display:none;width:100%;box-sizing:border-box;text-align:left;background:none;border:none;border-bottom:1px solid #E8EEF4;padding:11px 14px;font-size:14px;font-weight:700;color:var(--brand-2);text-decoration:none;">🛠️ 관리자 화면</a>
           <button onclick="logout()" style="display:block;width:100%;text-align:left;background:none;border:none;padding:11px 14px;font-size:14px;font-weight:700;color:#1A2332;cursor:pointer;">로그아웃</button>
           <button onclick="withdrawMember()" style="display:block;width:100%;text-align:left;background:none;border:none;border-top:1px solid #E8EEF4;padding:9px 14px;font-size:12px;color:#E74C3C;cursor:pointer;">회원탈퇴</button>
         </div>
       </div>
-      <!-- ⚙️ 설정은 관리자 화면으로 가는 통로일 뿐이라 관리자 계정에만 보이게 함(아래 인증 스크립트에서 토글) -->
-      <button id="settingsBtn" onclick="openSettings()" style="display:none;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;">⚙️ 설정</button>
       <button id="folderBtn" onclick="pickSaveFolder()" style="display:none;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;">📁 폴더설정</button>
     </div>
   </div>
@@ -276,21 +266,6 @@ textarea.f{resize:none;height:48px;}
   <button id="camShotBtn" onclick="captureShot()"></button>
 </div>
 
-<!-- ⚙️ 설정: 근로자에게는 버튼 자체가 안 보임(관리자 계정만 위 헤더 버튼이 표시됨).
-     회원승인/작업분류/구역 관리·현장 관리는 관리자 전용 화면(admin.html)으로 옮겼고,
-     회원탈퇴는 근로자도 써야 해서 헤더로 옮겼다 — 이 모달엔 관리자 화면 바로가기만 남음. -->
-<div id="settingsOverlay">
-  <div id="settingsBox">
-    <div class="set-header">
-      <span>⚙️ 설정</span>
-      <button onclick="closeSettings()">&#10005;</button>
-    </div>
-    <div class="set-section">
-      <a href="admin.html" style="display:block;text-align:center;background:#F7FAFC;border:1.5px solid #C8D8E8;border-radius:10px;padding:10px;font-size:14px;font-weight:700;color:var(--brand-2);text-decoration:none;">🛠️ 관리자 화면 열기</a>
-    </div>
-  </div>
-</div>
-
 <!-- 저장된 사진 목록 -->
 <div class="card" id="listCard" style="display:none;">
   <div class="list-header">
@@ -319,9 +294,9 @@ textarea.f{resize:none;height:48px;}
   if(c) document.getElementById('hdrCompany').textContent=c;
   var nameEl=document.getElementById('accountBtnName');
   if(nameEl) nameEl.textContent=localStorage.getItem('member_name')||'계정';
-  // ⚙️ 설정 버튼은 관리자 화면으로 가는 통로일 뿐이라 관리자/운영자 계정에만 보여준다.
+  // 관리자 화면 바로가기는 관리자/운영자 계정에만 보여준다.
   if(isPrivilegedRole()){
-    document.getElementById('settingsBtn').style.display='';
+    document.getElementById('accountAdminLink').style.display='block';
   }else{
     // 근로자는 가입 때 고른 주 메뉴 하나만 쓰면 되니 메뉴탭 카드 자체를 숨긴다
     // (activeMenu를 그 메뉴로 고정하는 로직은 아래 activeMenu 계산부에 있음).
@@ -752,12 +727,8 @@ function populateAreaSelect(preserve){
 // 회원 승인 대기/작업분류·구역 편집/현장 관리는 관리자 전용 화면(admin.html)으로 옮겼다.
 // 여기서는 그 화면이 저장한 값을 읽어서(app_settings 실시간 동기화) 촬영 폼 드롭다운을
 // 채우는 용도로만 customCats/customAreas를 쓴다.
-function openSettings(){
-  document.getElementById("settingsOverlay").style.display="flex";
-}
-function closeSettings(){
-  document.getElementById("settingsOverlay").style.display="none";
-}
+// (⚙️ 설정 모달은 "관리자 화면 열기" 링크 하나뿐이었는데, 2026-08-23에 이름 팝업(accountMenu)
+// 안으로 흡수돼 openSettings/closeSettings와 함께 삭제됨.)
 async function pushSettingsToSupabase(){
   if(!sbClient)return;
   try{
