@@ -71,7 +71,8 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
         <div class="app-title"><img src="Work%20photo_icon/icon-192.png" alt=""/> 관리자</div>
         <!-- 이름·회사명·프로젝트명을 다 붙이면 길어질 수 있어(특히 프로젝트명 추가 후) 한 줄로
              잘리게 하고, 옆 버튼들과 안 부딪히게 이 블록 자체를 줄어들 수 있게 함(2026-08-23). -->
-        <div class="app-sub" id="hdrWho" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+        <div class="app-sub" id="hdrProject" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+        <div class="app-sub" id="hdrCompany" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
       </div>
       <!-- 로그아웃은 작업사진 화면(index.html)의 이름 팝업 안에만 두기로 함 — 관리자
            화면에선 계정 관련 액션이 아니라 작업사진 화면으로 돌아가는 것만 필요(2026-08-23). -->
@@ -149,7 +150,10 @@ function showTE(m){var t=document.getElementById('toastE');t.textContent=m;t.sty
     document.getElementById('gateCard').style.display='block';
     return;
   }
-  document.getElementById('hdrWho').textContent=[localStorage.getItem('member_name'),localStorage.getItem('member_company'),localStorage.getItem('member_project')].filter(Boolean).join(' · ');
+  // 이름은 굳이 관리자 화면까지 안 보여줘도 되고, 회사명·프로젝트명은 한 줄에 몰아넣지 않고
+  // 각자 줄바꿔서 보여준다(2026-08-23) — index.html 헤더와 같은 방식.
+  document.getElementById('hdrProject').textContent=localStorage.getItem('member_project')||'';
+  document.getElementById('hdrCompany').textContent=localStorage.getItem('member_company')||'';
   document.getElementById('adminBody').style.display='block';
   initAdmin();
 })();
