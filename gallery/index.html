@@ -1456,8 +1456,12 @@ document.addEventListener('drop', e => {
 // daesun gallery와 동일하게, 사이드바는 작업분류가 아니라 작업구분(신규/수정/기타)이
 // 1차 탐색 기준이다 — 폴더를 펼치면 그 안에서 작업분류로 다시 좁힐 수 있는 드롭다운이 나온다.
 function workTypeFolderName(wt){
-  if(wt==='작업전'||wt==='작업후') return '수정';
-  if(wt==='신규') return '신규';
+  // index.html(촬영앱)의 work_type 값과 일치시켜야 한다 — 실제로 저장되는 값은
+  // 신규/수정 그 자체가 아니라 하위 단계(변경전/변경후, 진행중/완료)다. 예전엔
+  // 옛 값(작업전/작업후/신규) 기준으로만 매칭해서 요즘 사진은 전부 "기타"로
+  // 떨어졌다(2026-08-24 발견 — 동기화해도 분류가 안 되는 것처럼 보이던 원인).
+  if(wt==='변경전'||wt==='변경후'||wt==='작업전'||wt==='작업후') return '수정';
+  if(wt==='신규'||wt==='진행중'||wt==='완료') return '신규';
   return wt||'기타';
 }
 function isOtherFolder(p){
