@@ -575,6 +575,12 @@ function downloadAll(photos){
 }
 
 // ── 앱 로직 ───────────────────────────────────────────
+// 진행중/완료(또는 변경전/변경후) 박스 색상 — 아래 togglePhaseSelect()가 스크립트 로드 시점에
+// 바로 한 번 호출되므로(700줄 부근), 이 값은 반드시 그보다 앞서 있어야 한다. 원래 phaseBoxHtml
+// 함수 바로 위에 뒀다가, var 대입이 실제 호출 시점보다 뒤에 실행돼 "PHASE_BOX_COLORS가
+// undefined"로 터지면서 그 아래 populateCatSelect/populateAreaSelect까지 통째로 멈춰 작업분류·
+// 작업구역 드롭다운이 텅 비어버렸다(2026-08-23 발견, 사용자 실사용 중 확인).
+var PHASE_BOX_COLORS=[["var(--brand-2)",""],["#E67E22",""]];
 var CC={
   'DCS Panel':"#E67E22",'LCP':"#E74C3C",'Junction Box':"#F39C12",'Field Instrument':"#2980B9",'Cable Duct':"#16A085",
   'Cable Tray':"#8E44AD",'Conduit Pipe':"#C0392B",'Air Pipe':"#27AE60",'Hook Up':"#2E86AB",
@@ -1150,8 +1156,6 @@ function getWorkLabel(){
   }
   return v;
 }
-// 진행중/완료(또는 변경전/변경후) 선택도 신규/수정과 같은 박스형 라디오로 통일한다(2026-08-23).
-var PHASE_BOX_COLORS=[["var(--brand-2)",""],["#E67E22",""]];
 function phaseBoxHtml(label,idx){
   var color=PHASE_BOX_COLORS[idx%PHASE_BOX_COLORS.length][0];
   var id="phaseOpt"+idx;
