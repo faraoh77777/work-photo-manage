@@ -723,14 +723,19 @@ function isPrivilegedRole(){
 }
 function populateCatSelect(preserve){
   var el=document.getElementById("inCat");
-  var prev=preserve?el.value:(localStorage.getItem("last_category")||localStorage.getItem("member_category"));
+  // 예전엔 "이 기기에서 마지막으로 썼던 분류"가 가입 시 등록한 공종보다 우선이었다 —
+  // 다른 근로자가 같은 기기를 잠깐 썼거나 실수로 딴 분류를 골랐다 넘어가면, 그 흔적이
+  // 계속 기본값으로 남는 문제가 있어 가입 시 공종(member_category)을 항상 우선한다(2026-08-23).
+  var prev=preserve?el.value:localStorage.getItem("member_category");
   el.innerHTML=customCats.map(optionHtml).join('');
   if(prev&&customCats.indexOf(prev)!==-1) el.value=prev;
   updCat();
 }
 function populateAreaSelect(preserve){
   var el=document.getElementById("inLoc");
-  var prev=preserve?el.value:null;
+  // 예전엔 기본값 로직이 아예 없어서 그냥 목록 첫 항목이 선택됐다 — 관리자가 admin.html에서
+  // 지정한 "기본 구역"을 따르도록 변경(2026-08-23).
+  var prev=preserve?el.value:(localStorage.getItem("default_area")||null);
   el.innerHTML=customAreas.map(optionHtml).join('');
   if(prev&&customAreas.indexOf(prev)!==-1) el.value=prev;
 }
@@ -747,6 +752,7 @@ async function pushSettingsToSupabase(){
       id:'global',
       cats_by_menu:catsByMenu,
       areas:customAreas,
+      default_area:localStorage.getItem("default_area")||null,
       updated_at:new Date().toISOString()
     });
     if(res.error) console.error("설정 클라우드 동기화 실패",res.error.message);
@@ -765,6 +771,9 @@ function applyRemoteSettings(data){
     });
   }
   if(Array.isArray(data.areas)&&data.areas.length){ customAreas=data.areas; changed=true; }
+  if(data.default_area&&data.default_area!==localStorage.getItem("default_area")){
+    localStorage.setItem("default_area",data.default_area);
+  }
   var fixedStale=fixStaleCategoryDefaults(catsByMenu);
   if(changed||fixedStale){
     customCats=catsByMenu[activeMenu];
@@ -1116,7 +1125,6 @@ document.getElementById("inCat").addEventListener("change",updCat);
 function updCat(){
   var v=document.getElementById("inCat").value;
   document.getElementById("catBar").style.background=CC[v]||"#7F8C8D";
-  localStorage.setItem("last_category",v);
 }
 
 // 기기번호는 대문자로 통일하고, 띄어쓰기는 하이픈으로 바꾼다("PT 2101" -> "PT-2101").
