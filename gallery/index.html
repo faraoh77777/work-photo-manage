@@ -1279,6 +1279,14 @@ async function startBatch() {
     return;
   }
 
+  // "전체 재분류"는 라디오 라벨에 "기존 분류 덮어씀"이라고 스스로 경고문을 써놨으면서도
+  // 정작 시작 버튼엔 확인 절차가 없었다 — 이미 알려진 OCR 오인식 이슈까지 겹쳐 있어,
+  // 실수로 고르면 이미 맞게 분류된 사진까지 한 번에 잘못 덮어써질 수 있었다(2026-08-23 발견).
+  if (mode === 'all') {
+    const alreadyClassified = targets.filter(p => p.cat && p.cat !== 'Others').length;
+    if (!confirm(`이미 분류된 사진 ${alreadyClassified}장을 포함해 총 ${targets.length}장을 OCR로 재분석해 기존 값을 덮어씁니다.\nOCR 오인식으로 잘못 바뀔 수 있고 되돌릴 수 없습니다. 계속할까요?`)) return;
+  }
+
   document.getElementById('batchOptions').style.display = 'none';
   document.getElementById('batchStartBtn').style.display = 'none';
   document.getElementById('batchCancelBtn').textContent = '중단';
@@ -2405,7 +2413,16 @@ function removeCat(i){
   saveCatsByMenu(); pushSettingsToSupabase(); saveSettings(); renderSidebar(); renderFolderList();
 }
 function clearAll(){
-  if(!confirm('모든 사진과 설정을 삭제합니다.\n이 작업은 되돌릴 수 없습니다.'))return;
+  // 예전 문구("모든 사진과 설정을 삭제합니다, 되돌릴 수 없습니다")가 실제 동작보다
+  // 과장돼 있었다 — 실제론 이 기기의 로컬 캐시만 지우고 클라우드는 그대로라 "동기화"로
+  // 되찾을 수 있는데, 정작 클라우드 업로드가 조용히 실패해 로컬에만 있던 사진은 문구가
+  // 그 사실을 안 알려준 채로 진짜 영구 삭제됐다(2026-08-23 발견). 실제 범위와 위험한
+  // 부분(클라우드 미동기화 사진)을 구분해서 알려준다.
+  const unsynced=photos.filter(p=>!p.cloud_url).length;
+  var msg='이 기기에 저장된 사진 캐시를 지웁니다. 클라우드에 이미 올라간 사진은 "☁️ 동기화"로 다시 받을 수 있습니다.';
+  if(unsynced>0) msg+='\n\n⚠️ 이 중 '+unsynced+'장은 클라우드에 아직 안 올라간 사진이라, 이 작업으로 영구히 사라집니다.';
+  msg+='\n\n계속할까요?';
+  if(!confirm(msg))return;
   txStore('photos','readwrite').clear();
   photoUrlCache.forEach(u=>URL.revokeObjectURL(u));
   photoUrlCache.clear();

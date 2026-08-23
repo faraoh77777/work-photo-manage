@@ -291,13 +291,22 @@ async function renderPendingMembers(){
         +'<div class="pending-name">'+m.name+' <span style="font-weight:400;color:#5A7A9A;">('+m.phone+')</span></div>'
         +'<div class="pending-sub">'+m.company+' · '+m.project+' · '+(m.category||'-')+' · 희망 역할: '+(m.role||'근로자')+'</div>'
         +'<div class="pending-actions">'
-        +'<button class="btn-ok" onclick="approveMember(\''+m.id+'\')">승인</button>'
+        +'<button class="btn-ok" onclick="approveMember(\''+m.id+'\',\''+m.name.replace(/'/g,"")+'\',\''+(m.role||'근로자').replace(/'/g,"")+'\')">승인</button>'
         +'<button class="btn-no" onclick="rejectMember(\''+m.id+'\',\''+m.name.replace(/'/g,"")+'\')">거부</button>'
         +'</div></div>';
     }).join('');
   }catch(e){ listEl.innerHTML='<div style="font-size:13px;color:#E74C3C;">불러오기 실패</div>'; console.error(e); }
 }
-async function approveMember(id){
+async function approveMember(id,name,role){
+  // 예전엔 거부(삭제)만 확인받고 승인은 바로 처리됐다 — 대기 목록에 여러 명이
+  // 쌓여있을 때 옆 사람 걸 잘못 누르면 확인 없이 바로 권한이 넘어갔다(2026-08-23
+  // 발견). 특히 희망 역할이 관리자/운영자면 admin.html·gallery 전체 접근 권한이라
+  // 문구를 더 무겁게 해서 확인받는다.
+  var isPrivileged=(role==='관리자'||role==='운영자');
+  var msg=isPrivileged
+    ? name+'님을 "'+role+'" 권한으로 승인합니다.\nadmin.html·사진관리 화면까지 전체 접근 권한이 부여됩니다. 승인할까요?'
+    : name+'님의 가입을 승인할까요?';
+  if(!confirm(msg))return;
   var res=await sbClient.from('members').update({approved:true}).eq('id',id);
   if(res.error){ showTE('승인 실패: '+res.error.message); return; }
   showT('승인했습니다'); renderPendingMembers();
