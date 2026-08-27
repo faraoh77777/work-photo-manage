@@ -44,6 +44,18 @@ https://<프로젝트 참조 ID>.supabase.co/functions/v1/send-instruction-email
 admin.html → "📧 수신자 관리"에서 이메일 받을 사람의 이름/이메일을 등록하세요.
 등록된 사람만 share.html의 수신자 목록에 나타납니다.
 
+## 2026-08-27 추가: 수신(To)/참조(CC) + 소속 구분(발주처/시공사/협력업체)
+
+- `SUPABASE_SHARE_FEATURE.sql`에 추가된 `alter table` 3줄을 SQL Editor에서 실행해야
+  admin.html에서 직책/소속구분/기본유형을 등록할 수 있습니다(기존 테이블이 있던 현장 포함).
+- Edge Function(`send-instruction-email`)이 `cc` 파라미터를 받도록 바뀌었으므로,
+  이미 배포해두셨다면 **다시 배포**해야 참조 발송이 반영됩니다:
+  ```bash
+  supabase functions deploy send-instruction-email
+  ```
+- admin.html에서 수신자 등록 시 소속(발주처/시공사/협력업체)과 기본 수신/참조를 정하면,
+  share.html에서 그 사람을 선택할 때 기본값으로 잡히고 필요하면 탭해서 바꿀 수 있습니다.
+
 ## 참고
 
 - 이 저장소는 지금까지 서버 없이(정적 사이트 + Supabase) 운영돼왔는데, 이메일 발송은

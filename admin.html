@@ -31,6 +31,7 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
 .chip button:hover{color:#E74C3C;}
 .add-row{display:flex;gap:6px;}
 .add-row input{flex:1;}
+.add-row select{flex:1;}
 .add-row button{flex-shrink:0;background:#2E5F9E;color:#fff;border:none;border-radius:8px;
   padding:0 16px;font-size:13px;font-weight:700;cursor:pointer;}
 .menu-tabs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;}
@@ -136,6 +137,18 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
       <div class="chip-row" id="recipChips"></div>
       <div class="add-row" style="margin-bottom:6px;">
         <input type="text" id="newRecipName" class="f" placeholder="이름"/>
+        <input type="text" id="newRecipRole" class="f" placeholder="직책 (예: 협력사소장)"/>
+      </div>
+      <div class="add-row" style="margin-bottom:6px;">
+        <select id="newRecipOrg" class="f">
+          <option value="발주처">발주처</option>
+          <option value="시공사" selected>시공사</option>
+          <option value="협력업체">협력업체</option>
+        </select>
+        <select id="newRecipType" class="f">
+          <option value="to" selected>기본 수신(To)</option>
+          <option value="cc">기본 참조(CC)</option>
+        </select>
       </div>
       <div class="add-row">
         <input type="text" id="newRecipEmail" class="f" placeholder="이메일 주소"/>
@@ -389,20 +402,24 @@ async function renderRecipients(){
     if(!rows.length){ box.innerHTML='<div style="font-size:13px;color:#A0BBD4;">등록된 수신자가 없습니다.</div>'; return; }
     box.innerHTML=rows.map(function(r){
       var esc=String(r.name).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-      return '<span class="chip">'+esc+' <span style="color:#A0BBD4;font-size:11px;">('+r.email+')</span>'
+      var roleEsc=r.role?(' · '+String(r.role).replace(/&/g,'&amp;').replace(/</g,'&lt;')):'';
+      var org=r.org_type||'시공사';
+      var typeLabel=r.default_type==='cc'?'참조':'수신';
+      return '<span class="chip">'+esc+roleEsc+' <span style="color:#A0BBD4;font-size:11px;">['+org+' · 기본 '+typeLabel+'] ('+r.email+')</span>'
         +'<button onclick="removeRecipient(\''+r.id+'\')" title="삭제">&#10005;</button></span>';
     }).join('');
   }catch(e){ console.error(e); box.innerHTML='<div style="font-size:13px;color:#E74C3C;">불러오기 실패</div>'; }
 }
 async function addRecipient(){
   var nameEl=document.getElementById('newRecipName'), emailEl=document.getElementById('newRecipEmail');
-  var name=nameEl.value.trim(), email=emailEl.value.trim();
+  var roleEl=document.getElementById('newRecipRole'), orgEl=document.getElementById('newRecipOrg'), typeEl=document.getElementById('newRecipType');
+  var name=nameEl.value.trim(), email=emailEl.value.trim(), role=roleEl.value.trim();
   if(!name||!email){ showTE('이름과 이메일을 모두 입력해 주세요.'); return; }
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showTE('이메일 형식이 올바르지 않습니다.'); return; }
   if(!sbClient)return;
-  var res=await sbClient.from('share_recipients').insert({name:name,email:email});
+  var res=await sbClient.from('share_recipients').insert({name:name,email:email,role:role||null,org_type:orgEl.value,default_type:typeEl.value});
   if(res.error){ showTE('추가 실패: '+res.error.message); return; }
-  nameEl.value=''; emailEl.value='';
+  nameEl.value=''; emailEl.value=''; roleEl.value='';
   showT('수신자를 추가했습니다'); renderRecipients();
 }
 async function removeRecipient(id){

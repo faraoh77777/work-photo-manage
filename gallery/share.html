@@ -47,6 +47,14 @@ textarea.f{resize:none;height:80px;line-height:1.5;}
 .recip-name{font-size:14px;font-weight:700;color:#1A2332;}
 .recip-email{font-size:11px;color:#7A9AB8;margin-top:1px;}
 .recip-empty,.recip-hint{font-size:12px;color:#A0BBD4;line-height:1.6;}
+.org-tag{display:inline-block;font-size:10px;font-weight:800;padding:1px 6px;border-radius:4px;
+  margin-right:6px;vertical-align:middle;}
+.org-tag.owner{background:#FBEAEA;color:#C0392B;}
+.org-tag.contractor{background:#EAF0F8;color:#2E5F9E;}
+.org-tag.sub{background:#EAF7F0;color:#1E8449;}
+.type-toggle{flex:none;background:#fff;border:1.5px solid var(--brand-2);color:var(--brand-2);
+  border-radius:20px;padding:5px 12px;font-size:12px;font-weight:800;cursor:pointer;}
+.type-toggle.cc{border-color:#B9770E;color:#B9770E;}
 .sbtn{width:100%;padding:12px;border:none;border-radius:10px;font-size:15px;
   font-weight:800;cursor:pointer;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px;}
 .sbtn-kakao{background:#FEE500;color:#1A2332;}
@@ -119,6 +127,7 @@ textarea.f{resize:none;height:80px;line-height:1.5;}
 
   <div class="card">
     <div class="flbl">받는사람 (이메일) — 관리자가 등록한 목록</div>
+    <div class="recip-hint" style="margin-bottom:6px;">탭하면 선택, 선택된 사람은 오른쪽 배지를 눌러 수신/참조 전환</div>
     <div id="recipList"></div>
   </div>
 
@@ -152,7 +161,8 @@ textarea.f{resize:none;height:80px;line-height:1.5;}
       </tr>
       <tr><td class="k">현장명</td><td class="v" colspan="3" id="pdfProject"></td></tr>
       <tr><td class="k">발신</td><td class="v" colspan="3" id="pdfSender"></td></tr>
-      <tr><td class="k">수신</td><td class="v" colspan="3" id="pdfRecipients"></td></tr>
+      <tr><td class="k">수신(To)</td><td class="v" colspan="3" id="pdfTo"></td></tr>
+      <tr><td class="k">참조(CC)</td><td class="v" colspan="3" id="pdfCc"></td></tr>
       <tr><td class="k">작업제목</td><td class="v" colspan="3" id="pdfTitle"></td></tr>
     </table>
     <div>
@@ -215,19 +225,28 @@ function renderPhotos(){
 }
 
 // ── 수신자 목록 (share_recipients, admin.html에서 관리) ──
-var recipients=[]; // {id,name,email,selected}
+// r.type: 'to'(수신) / 'cc'(참조) — 선택 시 admin.html에서 정한 기본값(default_type)으로 시작, 눌러서 전환 가능
+var recipients=[]; // {id,name,email,role,org_type,default_type,type,selected}
+var ORG_CLASS={'발주처':'owner','시공사':'contractor','협력업체':'sub'};
 async function loadRecipients(){
   var listEl=document.getElementById('recipList');
   if(!sbClient){ listEl.innerHTML='<div class="recip-empty">Supabase 연결 실패</div>'; return; }
   try{
     var res=await sbClient.from('share_recipients').select('*').order('name');
     if(res.error){ listEl.innerHTML='<div class="recip-empty">수신자 목록을 불러오지 못했습니다.</div>'; return; }
-    recipients=(res.data||[]).map(function(r){ return {id:r.id,name:r.name,email:r.email,selected:false}; });
+    recipients=(res.data||[]).map(function(r){
+      return {id:r.id,name:r.name,email:r.email,role:r.role||'',org_type:r.org_type||'시공사',
+        default_type:r.default_type||'to',type:r.default_type||'to',selected:false};
+    });
     renderRecipients();
   }catch(e){ console.error('수신자 목록 로드 실패',e); listEl.innerHTML='<div class="recip-empty">수신자 목록을 불러오지 못했습니다.</div>'; }
 }
 function toggleRecipient(id){
   recipients=recipients.map(function(r){ return r.id===id?Object.assign({},r,{selected:!r.selected}):r; });
+  renderRecipients();
+}
+function toggleType(id){
+  recipients=recipients.map(function(r){ return r.id===id?Object.assign({},r,{type:r.type==='cc'?'to':'cc'}):r; });
   renderRecipients();
 }
 function renderRecipients(){
@@ -238,23 +257,28 @@ function renderRecipients(){
   }
   listEl.innerHTML=recipients.map(function(r){
     var esc=String(r.name).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    var roleEsc=r.role?(' · '+String(r.role).replace(/&/g,'&amp;').replace(/</g,'&lt;')):'';
+    var orgCls=ORG_CLASS[r.org_type]||'contractor';
+    var typeLabel=r.type==='cc'?'참조':'수신';
     return '<div class="recip-row '+(r.selected?'sel':'')+'" onclick="toggleRecipient(\''+r.id+'\')">'
       +'<div class="recip-check">'+(r.selected?'✓':'')+'</div>'
-      +'<div><div class="recip-name">'+esc+'</div><div class="recip-email">'+r.email+'</div></div>'
+      +'<div style="flex:1;min-width:0;"><div class="recip-name"><span class="org-tag '+orgCls+'">'+r.org_type+'</span>'+esc+roleEsc+'</div>'
+      +'<div class="recip-email">'+r.email+'</div></div>'
+      +(r.selected?'<button type="button" class="type-toggle'+(r.type==='cc'?' cc':'')+'" onclick="event.stopPropagation();toggleType(\''+r.id+'\')">'+typeLabel+'</button>':'')
       +'</div>';
   }).join('');
 }
 loadRecipients();
 
 // ── 발송 기록 로그 ──
-async function logSentShare(method, selectedRecipients){
+async function logSentShare(method, selectedRecipients, namesOverride){
   if(!sbClient)return;
   try{
     await sbClient.from('sent_shares').insert({
       title:document.getElementById('inTitle').value.trim(),
       content:document.getElementById('inContent').value.trim(),
       method:method,
-      recipient_names:selectedRecipients?selectedRecipients.map(function(r){return r.name;}).join(', '):null,
+      recipient_names:namesOverride||(selectedRecipients?formatRecipientNames(selectedRecipients):null),
       photo_count:photos.length,
       sender_name:localStorage.getItem('member_name')||'',
       sender_company:localStorage.getItem('member_company')||'',
@@ -263,13 +287,18 @@ async function logSentShare(method, selectedRecipients){
   }catch(e){ console.error('발송 기록 저장 실패',e); }
 }
 
+// ── 이름 표시: "[소속] 이름 · 직책" 형식으로 통일 ──
+function formatRecipientNames(list){
+  return list.map(function(r){ return '['+r.org_type+'] '+r.name+(r.role?' · '+r.role:''); }).join(', ');
+}
+
 // ── PDF 생성 (숨은 템플릿을 실 데이터로 채운 뒤 html2canvas로 캡처 → jsPDF로 조립) ──
 function buildDocNumber(){
   var d=new Date();
   var ds=d.toISOString().slice(0,10).replace(/-/g,'');
   return 'WI-'+ds+'-'+String(d.getTime()).slice(-4);
 }
-async function generateInstructionPdf(selectedRecipients){
+async function generateInstructionPdf(toList,ccList){
   var title=document.getElementById('inTitle').value.trim()||'(제목 없음)';
   var content=document.getElementById('inContent').value.trim()||'(내용 없음)';
   var now=new Date();
@@ -277,7 +306,8 @@ async function generateInstructionPdf(selectedRecipients){
   document.getElementById('pdfDate').textContent=now.toISOString().slice(0,10);
   document.getElementById('pdfProject').textContent=localStorage.getItem('member_project')||'-';
   document.getElementById('pdfSender').textContent=(localStorage.getItem('member_name')||'-')+' ('+(localStorage.getItem('member_company')||'-')+')';
-  document.getElementById('pdfRecipients').textContent=selectedRecipients.length?selectedRecipients.map(function(r){return r.name;}).join(', '):'-';
+  document.getElementById('pdfTo').textContent=toList.length?formatRecipientNames(toList):'-';
+  document.getElementById('pdfCc').textContent=ccList.length?formatRecipientNames(ccList):'-';
   document.getElementById('pdfTitle').textContent=title;
   document.getElementById('pdfContent').textContent=content;
   document.getElementById('pdfPhotoLbl').textContent='첨부 사진 ('+photos.length+'장)';
@@ -313,29 +343,35 @@ async function generateInstructionPdf(selectedRecipients){
 // ── 이메일 발송 (Supabase Edge Function → Resend) ──
 async function sendEmail(){
   var selected=recipients.filter(function(r){return r.selected;});
+  var toSel=selected.filter(function(r){return r.type!=='cc';});
+  var ccSel=selected.filter(function(r){return r.type==='cc';});
   if(!selected.length){ showTE('받는사람을 한 명 이상 선택해주세요.'); return; }
+  if(!toSel.length){ showTE('수신(To) 대상이 한 명 이상 필요합니다. 참조만으로는 보낼 수 없어요.'); return; }
   if(!photos.length){ showTE('사진을 1장 이상 첨부해주세요.'); return; }
   var btn=document.getElementById('mailBtn');
   btn.disabled=true; var origText=btn.textContent; btn.textContent='⏳ PDF 만드는 중...';
   try{
-    var pdf=await generateInstructionPdf(selected);
+    var pdf=await generateInstructionPdf(toSel,ccSel);
     btn.textContent='⏳ 이메일 발송 중...';
     var title=document.getElementById('inTitle').value.trim()||'현장 작업지시서';
+    var body={
+      to:toSel.map(function(r){return r.email;}),
+      subject:'[작업지시] '+title,
+      text:document.getElementById('inContent').value.trim()||'첨부된 작업지시서 PDF를 확인해 주세요.',
+      pdfBase64:pdf.base64,
+      filename:pdf.filename,
+    };
+    if(ccSel.length) body.cc=ccSel.map(function(r){return r.email;});
     var resp=await fetch(SUPABASE_URL+'/functions/v1/send-instruction-email',{
       method:'POST',
       headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY},
-      body:JSON.stringify({
-        to:selected.map(function(r){return r.email;}),
-        subject:'[작업지시] '+title,
-        text:document.getElementById('inContent').value.trim()||'첨부된 작업지시서 PDF를 확인해 주세요.',
-        pdfBase64:pdf.base64,
-        filename:pdf.filename,
-      }),
+      body:JSON.stringify(body),
     });
     var data=await resp.json().catch(function(){return {};});
     if(!resp.ok||!data.ok){ throw new Error((data&&data.error)||('HTTP '+resp.status)); }
-    showT('✅ 이메일 발송 완료! ('+selected.length+'명)');
-    logSentShare('email',selected);
+    showT('✅ 이메일 발송 완료! (수신 '+toSel.length+'명'+(ccSel.length?', 참조 '+ccSel.length+'명':'')+')');
+    var namesStr='수신: '+formatRecipientNames(toSel)+(ccSel.length?' / 참조: '+formatRecipientNames(ccSel):'');
+    logSentShare('email',selected,namesStr);
   }catch(e){
     console.error('이메일 발송 실패',e);
     showTE('❌ 이메일 발송 실패: '+(e.message||e)+' — Edge Function 배포가 안 됐다면 SHARE_FEATURE_SETUP.md를 참고하세요.');

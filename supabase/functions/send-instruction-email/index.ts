@@ -37,10 +37,22 @@ serve(async (req: Request) => {
       throw new Error("RESEND_API_KEY가 설정되지 않았습니다 (supabase secrets set RESEND_API_KEY=...)");
     }
 
-    const { to, subject, text, pdfBase64, filename } = await req.json();
+    const { to, cc, subject, text, pdfBase64, filename } = await req.json();
 
     if (!Array.isArray(to) || !to.length) throw new Error("받는사람(to)이 없습니다");
     if (!pdfBase64) throw new Error("PDF 데이터(pdfBase64)가 없습니다");
+
+    const payload: Record<string, unknown> = {
+      from: RESEND_FROM,
+      to,
+      subject: subject || "현장 작업지시서",
+      text: text || "첨부된 작업지시서 PDF를 확인해 주세요.",
+      attachments: [
+        { filename: filename || "작업지시서.pdf", content: pdfBase64 },
+      ],
+    };
+    // 참조(CC)는 선택 사항 — 값이 있을 때만 넣는다(Resend가 빈 배열도 그대로 받아들이긴 하지만 명시적으로 생략).
+    if (Array.isArray(cc) && cc.length) payload.cc = cc;
 
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -48,15 +60,7 @@ serve(async (req: Request) => {
         "Authorization": `Bearer ${RESEND_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        from: RESEND_FROM,
-        to,
-        subject: subject || "현장 작업지시서",
-        text: text || "첨부된 작업지시서 PDF를 확인해 주세요.",
-        attachments: [
-          { filename: filename || "작업지시서.pdf", content: pdfBase64 },
-        ],
-      }),
+      body: JSON.stringify(payload),
     });
 
     const data = await res.json();

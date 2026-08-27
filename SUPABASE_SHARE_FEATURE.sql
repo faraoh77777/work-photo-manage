@@ -10,6 +10,13 @@ create table if not exists share_recipients (
   created_at timestamptz not null default now()
 );
 
+-- 2026-08-27 추가: 직책/소속구분/기본 수신·참조 — 이미 테이블이 있던 현장은 아래 3줄만 추가 실행하면 됨
+alter table share_recipients add column if not exists role text;
+alter table share_recipients add column if not exists org_type text not null default '시공사'
+  check (org_type in ('발주처','시공사','협력업체'));
+alter table share_recipients add column if not exists default_type text not null default 'to'
+  check (default_type in ('to','cc'));
+
 -- 작업지시 발송 기록 (누가 언제 무엇을 누구에게 보냈는지)
 create table if not exists sent_shares (
   id uuid primary key default gen_random_uuid(),
@@ -37,3 +44,7 @@ create policy "sent_shares_insert" on sent_shares for insert with check (true);
 -- 검증
 select 'share_recipients' as table_name, count(*) from share_recipients
 union all select 'sent_shares', count(*) from sent_shares;
+
+-- 검증: role/org_type/default_type 컬럼이 잘 추가됐는지
+select column_name, data_type, column_default from information_schema.columns
+where table_name='share_recipients' and column_name in ('role','org_type','default_type');
