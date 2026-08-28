@@ -387,6 +387,10 @@ function enterLocalOnlyMode(){
   if(acct) acct.style.display='none';
   var sendBtn=document.getElementById('sendBtn');
   if(sendBtn) sendBtn.style.display='none';
+  // 시공/품질/자재/안전/화기유도 메뉴탭도 로컬 전용 모드에선 숨긴다 — 운영자가 현장을
+  // 개설하고 로그인하면(=이 함수를 안 타는 정상 분기) 예전처럼 다시 보인다.
+  var tabsCard=document.getElementById('menuTabsCard');
+  if(tabsCard) tabsCard.style.display='none';
 }
 function toggleAccountMenu(e){
   if(e) e.stopPropagation();
@@ -816,10 +820,13 @@ function populateAreaSelect(preserve){
 // 없는 로컬 전용 모드에서만 이 화면으로 같은 값을 이 기기 안에서 직접 바꿀 수 있게 한다.
 var lsEditMenu=activeMenu, lsTempCatsByMenu=null, lsTempAreas=null;
 function openLocalSettings(){
-  lsEditMenu=activeMenu;
+  // 로컬 전용 모드에선 상단 메뉴탭 자체가 숨어있어(enterLocalOnlyMode) 항상 "시공" 메뉴만
+  // 쓰인다 — 여기서도 메뉴 전환 탭 없이 "시공" 분류만 바로 편집하게 한다.
+  lsEditMenu='시공';
   lsTempCatsByMenu=JSON.parse(JSON.stringify(catsByMenu));
   lsTempAreas=customAreas.slice();
-  renderLsMenuTabs();
+  var tabsEl=document.getElementById('lsMenuTabs');
+  if(tabsEl) tabsEl.style.display='none';
   renderLsCatChips();
   renderLsAreaChips();
   document.getElementById('localSettingsModal').style.display='flex';
