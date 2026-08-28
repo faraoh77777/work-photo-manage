@@ -54,7 +54,7 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
     <div class="app-sub">계장 &amp; 전기 공사</div>
   </div>
 
-  <div class="card">
+  <div class="card" id="loginCard">
     <div class="tab-bar">
       <button class="tab-btn active" id="tabLogin" onclick="switchTab('login')">로그인</button>
       <button class="tab-btn" id="tabSignup" onclick="switchTab('signup')">회원가입</button>
@@ -134,8 +134,9 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
       <button class="sbtn" id="signupBtn" onclick="doSignup()" disabled>가입하기</button>
     </div>
   </div>
-  <div style="text-align:center;margin-top:14px;">
+  <div style="text-align:center;margin-top:14px;display:flex;flex-direction:column;gap:6px;">
     <a href="site-setup.html" style="font-size:12px;color:#7A9AB8;text-decoration:underline;">다른 회사/현장 관리자이신가요? 새 현장 만들기</a>
+    <a href="index.html" style="font-size:12px;color:#7A9AB8;text-decoration:underline;">계정 없이 사진만 찍고 카톡으로 보내기</a>
   </div>
 </div>
 
@@ -177,17 +178,23 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
   history.replaceState(null,'',location.pathname);
 })();
 
-// ── Supabase 연결: 로컬에 저장된 현장 설정이 있으면 그걸 쓰고, 없으면 기본 현장을 쓴다 ──
-var DEFAULT_SUPABASE_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
-var DEFAULT_SUPABASE_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
-var SUPABASE_URL=localStorage.getItem('site_supabase_url')||DEFAULT_SUPABASE_URL;
-var SUPABASE_KEY=localStorage.getItem('site_supabase_key')||DEFAULT_SUPABASE_KEY;
-var sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+// ── Supabase 연결: 이 기기에 연결된 현장이 있으면 그걸 쓰고, 없으면 예전 기본 현장(대선이엔씨)으로
+// 로그인을 시도할 수 있게 한다 ──
+// index.html은 로그인 없이도 촬영/로컬저장/카톡전송이 되도록 바뀌었지만(2026-08-28), 로그인 그
+// 자체는 실제 등록된 전화번호+비밀번호를 아는 사람만 통과되는 절차라 계속 열어둔다 — 그래야 폰을
+// 바꾸거나 앱을 지웠다 다시 깐 기존 회원이 관리자에게 매번 초대 링크를 새로 받지 않아도 된다.
+// (신규 가입은 여전히 운영자 승인 전까진 아무 권한도 없으므로 위험이 새로 생기지 않는다.)
+var LEGACY_DEFAULT_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
+var LEGACY_DEFAULT_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
+var SUPABASE_URL=localStorage.getItem('site_supabase_url')||LEGACY_DEFAULT_URL;
+var SUPABASE_KEY=localStorage.getItem('site_supabase_key')||LEGACY_DEFAULT_KEY;
+var sbClient=null;
+try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }catch(e){console.error('Supabase 초기화 실패',e);}
 
-// ── 회원가입 요청 텔레그램 알림: 기본 현장에서만 우리 봇으로 보낸다.
+// ── 회원가입 요청 텔레그램 알림: 대선이엔씨(레거시 기본) 현장에서만 우리 봇으로 보낸다.
 // 다른 회사가 만든 현장은 site_telegram_bot_token/chat_id를 직접 설정하지 않는 한 알림을 보내지 않는다
 // (설정 안 하면 우리 관리자에게 남의 회사 가입 요청이 새어가는 사고를 막기 위함).
-var IS_DEFAULT_SITE=!localStorage.getItem('site_supabase_url');
+var IS_DEFAULT_SITE=(SUPABASE_URL===LEGACY_DEFAULT_URL);
 var DEFAULT_TELEGRAM_BOT_TOKEN='8756089521:AAEor0BZOoU7vkICSY3Um7RCstO7QUBq86c';
 var DEFAULT_TELEGRAM_CHAT_ID='8958841524';
 var TELEGRAM_BOT_TOKEN=localStorage.getItem('site_telegram_bot_token')||(IS_DEFAULT_SITE?DEFAULT_TELEGRAM_BOT_TOKEN:'');
@@ -202,9 +209,9 @@ function notifyTelegramSignup(m){
   }).catch(function(e){console.error('텔레그램 알림 실패',e);});
 }
 
-// 기본 현장(대선이엔씨)에서만 회사명/프로젝트명을 미리 채워준다.
+// 대선이엔씨(레거시 기본) 현장에서만 회사명/프로젝트명을 미리 채워준다.
 // 다른 회사가 새로 만든 현장에는 이 값이 섞여 들어가면 안 되므로 반드시 직접 입력하게 비워둔다.
-if(!localStorage.getItem('site_supabase_url')){
+if(IS_DEFAULT_SITE){
   document.getElementById('regCompany').value='대선이엔씨(주)';
   document.getElementById('regProject').value='S-OIL SHAHEEN Project 계장공사 3공구(PKG-1)';
 }

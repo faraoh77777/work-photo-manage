@@ -682,14 +682,19 @@ function galleryLogout(){
   location.href='../login.html';
 }
 
-// ── Supabase: 로컬에 저장된 현장 설정이 있으면 그걸 쓰고, 없으면 기본 현장을 쓴다 (site-setup.html 참고) ──
-const DEFAULT_SUPABASE_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
-const DEFAULT_SUPABASE_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
-const SUPABASE_URL=localStorage.getItem('site_supabase_url')||DEFAULT_SUPABASE_URL;
-const SUPABASE_KEY=localStorage.getItem('site_supabase_key')||DEFAULT_SUPABASE_KEY;
+// ── Supabase: 이 기기에 연결된 현장이 있을 때만 쓴다 (기본 연결 없음 — index.html/login.html 참고) ──
+// member_id가 있는 기존 세션만 1회성으로 예전 기본 연결(대선이엔씨)로 이어준다.
+if(!localStorage.getItem('site_supabase_url') && localStorage.getItem('member_id')){
+  localStorage.setItem('site_supabase_url','https://dteljgmdbfyxubtpogcj.supabase.co');
+  localStorage.setItem('site_supabase_key','sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc');
+}
+const SUPABASE_URL=localStorage.getItem('site_supabase_url')||'';
+const SUPABASE_KEY=localStorage.getItem('site_supabase_key')||'';
 let sbClient=null;
-try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }
-catch(e){ console.error('Supabase 초기화 실패',e); }
+if(SUPABASE_URL&&SUPABASE_KEY){
+  try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }
+  catch(e){ console.error('Supabase 초기화 실패',e); }
+}
 
 // ── 사진 이미지 소스 ──────────────────────────────────
 // 사진은 base64 문자열(dataUrl)이 아니라 원본 Blob으로 저장한다(용량 -33%,

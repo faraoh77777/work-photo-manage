@@ -168,13 +168,20 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
 <div id="toastE"></div>
 
 <script>
-// ── Supabase: 로컬에 저장된 현장 설정이 있으면 그걸 쓰고, 없으면 기본 현장을 쓴다 (site-setup.html 참고) ──
-var DEFAULT_SUPABASE_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
-var DEFAULT_SUPABASE_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
-var SUPABASE_URL=localStorage.getItem('site_supabase_url')||DEFAULT_SUPABASE_URL;
-var SUPABASE_KEY=localStorage.getItem('site_supabase_key')||DEFAULT_SUPABASE_KEY;
+// ── Supabase: 이 기기에 연결된 현장이 있을 때만 쓴다 (기본 연결 없음 — index.html/login.html 참고) ──
+// member_id가 있는 기존 세션만 1회성으로 예전 기본 연결(대선이엔씨)로 이어준다.
+(function(){
+  if(!localStorage.getItem('site_supabase_url') && localStorage.getItem('member_id')){
+    localStorage.setItem('site_supabase_url','https://dteljgmdbfyxubtpogcj.supabase.co');
+    localStorage.setItem('site_supabase_key','sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc');
+  }
+})();
+var SUPABASE_URL=localStorage.getItem('site_supabase_url')||'';
+var SUPABASE_KEY=localStorage.getItem('site_supabase_key')||'';
 var sbClient=null;
-try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }catch(e){console.error("Supabase 초기화 실패",e);}
+if(SUPABASE_URL&&SUPABASE_KEY){
+  try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }catch(e){console.error("Supabase 초기화 실패",e);}
+}
 
 function showT(m){var t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none';},2500);}
 function showTE(m){var t=document.getElementById('toastE');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none';},6000);}
