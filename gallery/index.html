@@ -258,7 +258,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
   <button class="btn btn-ghost" id="folderBtn" onclick="loadFromFolder()" title="PC 폴더에서 사진 불러오기" style="display:none">📂 폴더</button>
   <button class="btn btn-ghost" id="syncBtn" onclick="openSyncModal()" title="클라우드에서 사진 가져오기">☁️ 동기화</button>
   <button class="btn btn-ghost" onclick="openBatch()" title="OCR로 전체 자동 분류">🔄 자동 분류</button>
-  <button class="btn btn-ghost" onclick="openPhotoSheet()" title="이 PC에서 사진대지 생성기(work-log)가 실행 중이어야 열립니다">🖨️ 사진대지</button>
+  <button class="btn btn-ghost" onclick="openPhotoSheet()" title="이 PC에서 사진대지생성기(photo-sheet 폴더)가 실행 중이어야 열립니다">🖨️ 사진대지</button>
   <button class="btn btn-ghost" id="dupFilterBtn" onclick="toggleDupFilter()" title="같은 기기번호가 여러 장인 사진만 모아보기" style="display:none;color:var(--orange);border-color:rgba(240,136,62,.4);"></button>
   <button class="btn btn-ghost" id="incompleteFilterBtn" onclick="toggleIncompleteFilter()" title="작업분류·기기번호·작업구역·팀명 중 하나라도 비어있는 사진만 모아보기" style="display:none;color:var(--orange);border-color:rgba(240,136,62,.4);"></button>
   <button class="btn btn-primary" onclick="openUpload()">+ 사진 추가</button>
@@ -1425,9 +1425,12 @@ async function dedupePhotosOnLoad(list){
   return list.filter(p => !toDeleteIds.has(p.id));
 }
 
-// 사진대지 생성기(work-log)는 이 버튼을 누르는 PC에서 도는 로컬 Flask 서버(포트 5183).
-// gallery는 GitHub Pages 등 어디서 서빙되든 항상 127.0.0.1로 접속을 시도 — 이 PC에 work-log가
-// 켜져 있으면 정상 연결되고, 꺼져 있으면 새 탭에서 접속 실패로 뜬다.
+// 사진대지생성기(저장소의 photo-sheet/ 폴더, work-photo-manage 전용)는 이 버튼을 누르는 PC에서
+// 도는 로컬 Flask 서버(포트 5183). gallery는 GitHub Pages 등 어디서 서빙되든 항상 127.0.0.1로
+// 접속을 시도 — 이 PC에 사진대지생성기가 켜져 있으면 정상 연결되고, 꺼져 있으면 새 탭에서
+// 접속 실패로 뜬다. (2026-08-30까지는 workreportdaesun 소유의 별개 도구를 그대로 재사용했으나,
+// work-photo-manage 전용으로 독립시켜 photo-sheet/ 폴더로 옮김 — 이 파일 쪽은 URL이 그대로라
+// 코드 변경 없음.)
 function openPhotoSheet(){
   window.open('http://127.0.0.1:5183/', '_blank');
 }
