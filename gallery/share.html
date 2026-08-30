@@ -111,6 +111,13 @@ textarea.f{resize:none;height:80px;line-height:1.5;}
   </div>
 
   <div class="card">
+    <div class="flbl">✨ AI로 작성하기 (선택)</div>
+    <textarea class="f" id="aiHint" placeholder="예: 3층 배관 보온재 내일까지 교체 지시, 협력사 담당자 확인 필요" style="height:48px;margin-bottom:8px;"></textarea>
+    <button type="button" class="sbtn" id="aiDraftBtn" onclick="generateAiDraft()" style="background:linear-gradient(135deg,#8E44AD,#5B2C6F);color:#fff;">✨ AI로 제목·내용 작성하기</button>
+    <div class="footnote" style="text-align:left;margin-top:6px;">간단한 메모만 적으면 AI가 정식 문장으로 다듬어 아래 제목·내용에 채워줍니다. 그대로 보내지 말고 꼭 확인 후 보내주세요.</div>
+  </div>
+
+  <div class="card">
     <div class="flbl">작업지시 제목</div>
     <input class="f" type="text" id="inTitle" placeholder="예: SCC 3층 배관 보온재 교체 지시" style="margin-bottom:10px;"/>
     <div class="flbl">작업지시 내용</div>
@@ -343,6 +350,38 @@ async function generateInstructionPdf(toList,ccList){
   }
   var base64=pdf.output('datauristring').split(',')[1];
   return { base64:base64, filename:(title.replace(/[\\\/:*?"<>|]/g,'_').slice(0,40)||'작업지시서')+'.pdf' };
+}
+
+// ── AI로 제목·내용 작성 (Supabase Edge Function → Claude) ──
+async function generateAiDraft(){
+  var hintEl=document.getElementById('aiHint');
+  var hint=hintEl.value.trim();
+  if(!hint){ showTE('먼저 메모를 간단히 적어주세요.'); return; }
+  if(!sbClient){ showTE('연결된 현장이 없어 AI 작성을 쓸 수 없습니다.'); return; }
+  var btn=document.getElementById('aiDraftBtn');
+  btn.disabled=true; var origText=btn.textContent; btn.textContent='⏳ AI가 작성 중...';
+  try{
+    var resp=await fetch(SUPABASE_URL+'/functions/v1/generate-work-instruction',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY},
+      body:JSON.stringify({
+        hint:hint,
+        project:localStorage.getItem('member_project')||'',
+        company:localStorage.getItem('member_company')||'',
+        photoCount:photos.length
+      }),
+    });
+    var data=await resp.json().catch(function(){return {};});
+    if(!resp.ok||!data.ok){ throw new Error((data&&data.error)||('HTTP '+resp.status)); }
+    document.getElementById('inTitle').value=data.title;
+    document.getElementById('inContent').value=data.content;
+    showT('✅ AI가 작성했습니다 — 내용을 확인하고 필요하면 고쳐서 보내주세요.');
+  }catch(e){
+    console.error('AI 작성 실패',e);
+    showTE('❌ AI 작성 실패: '+(e.message||e)+' — Edge Function 배포가 안 됐다면 AI_FEATURE_SETUP.md를 참고하세요.');
+  }finally{
+    btn.disabled=false; btn.textContent=origText;
+  }
 }
 
 // ── 이메일 발송 (Supabase Edge Function → Resend) ──
