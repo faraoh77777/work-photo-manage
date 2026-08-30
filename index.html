@@ -167,6 +167,46 @@ textarea.f{resize:none;height:48px;}
   </div>
 </div>
 
+<!-- 연결된 현장이 없는 기기에서만 보이는 안내 배너 (enterLocalOnlyMode가 표시) -->
+<div class="card" id="localOnlyBanner" style="display:none;background:#FDF3E3;border-color:#F0C36D;">
+  <div style="font-size:13px;font-weight:700;color:#8A6D1E;line-height:1.6;">
+    🔌 연결된 현장이 없습니다. 사진은 이 기기에만 저장되고, <b>카카오톡 전송</b>만 가능합니다.
+  </div>
+  <div style="display:flex;gap:6px;margin-top:8px;">
+    <a href="site-setup.html" style="flex:1;text-align:center;background:#2E5F9E;color:#fff;border-radius:8px;padding:9px;font-size:13px;font-weight:800;text-decoration:none;">🏗️ 현장 개설하기</a>
+    <a href="login.html" style="flex:1;text-align:center;background:#fff;border:1.5px solid #C8D8E8;color:#2E5F9E;border-radius:8px;padding:9px;font-size:13px;font-weight:800;text-decoration:none;">초대받았어요</a>
+  </div>
+  <button type="button" onclick="openLocalSettings()" style="width:100%;margin-top:6px;background:#fff;border:1.5px solid #C8D8E8;color:#2E5F9E;border-radius:8px;padding:9px;font-size:13px;font-weight:800;cursor:pointer;">⚙️ 분류·구역 설정 (서버 없이 이 기기에서 편집)</button>
+</div>
+
+<!-- 로컬 전용 모드에서 서버 없이 분류/구역을 바꾸는 설정 모달 -->
+<div id="localSettingsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9990;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:14px;width:100%;max-width:420px;max-height:86vh;overflow-y:auto;padding:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <span style="font-weight:800;font-size:16px;color:#1A2332;">⚙️ 분류·구역 설정</span>
+      <button type="button" onclick="closeLocalSettings()" style="background:none;border:none;font-size:20px;color:#7A9AB8;cursor:pointer;">&#10005;</button>
+    </div>
+    <div style="font-size:12px;color:#7A9AB8;line-height:1.6;margin-bottom:12px;">서버 연결 없이 이 기기에만 저장됩니다.</div>
+
+    <div style="font-size:13px;font-weight:800;color:#1A2332;margin-bottom:6px;">🏷️ 작업 분류</div>
+    <div class="menu-tabs" id="lsMenuTabs" style="margin-bottom:8px;"></div>
+    <div class="chip-row" id="lsCatChips"></div>
+    <div class="add-row" style="margin-bottom:16px;">
+      <input type="text" id="lsNewCatInput" class="f" placeholder="새 분류 이름"/>
+      <button type="button" onclick="lsAddCategory()">추가</button>
+    </div>
+
+    <div style="font-size:13px;font-weight:800;color:#1A2332;margin-bottom:6px;">📍 작업 구역</div>
+    <div class="chip-row" id="lsAreaChips"></div>
+    <div class="add-row">
+      <input type="text" id="lsNewAreaInput" class="f" placeholder="새 구역 이름"/>
+      <button type="button" onclick="lsAddArea()">추가</button>
+    </div>
+
+    <button type="button" onclick="saveLocalSettings()" style="width:100%;margin-top:16px;background:#2E5F9E;color:#fff;border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:800;cursor:pointer;">💾 저장</button>
+  </div>
+</div>
+
 <!-- 상위 메뉴 -->
 <div class="card" style="padding:8px;" id="menuTabsCard">
   <div class="menu-tabs" id="menuTabs">
@@ -292,9 +332,35 @@ textarea.f{resize:none;height:48px;}
 </div><!-- /.wrap -->
 
 <script>
-// ── 인증 체크 ─────────────────────────────────────────
+// ── Supabase 연결 준비 (인증 체크보다 먼저 와야 로컬전용모드 분기가 가능) ──
+// 예전엔 이 값이 비어있으면 항상 "대선이엔씨" 기본 현장으로 자동 연결됐다 — 그래서 원스토어 등으로
+// 앱을 처음 설치한 아무나 그 회사 DB에 자동으로 물렸다(2026-08-28 보안 점검에서 발견). 이제 기본
+// 연결은 없다 — 현장을 새로 만들거나(site-setup.html) 초대 링크를 받아야만 서버 기능이 열린다.
+// 다만 이미 로그인해 쓰던 기존 회원(member_id가 있음)은 예전 기본 연결에 의존하고 있었으므로,
+// 끊기지 않도록 최초 1회만 그 값을 site_supabase_url/key로 그대로 넘겨 이어준다(실사용자 보호용
+// 1회성 마이그레이션 — 새로 설치하는 기기는 member_id가 없어 이 혜택을 받지 않는다).
 (function(){
-  if(!localStorage.getItem('member_id')){location.href='login.html';return;}
+  if(!localStorage.getItem('site_supabase_url') && localStorage.getItem('member_id')){
+    localStorage.setItem('site_supabase_url','https://dteljgmdbfyxubtpogcj.supabase.co');
+    localStorage.setItem('site_supabase_key','sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc');
+  }
+})();
+var SUPABASE_URL=localStorage.getItem('site_supabase_url')||'';
+var SUPABASE_KEY=localStorage.getItem('site_supabase_key')||'';
+var sbClient=null;
+if(SUPABASE_URL&&SUPABASE_KEY){
+  try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }
+  catch(e){ console.error('Supabase 초기화 실패',e); }
+}
+
+// ── 인증 체크 / 로컬 전용 모드 분기 ─────────────────────
+(function(){
+  if(!localStorage.getItem('member_id')){
+    if(sbClient){ location.href='login.html'; return; }
+    // 연결된 현장이 없는 기기(예: 방금 설치한 새 기기) — 로그인 없이 로컬 전용 모드로 바로 진입
+    enterLocalOnlyMode();
+    return;
+  }
   var p=localStorage.getItem('member_project')||'';
   var c=localStorage.getItem('member_company')||'';
   if(p) document.getElementById('hdrProject').textContent=p;
@@ -311,6 +377,21 @@ textarea.f{resize:none;height:48px;}
     if(tabsCard) tabsCard.style.display='none';
   }
 })();
+
+// 서버에 연결된 현장이 없는 기기에서 쓰는 최소 모드 — 로그인 없이 촬영/로컬저장/카톡전송만 가능.
+// (버튼 자체를 숨기므로 sendToSupabase 안의 sbClient 널 체크는 방어용으로만 남겨둠.)
+function enterLocalOnlyMode(){
+  var banner=document.getElementById('localOnlyBanner');
+  if(banner) banner.style.display='block';
+  var acct=document.getElementById('accountBtn');
+  if(acct) acct.style.display='none';
+  var sendBtn=document.getElementById('sendBtn');
+  if(sendBtn) sendBtn.style.display='none';
+  // 시공/품질/자재/안전/화기유도 메뉴탭도 로컬 전용 모드에선 숨긴다 — 운영자가 현장을
+  // 개설하고 로그인하면(=이 함수를 안 타는 정상 분기) 예전처럼 다시 보인다.
+  var tabsCard=document.getElementById('menuTabsCard');
+  if(tabsCard) tabsCard.style.display='none';
+}
 function toggleAccountMenu(e){
   if(e) e.stopPropagation();
   var menu=document.getElementById('accountMenu');
@@ -353,18 +434,9 @@ async function withdrawMember(){
   location.href='login.html';
 }
 
-// ── Supabase: 로컬에 저장된 현장 설정이 있으면 그걸 쓰고, 없으면 기본 현장을 쓴다 (site-setup.html 참고) ──
-var DEFAULT_SUPABASE_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
-var DEFAULT_SUPABASE_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
-var SUPABASE_URL=localStorage.getItem('site_supabase_url')||DEFAULT_SUPABASE_URL;
-var SUPABASE_KEY=localStorage.getItem('site_supabase_key')||DEFAULT_SUPABASE_KEY;
-var sbClient=null;
-try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }
-catch(e){ console.error('Supabase 초기화 실패',e); }
-
 async function sendToSupabase(){
   if(!savedPhotos.length){ showTE("전송할 사진이 없습니다."); return; }
-  if(!sbClient){ showTE("Supabase 연결 실패"); return; }
+  if(!sbClient){ showTE("연결된 현장이 없습니다. 현장을 먼저 개설해주세요."); return; }
   // 업로드 전(=사용자 제스처가 살아있는 시점)에 폴더 미지정 여부를 먼저 확인 — 업로드 대기 이후엔 브라우저가 폴더 선택창을 막을 수 있음
   if(!isMobile && window.showDirectoryPicker && !dirHandle){
     var wantsFolder=confirm('기기에 사진을 저장할 폴더가 지정되지 않았습니다.\n\n지금 폴더를 지정하시겠습니까?\n(취소하면 다운로드 폴더에 개별 저장됩니다)');
@@ -740,6 +812,85 @@ function populateAreaSelect(preserve){
   var prev=preserve?el.value:(localStorage.getItem("default_area")||null);
   el.innerHTML=customAreas.map(optionHtml).join('');
   if(prev&&customAreas.indexOf(prev)!==-1) el.value=prev;
+}
+
+// ── 로컬 전용 모드용 분류/구역 설정 (서버 연결 없이 이 기기에서만 편집) ──
+// admin.html과 저장 위치(localStorage: custom_categories_by_menu/custom_areas)를 그대로 공유한다 —
+// 서버에 연결된 관리자/운영자는 그대로 admin.html(+클라우드 동기화)을 쓰면 되고, 서버 연결이
+// 없는 로컬 전용 모드에서만 이 화면으로 같은 값을 이 기기 안에서 직접 바꿀 수 있게 한다.
+var lsEditMenu=activeMenu, lsTempCatsByMenu=null, lsTempAreas=null;
+function openLocalSettings(){
+  // 로컬 전용 모드에선 상단 메뉴탭 자체가 숨어있어(enterLocalOnlyMode) 항상 "시공" 메뉴만
+  // 쓰인다 — 여기서도 메뉴 전환 탭 없이 "시공" 분류만 바로 편집하게 한다.
+  lsEditMenu='시공';
+  lsTempCatsByMenu=JSON.parse(JSON.stringify(catsByMenu));
+  lsTempAreas=customAreas.slice();
+  var tabsEl=document.getElementById('lsMenuTabs');
+  if(tabsEl) tabsEl.style.display='none';
+  renderLsCatChips();
+  renderLsAreaChips();
+  document.getElementById('localSettingsModal').style.display='flex';
+}
+function closeLocalSettings(){
+  document.getElementById('localSettingsModal').style.display='none';
+}
+function renderLsMenuTabs(){
+  document.getElementById('lsMenuTabs').innerHTML=MENUS.map(function(m){
+    return '<button type="button" class="menu-tab'+(m===lsEditMenu?' active':'')+'" onclick="lsSwitchMenu(\''+m+'\')">'+m+'</button>';
+  }).join('');
+}
+function lsSwitchMenu(m){ lsEditMenu=m; renderLsMenuTabs(); renderLsCatChips(); }
+function renderLsCatChips(){
+  var list=lsTempCatsByMenu[lsEditMenu]||[];
+  document.getElementById('lsCatChips').innerHTML=list.map(function(c,i){
+    var esc=String(c).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    return '<span class="chip">'+esc+'<button type="button" onclick="lsRemoveCategory('+i+')" title="삭제">&#10005;</button></span>';
+  }).join('');
+}
+function lsAddCategory(){
+  var inp=document.getElementById('lsNewCatInput');
+  var v=inp.value.trim();
+  var list=lsTempCatsByMenu[lsEditMenu]||(lsTempCatsByMenu[lsEditMenu]=[]);
+  if(!v||list.indexOf(v)!==-1)return;
+  list.push(v);
+  inp.value='';
+  renderLsCatChips();
+}
+function lsRemoveCategory(i){
+  var list=lsTempCatsByMenu[lsEditMenu]||[];
+  if(list.length<=1)return;
+  list.splice(i,1);
+  renderLsCatChips();
+}
+function renderLsAreaChips(){
+  document.getElementById('lsAreaChips').innerHTML=lsTempAreas.map(function(a,i){
+    var esc=String(a).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    return '<span class="chip">'+esc+'<button type="button" onclick="lsRemoveArea('+i+')" title="삭제">&#10005;</button></span>';
+  }).join('');
+}
+function lsAddArea(){
+  var inp=document.getElementById('lsNewAreaInput');
+  var v=inp.value.trim();
+  if(!v||lsTempAreas.indexOf(v)!==-1)return;
+  lsTempAreas.push(v);
+  inp.value='';
+  renderLsAreaChips();
+}
+function lsRemoveArea(i){
+  if(lsTempAreas.length<=1)return;
+  lsTempAreas.splice(i,1);
+  renderLsAreaChips();
+}
+function saveLocalSettings(){
+  catsByMenu=JSON.parse(JSON.stringify(lsTempCatsByMenu));
+  saveCatsByMenu();
+  customAreas=lsTempAreas.slice();
+  saveList('custom_areas',customAreas);
+  customCats=catsByMenu[activeMenu];
+  populateCatSelect(true);
+  populateAreaSelect(true);
+  closeLocalSettings();
+  showT('설정이 저장되었습니다 (이 기기에만 적용)');
 }
 
 // 회원 승인 대기/작업분류·구역 편집/현장 관리는 관리자 전용 화면(admin.html)으로 옮겼다.

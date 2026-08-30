@@ -64,7 +64,7 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
       <div class="cur-site-badge" id="curSiteBadge">-</div>
     </div>
     <div class="hint" id="curSiteHint"></div>
-    <button class="btn btn-danger-outline" id="resetBtn" style="display:none;margin-top:10px;" onclick="resetToDefault()">기본 현장으로 되돌리기</button>
+    <button class="btn btn-danger-outline" id="resetBtn" style="display:none;margin-top:10px;" onclick="resetToDefault()">이 기기의 현장 연결 해제하기</button>
   </div>
 
   <!-- 새 현장 만들기 -->
@@ -116,8 +116,6 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
 </div>
 
 <script>
-var DEFAULT_SUPABASE_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
-var DEFAULT_SUPABASE_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
 
 var SCHEMA_SQL = "-- work-shoot(작업사진) 신규 현장용 스키마\n"
 +"create extension if not exists pgcrypto;\n\n"
@@ -205,14 +203,14 @@ var SCHEMA_SQL = "-- work-shoot(작업사진) 신규 현장용 스키마\n"
 function refreshCurrentSiteUI(){
   var url=localStorage.getItem('site_supabase_url');
   var name=localStorage.getItem('site_name');
-  var isCustom=!!url;
-  document.getElementById('curSiteName').textContent=isCustom?(name||'이름 없는 현장'):'기본 현장 (대선이엔씨)';
+  var isConnected=!!url;
+  document.getElementById('curSiteName').textContent=isConnected?(name||'이름 없는 현장'):'연결된 현장 없음';
   var badge=document.getElementById('curSiteBadge');
-  badge.textContent=isCustom?'커스텀':'기본';
-  badge.className='cur-site-badge '+(isCustom?'badge-custom':'badge-default');
-  document.getElementById('curSiteHint').textContent=isCustom?url:'';
-  document.getElementById('resetBtn').style.display=isCustom?'block':'none';
-  document.getElementById('inviteCard').style.display=isCustom?'block':'none';
+  badge.textContent=isConnected?'연결됨':'미연결';
+  badge.className='cur-site-badge '+(isConnected?'badge-custom':'badge-default');
+  document.getElementById('curSiteHint').textContent=isConnected?url:'현장을 새로 만들거나 초대 링크를 받아야 로그인·촬영 전송 등 모든 기능을 쓸 수 있습니다.';
+  document.getElementById('resetBtn').style.display=isConnected?'block':'none';
+  document.getElementById('inviteCard').style.display=isConnected?'block':'none';
 }
 refreshCurrentSiteUI();
 
@@ -234,11 +232,11 @@ function refreshBackLink(){
 refreshBackLink();
 
 function resetToDefault(){
-  if(!confirm('기본 현장으로 되돌릴까요? (이 기기에서만 적용됩니다)'))return;
+  if(!confirm('이 기기의 현장 연결을 해제할까요? (이 기기에서만 적용되며, 다시 쓰려면 새 현장을 만들거나 초대 링크가 필요합니다)'))return;
   ['site_supabase_url','site_supabase_key','site_name','site_setup_creator','member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','senderName'].forEach(function(k){localStorage.removeItem(k);});
   refreshCurrentSiteUI();
   refreshBackLink();
-  alert('기본 현장으로 되돌렸습니다.');
+  alert('현장 연결을 해제했습니다.');
 }
 
 function extractProjectRef(url){
