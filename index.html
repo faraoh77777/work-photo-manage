@@ -935,7 +935,21 @@ function applyRemoteSettings(data){
     populateCatSelect(true);
     populateAreaSelect(true);
     if(fixedStale) pushSettingsToSupabase();
+    if(changed&&settingsInitialLoadDone) showSettingsUpdatePopup();
   }
+}
+// 관리자가 작업분류/구역을 바꿨을 때(admin.html에서 즉시저장) 앱을 이미 켜두고 있던
+// 근로자에게 알려주는 팝업. 값 자체는 이미 자동으로 반영된 뒤라 "확인"은 그냥 닫기만 한다.
+// 회원가입 화면(login.html)의 작업 분류 선택지는 이 동기화 대상이 아니므로 이 팝업과 무관.
+function showSettingsUpdatePopup(){
+  if(document.getElementById('settingsUpdateBanner'))return;
+  var b=document.createElement('div');
+  b.id='settingsUpdateBanner';
+  b.style.cssText='position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:#2E5F9E;color:#fff;padding:12px 16px;border-radius:12px;font-size:14px;font-weight:700;z-index:99999;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,0.35);white-space:nowrap;';
+  b.innerHTML='🔔 작업분류/구역 설정이 업데이트됐습니다 <button id="settingsUpdateOkBtn" style="background:#fff;color:#2E5F9E;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:800;cursor:pointer;">확인</button>';
+  document.body.appendChild(b);
+  document.getElementById('settingsUpdateOkBtn').onclick=function(){ b.remove(); };
+  setTimeout(function(){ if(b.parentNode) b.remove(); },6000);
 }
 async function fetchSettingsFromSupabase(){
   if(!sbClient)return;
@@ -1061,7 +1075,11 @@ loadSavedFolderHandle();
 
 populateAreaSelect();
 populateCatSelect();
-fetchSettingsFromSupabase();
+// 최초 로드 때는 방금 받아온 값이 화면에 이미 반영되는 것뿐이라 팝업을 띄우지 않고,
+// 그 이후(앱을 켠 채로 있다가 실시간으로 바뀌거나, 재방문 시 재조회해서 달라진 경우)에만
+// "설정이 바뀌었다"는 팝업을 띄운다 — settingsInitialLoadDone으로 구분.
+var settingsInitialLoadDone=false;
+fetchSettingsFromSupabase().then(function(){ settingsInitialLoadDone=true; });
 subscribeSettingsRealtime();
 
 document.getElementById("camBox").addEventListener("click",openCamera);
@@ -1833,7 +1851,13 @@ if('serviceWorker' in navigator){
       });
     });
     document.addEventListener('visibilitychange',function(){
-      if(document.visibilityState==='visible') reg.update();
+      if(document.visibilityState==='visible'){
+        reg.update();
+        // 앱이 백그라운드에 오래 있는 동안 realtime 연결이 끊겼을 수 있어(OS가 소켓을
+        // 끊거나 재웠을 때), 다시 포그라운드로 돌아올 때마다 설정을 한 번 더 조회해서
+        // 놓친 변경사항이 있으면 잡아낸다.
+        fetchSettingsFromSupabase();
+      }
     });
     reg.update();
   });
