@@ -226,20 +226,20 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 .det-val { color: var(--tx); }
 
 /* 사진 상세 모달 — 2열 리디자인 (사진 좌 / 정보·수정 우, 넓은 화면~노트북까지 대응) */
-.modal-detail { width: min(980px, 94vw); max-width: 96vw; padding: 0; }
-.det-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 22px; border-bottom: 1px solid var(--bd); }
-.det-header-title { font-size: 1rem; font-weight: 700; }
+.modal-detail { width: min(940px, 94vw); max-width: 96vw; padding: 0; }
+.det-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 26px; border-bottom: 1px solid var(--bd); }
+.det-header-title { font-size: 1.1rem; font-weight: 700; }
 .det-header .m-close { position: static; }
 .det-body { display: grid; grid-template-columns: minmax(280px, 400px) 1fr; }
-.det-photo-col { padding: 20px 22px; background: var(--bg); border-right: 1px solid var(--bd); }
+.det-photo-col { padding: 24px 26px; background: var(--bg); border-right: 1px solid var(--bd); }
 .det-photo-col .det-img-wrap { margin-bottom: 0; }
 .det-photo-col .det-img-wrap img { max-height: none; height: 320px; }
-.det-fname { font-size: 0.72rem; color: var(--tx2); text-align: center; margin-top: 8px; word-break: break-all; }
-.det-content-col { padding: 20px 22px; min-width: 0; }
-.fg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+.det-fname { font-size: 0.76rem; color: var(--tx2); text-align: center; margin-top: 10px; word-break: break-all; }
+.det-content-col { padding: 24px 26px; min-width: 0; }
+.fg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 22px; }
 .fg-grid .fg { margin-bottom: 0; }
 .fg-grid .fg-span2 { grid-column: 1 / -1; }
-.det-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 22px; border-top: 1px solid var(--bd); flex-wrap: wrap; }
+.det-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 26px; border-top: 1px solid var(--bd); flex-wrap: wrap; }
 .det-footer .nav-grp, .det-footer .act-grp { display: flex; gap: 8px; flex-wrap: wrap; }
 @media (max-width: 900px) {
   .det-body { grid-template-columns: 1fr; }
@@ -250,6 +250,17 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
   .det-meta, .fg-grid { grid-template-columns: 1fr; }
   .det-footer { justify-content: flex-start; }
 }
+
+/* 상세 모달 텍스트 — 창에 여유가 있으므로 필드 제목·값·본문 글자를 한 단계씩 키움 */
+.modal-detail .det-meta { gap: 12px 20px; font-size: 0.86rem; }
+.modal-detail .det-lbl { font-size: 0.72rem; margin-bottom: 1px; }
+.modal-detail .fg label { font-size: 0.82rem; margin-bottom: 6px; }
+.modal-detail .fg input,
+.modal-detail .fg select,
+.modal-detail .fg textarea { font-size: 0.88rem; padding: 9px 12px; }
+.modal-detail .fg textarea { min-height: 74px; }
+.modal-detail .wt-radios { gap: 8px; }
+.modal-detail .wt-radios label { font-size: 0.82rem; padding: 8px 10px; }
 
 /* 설정 */
 .folder-list { display: flex; flex-direction: column; gap: 5px; max-height: 260px; overflow-y: auto; margin-bottom: 14px; }
