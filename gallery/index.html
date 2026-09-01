@@ -93,6 +93,11 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 .hdr-right { overflow-x: auto; scrollbar-width: none; min-width: 0; }
 .hdr-right::-webkit-scrollbar { display: none; }
 .hdr-crumb { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hdr-crumb .cc, .hdr-crumb .cs { white-space: nowrap; }
+#syncBtn { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+.hdr-menu-btn { display: none; background: none; border: none; color: var(--tx2); font-size: 1.15rem; cursor: pointer; padding: 4px 8px; border-radius: 4px; flex-shrink: 0; }
+.hdr-menu-btn:hover { background: rgba(255,255,255,0.07); color: var(--tx); }
+.sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 39; }
 @media (max-width: 1200px) {
   :root { --sb-w: 190px; }
 }
@@ -104,6 +109,23 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 @media (max-width: 760px) {
   .hdr-admin-txt { display: none; }
   .filterbar { gap: 5px; padding: 7px 10px; }
+}
+
+/* 휴대폰 폭 — 사이드바를 슬라이드 서랍으로 전환 */
+@media (max-width: 640px) {
+  .hdr-logo { width: auto; padding: 0 10px; gap: 6px; }
+  .hdr-menu-btn { display: inline-flex; align-items: center; }
+  .sidebar {
+    position: fixed; top: 0; bottom: 0; left: 0; width: min(78vw, 280px);
+    z-index: 40; transform: translateX(-100%); transition: transform .2s ease;
+    box-shadow: 2px 0 20px rgba(0,0,0,0.45);
+  }
+  body.sidebar-open .sidebar { transform: translateX(0); }
+  body.sidebar-open .sidebar-backdrop { display: block; }
+}
+@media (max-width: 480px) {
+  .filterbar input, .filterbar select, #fDate { flex-basis: 100%; max-width: 100%; }
+  .f-sep { display: none; }
 }
 
 /* 스크롤 & 그리드 */
@@ -285,6 +307,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 
 <!-- 헤더 -->
 <div class="hdr">
+  <button type="button" class="hdr-menu-btn" id="mobileMenuBtn" onclick="toggleMobileSidebar()" title="메뉴" aria-label="메뉴">☰</button>
   <div class="hdr-logo">
     <img class="hdr-logo-icon" src="../Work%20photo_icon/icon-192.png" alt=""/>
     <span class="hdr-logo-txt">작업 사진 관리</span>
@@ -321,8 +344,11 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 <!-- 앱 바디 -->
 <div class="app-body">
 
+  <!-- 사이드바(휴대폰 폭에선 서랍) 바깥 클릭 시 닫기 -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeMobileSidebar()"></div>
+
   <!-- 사이드바 -->
-  <div class="sidebar">
+  <div class="sidebar" id="sidebar">
     <div class="sb-top">
       <div class="sb-all sel" id="sbAll" onclick="selectAllCat()">
         <span>🗂️</span>
@@ -746,6 +772,18 @@ function galleryLogout(){
   ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','senderName'].forEach(k=>localStorage.removeItem(k));
   location.href='../login.html';
 }
+
+// ── 휴대폰 폭: 사이드바를 슬라이드 서랍으로 열고 닫기 ──────
+function toggleMobileSidebar(){ document.body.classList.toggle('sidebar-open'); }
+function closeMobileSidebar(){ document.body.classList.remove('sidebar-open'); }
+(function(){
+  const sb=document.getElementById('sidebar');
+  if(!sb)return;
+  // 서랍이 열린 상태(휴대폰 폭)에서 분류를 고르면 자동으로 닫아준다
+  sb.addEventListener('click', e=>{
+    if(window.innerWidth<=640 && (e.target.closest('.sb-cat')||e.target.closest('.sb-all'))) closeMobileSidebar();
+  });
+})();
 
 // ── Supabase: 이 기기에 연결된 현장이 있을 때만 쓴다 (기본 연결 없음 — index.html/login.html 참고) ──
 // member_id가 있는 기존 세션만 1회성으로 예전 기본 연결(대선이엔씨)로 이어준다.
