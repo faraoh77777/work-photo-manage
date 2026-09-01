@@ -80,14 +80,31 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 /* 필터바 */
 .filterbar { background: var(--sf); border-bottom: 1px solid var(--bd); padding: 7px 14px; display: flex; align-items: center; gap: 7px; flex-shrink: 0; flex-wrap: wrap; }
 .filterbar input, .filterbar select { background: var(--bg); border: 1px solid var(--bd); border-radius: 5px; color: var(--tx); font-size: 0.77rem; height: 28px; padding: 0 8px; font-family: inherit; }
-.filterbar input { width: 140px; }
-.filterbar select { width: 110px; }
-#fDate { width: 130px; }
+.filterbar input { width: 140px; flex: 1 1 120px; min-width: 90px; max-width: 220px; }
+.filterbar select { width: 110px; flex: 1 1 100px; min-width: 80px; max-width: 170px; }
+#fDate { width: 130px; flex-basis: 130px; max-width: 170px; }
 .filterbar input:focus, .filterbar select:focus { outline: none; border-color: var(--ac); }
-.f-sep { width: 1px; height: 20px; background: var(--bd); margin: 0 2px; }
-.f-reset { background: none; border: none; color: var(--tx3); cursor: pointer; font-size: 0.74rem; padding: 3px 6px; border-radius: 4px; font-family: inherit; }
+.f-sep { width: 1px; height: 20px; background: var(--bd); margin: 0 2px; flex-shrink: 0; }
+.f-reset { background: none; border: none; color: var(--tx3); cursor: pointer; font-size: 0.74rem; padding: 3px 6px; border-radius: 4px; font-family: inherit; flex-shrink: 0; }
 .f-reset:hover { color: var(--tx2); background: rgba(255,255,255,0.05); }
-.f-count { font-size: 0.72rem; color: var(--tx3); margin-left: 2px; white-space: nowrap; }
+.f-count { font-size: 0.72rem; color: var(--tx3); margin-left: 2px; white-space: nowrap; flex-shrink: 0; }
+
+/* 헤더/사이드바/필터바 반응형 — 노트북 등 좁은 화면 대응 */
+.hdr-right { overflow-x: auto; scrollbar-width: none; min-width: 0; }
+.hdr-right::-webkit-scrollbar { display: none; }
+.hdr-crumb { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 1200px) {
+  :root { --sb-w: 190px; }
+}
+@media (max-width: 980px) {
+  :root { --sb-w: 160px; }
+  .hdr-logo-txt { display: none; }
+  #hdrUserChip { display: none; }
+}
+@media (max-width: 760px) {
+  .hdr-admin-txt { display: none; }
+  .filterbar { gap: 5px; padding: 7px 10px; }
+}
 
 /* 스크롤 & 그리드 */
 .scroll { flex: 1; overflow-y: auto; }
@@ -264,7 +281,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
   <div class="hdr-right">
     <div class="hdr-crumb" id="hdrCrumb"><span class="cc">전체 사진</span></div>
     <div class="spacer"></div>
-    <a class="btn btn-ghost" href="../admin.html" style="text-decoration:none;display:inline-flex;align-items:center;">← 관리자 화면</a>
+    <a class="btn btn-ghost" href="../admin.html" style="text-decoration:none;display:inline-flex;align-items:center;">← <span class="hdr-admin-txt">관리자 화면</span></a>
     <button class="btn btn-ghost" onclick="openSettings()" title="설정">⚙️</button>
     <span id="hdrUserChip" style="font-size:0.78rem;color:var(--tx2);padding:0 4px;white-space:nowrap;"></span>
     <button class="btn btn-ghost" onclick="galleryLogout()" title="로그아웃" style="color:var(--red);border-color:var(--red);">로그아웃</button>
