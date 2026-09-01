@@ -918,12 +918,18 @@ function applyRemoteSettings(data){
   if(data.cats_by_menu){
     MENUS.forEach(function(m){
       if(Array.isArray(data.cats_by_menu[m])&&data.cats_by_menu[m].length){
+        // 내용이 실제로 다를 때만 "변경됨"으로 친다 — 예전엔 원격에 값이 있기만 하면
+        // 무조건 true였어서, 화면을 재방문할 때마다(설정 팝업 도입 후 resume마다 재조회)
+        // 실제로는 바뀐 게 하나도 없어도 매번 드롭다운을 다시 그리고 팝업까지 띄웠다
+        // (2026-09-01 발견 — 앱이 버벅거린다는 증상으로 보고됨).
+        if(JSON.stringify(catsByMenu[m])!==JSON.stringify(data.cats_by_menu[m])) changed=true;
         catsByMenu[m]=data.cats_by_menu[m];
-        changed=true;
       }
     });
   }
-  if(Array.isArray(data.areas)&&data.areas.length){ customAreas=data.areas; changed=true; }
+  if(Array.isArray(data.areas)&&data.areas.length&&JSON.stringify(customAreas)!==JSON.stringify(data.areas)){
+    customAreas=data.areas; changed=true;
+  }
   if(data.default_area&&data.default_area!==localStorage.getItem("default_area")){
     localStorage.setItem("default_area",data.default_area);
   }
