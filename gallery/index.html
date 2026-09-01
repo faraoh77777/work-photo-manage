@@ -208,6 +208,32 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 .det-lbl { font-size: 0.66rem; color: var(--tx3); font-weight: 600; }
 .det-val { color: var(--tx); }
 
+/* 사진 상세 모달 — 2열 리디자인 (사진 좌 / 정보·수정 우, 넓은 화면~노트북까지 대응) */
+.modal-detail { width: min(980px, 94vw); max-width: 96vw; padding: 0; }
+.det-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 22px; border-bottom: 1px solid var(--bd); }
+.det-header-title { font-size: 1rem; font-weight: 700; }
+.det-header .m-close { position: static; }
+.det-body { display: grid; grid-template-columns: minmax(280px, 400px) 1fr; }
+.det-photo-col { padding: 20px 22px; background: var(--bg); border-right: 1px solid var(--bd); }
+.det-photo-col .det-img-wrap { margin-bottom: 0; }
+.det-photo-col .det-img-wrap img { max-height: none; height: 320px; }
+.det-fname { font-size: 0.72rem; color: var(--tx2); text-align: center; margin-top: 8px; word-break: break-all; }
+.det-content-col { padding: 20px 22px; min-width: 0; }
+.fg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+.fg-grid .fg { margin-bottom: 0; }
+.fg-grid .fg-span2 { grid-column: 1 / -1; }
+.det-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 22px; border-top: 1px solid var(--bd); flex-wrap: wrap; }
+.det-footer .nav-grp, .det-footer .act-grp { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 900px) {
+  .det-body { grid-template-columns: 1fr; }
+  .det-photo-col { border-right: none; border-bottom: 1px solid var(--bd); }
+  .det-photo-col .det-img-wrap img { height: 240px; }
+}
+@media (max-width: 560px) {
+  .det-meta, .fg-grid { grid-template-columns: 1fr; }
+  .det-footer { justify-content: flex-start; }
+}
+
 /* 설정 */
 .folder-list { display: flex; flex-direction: column; gap: 5px; max-height: 260px; overflow-y: auto; margin-bottom: 14px; }
 .folder-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; background: var(--bg); border: 1px solid var(--bd2); border-radius: 6px; font-size: 0.8rem; }
@@ -433,69 +459,80 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 
 <!-- 사진 상세 모달 -->
 <div class="overlay" id="detOverlay">
-  <div class="modal" id="detModal" style="width:620px;">
-    <button class="m-close" onclick="closeDetail()">✕</button>
-    <div class="det-img-wrap" id="detImgWrap">
-      <img id="detImg" src="" alt="">
-      <div class="det-zoom-ctrl">
-        <button type="button" class="det-zoom-btn" onclick="zoomDetBy(-0.4)" title="축소">−</button>
-        <button type="button" class="det-zoom-btn" id="detZoomPct" onclick="resetDetZoom()" title="원래 크기로">100%</button>
-        <button type="button" class="det-zoom-btn" onclick="zoomDetBy(0.4)" title="확대">+</button>
+  <div class="modal modal-detail" id="detModal">
+    <div class="det-header">
+      <div class="det-header-title">사진 상세 · 수정</div>
+      <button class="m-close" onclick="closeDetail()">✕</button>
+    </div>
+
+    <div class="det-body">
+      <div class="det-photo-col">
+        <div class="det-img-wrap" id="detImgWrap">
+          <img id="detImg" src="" alt="">
+          <div class="det-zoom-ctrl">
+            <button type="button" class="det-zoom-btn" onclick="zoomDetBy(-0.4)" title="축소">−</button>
+            <button type="button" class="det-zoom-btn" id="detZoomPct" onclick="resetDetZoom()" title="원래 크기로">100%</button>
+            <button type="button" class="det-zoom-btn" onclick="zoomDetBy(0.4)" title="확대">+</button>
+          </div>
+        </div>
+        <div class="det-fname" id="dName"></div>
+      </div>
+
+      <div class="det-content-col">
+        <!-- 보기 모드 -->
+        <div id="detView">
+          <div style="margin-bottom:10px;"><div id="dPath"></div></div>
+          <div class="det-meta">
+            <div class="det-row"><div class="det-lbl">기기번호</div><div class="det-val" id="dTag"></div></div>
+            <div class="det-row"><div class="det-lbl">날짜/시간</div><div class="det-val" id="dDate"></div></div>
+            <div class="det-row"><div class="det-lbl">팀명</div><div class="det-val" id="dTeam"></div></div>
+            <div class="det-row"><div class="det-lbl">작업구역</div><div class="det-val" id="dArea"></div></div>
+            <div class="det-row" style="grid-column:1/-1"><div class="det-lbl">특이사항</div><div class="det-val" id="dNote"></div></div>
+          </div>
+        </div>
+
+        <!-- 수정 모드 (2열) -->
+        <div id="detEdit" style="display:none;">
+          <div class="fg-grid">
+            <div class="fg"><label>날짜</label><input type="date" id="eDate"></div>
+            <div class="fg"><label>시간</label><input type="time" id="eTime"></div>
+            <div class="fg fg-span2">
+              <label>작업 구분</label>
+              <div class="wt-radios" id="eWtRg">
+                <label><input type="radio" name="eWt" value="신규" checked><span>신규</span></label>
+                <label><input type="radio" name="eWt" value="작업전"><span>작업전</span></label>
+                <label><input type="radio" name="eWt" value="작업후"><span>작업후</span></label>
+              </div>
+            </div>
+            <div class="fg"><label>작업 분류</label><select id="eCat"></select></div>
+            <div class="fg"><label>기기번호</label><input type="text" id="eTag" placeholder="예: PT-2101, EQ-2305 (TAG NO, EQ NO 등)"></div>
+            <div class="fg"><label>팀명</label><select id="eTeam"></select></div>
+            <div class="fg"><label>작업구역</label><select id="eArea"></select></div>
+            <div class="fg fg-span2">
+              <label>특이사항</label>
+              <select id="eNotePreset" onchange="applyEditNotePreset(this)" style="margin-bottom:5px;display:none;"></select>
+              <textarea id="eNote" placeholder="특이사항을 입력하세요..."></textarea>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- 보기 모드 -->
-    <div id="detView">
-      <div style="margin-bottom:10px;"><div id="dPath"></div></div>
-      <div class="det-meta">
-        <div class="det-row"><div class="det-lbl">기기번호</div><div class="det-val" id="dTag"></div></div>
-        <div class="det-row"><div class="det-lbl">날짜/시간</div><div class="det-val" id="dDate"></div></div>
-        <div class="det-row"><div class="det-lbl">팀명</div><div class="det-val" id="dTeam"></div></div>
-        <div class="det-row"><div class="det-lbl">작업구역</div><div class="det-val" id="dArea"></div></div>
-        <div class="det-row" style="grid-column:1/-1"><div class="det-lbl">특이사항</div><div class="det-val" id="dNote"></div></div>
-        <div class="det-row"><div class="det-lbl">파일명</div><div class="det-val" id="dName" style="font-size:0.72rem;color:var(--tx2)"></div></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+    <div class="det-footer" id="detFooterView">
+      <div class="nav-grp">
         <button class="btn btn-ghost" onclick="navigateDetail(-1)">◀ 이전</button>
         <button class="btn btn-ghost" onclick="navigateDetail(1)">다음 ▶</button>
       </div>
-      <div class="m-footer">
+      <div class="act-grp">
         <button class="btn btn-danger" onclick="deletePhoto()">🗑 삭제</button>
         <button class="btn btn-ghost" onclick="openDetailEdit()">✏️ 수정</button>
         <button class="btn btn-ghost" onclick="downloadPhoto()">⬇️ 다운로드</button>
         <button class="btn btn-ghost" onclick="closeDetail()">닫기</button>
       </div>
     </div>
-
-    <!-- 수정 모드 -->
-    <div id="detEdit" style="display:none;">
-      <div class="fg-row">
-        <div class="fg"><label>날짜</label><input type="date" id="eDate"></div>
-        <div class="fg"><label>시간</label><input type="time" id="eTime"></div>
-      </div>
-      <div class="fg">
-        <label>작업 구분</label>
-        <div class="wt-radios" id="eWtRg">
-          <label><input type="radio" name="eWt" value="신규" checked><span>신규</span></label>
-          <label><input type="radio" name="eWt" value="작업전"><span>작업전</span></label>
-          <label><input type="radio" name="eWt" value="작업후"><span>작업후</span></label>
-        </div>
-      </div>
-      <div class="fg"><label>작업 분류</label><select id="eCat"></select></div>
-      <div class="fg-row">
-        <div class="fg"><label>팀명</label><select id="eTeam"></select></div>
-        <div class="fg"><label>작업구역</label><select id="eArea"></select></div>
-      </div>
-      <div class="fg"><label>기기번호</label><input type="text" id="eTag" placeholder="예: PT-2101, EQ-2305 (TAG NO, EQ NO 등)"></div>
-      <div class="fg">
-        <label>특이사항</label>
-        <select id="eNotePreset" onchange="applyEditNotePreset(this)" style="margin-bottom:5px;display:none;"></select>
-        <textarea id="eNote" placeholder="특이사항을 입력하세요..."></textarea>
-      </div>
-      <div class="m-footer">
-        <button class="btn btn-ghost" onclick="cancelDetailEdit()">취소</button>
-        <button class="btn btn-primary" onclick="saveDetailEdit()">💾 저장</button>
-      </div>
+    <div class="det-footer" id="detFooterEdit" style="display:none;">
+      <button class="btn btn-ghost" onclick="cancelDetailEdit()">취소</button>
+      <button class="btn btn-primary" onclick="saveDetailEdit()">💾 저장</button>
     </div>
   </div>
 </div>
@@ -2200,15 +2237,6 @@ let detZoom=1, detPanX=0, detPanY=0, detDragging=false;
 let detDragStartX=0, detDragStartY=0, detPanStartX=0, detPanStartY=0;
 const DET_ZOOM_MIN=1, DET_ZOOM_MAX=4;
 let currentDetailIndex=-1;
-function sizeDetModal(img){
-  const iw=img.naturalWidth, ih=img.naturalHeight;
-  if(!iw||!ih)return;
-  const maxImgH=Math.min(window.innerHeight*0.6,560);
-  const w=Math.max(320,Math.min(Math.round(maxImgH*iw/ih),620));
-  document.getElementById('detModal').style.width=w+'px';
-  const meta=document.querySelector('#detModal .det-meta');
-  if(meta) meta.style.gridTemplateColumns=w<440?'1fr':'1fr 1fr';
-}
 function applyDetTransform(){
   const img=document.getElementById('detImg');
   if(!img)return;
@@ -2243,7 +2271,6 @@ function openDetail(id){
   if(idxInList!==-1) currentDetailIndex=idxInList;
   resetDetZoom();
   const img=document.getElementById('detImg');
-  img.onload=()=>sizeDetModal(img);
   img.src=photoImgSrc(p);
   const m=WT_META[p.wt]||{};
   document.getElementById('dPath').innerHTML=`<span class="pt pt-cat">${CAT_ICON[p.cat]||''} ${p.cat||'—'}</span><span class="pt ${m.ptCls||''}">${m.icon||''} ${p.wt||'—'}</span>`;
@@ -2272,7 +2299,8 @@ function closeDetail(){
 }
 window.addEventListener('resize', () => {
   if (document.getElementById('detOverlay').classList.contains('show')) {
-    sizeDetModal(document.getElementById('detImg'));
+    clampDetPan();
+    applyDetTransform();
   }
 });
 (function initDetZoomEvents(){
@@ -2328,11 +2356,15 @@ function openDetailEdit() {
   ep.style.display = notePresets.length ? '' : 'none';
   document.getElementById('detView').style.display = 'none';
   document.getElementById('detEdit').style.display = '';
+  document.getElementById('detFooterView').style.display = 'none';
+  document.getElementById('detFooterEdit').style.display = '';
 }
 
 function cancelDetailEdit() {
   document.getElementById('detView').style.display = '';
   document.getElementById('detEdit').style.display = 'none';
+  document.getElementById('detFooterView').style.display = '';
+  document.getElementById('detFooterEdit').style.display = 'none';
 }
 
 async function saveDetailEdit() {
