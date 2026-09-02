@@ -1308,7 +1308,7 @@ let selCat = null, selWt = null, selOtherFolder = false, sbOpenWt = null;
 let batchAbort = false;
 let enabledCats = new Set();
 let currentDetailId = null;
-let ocrWorker = null, currentOCRAbort = false, currentAnalysisFile = null;
+let ocrWorker = null, currentOCRAbort = false, currentAnalysisFile = null, currentAnalysisIndex = null;
 
 let teams = ['A팀','B팀','C팀','D팀'];
 let notePresets = [];
@@ -1982,9 +1982,7 @@ function selectPreviewFile(index) {
     `<img src="${meta.previewUrl}" alt="">
      <div style="font-size:0.67rem;color:var(--tx3);">클릭하여 사진 추가</div>`;
   applyMetaToForm(meta);
-  if (!meta._analyzed) {
-    runFileAnalysis(file).then(done => { meta._analyzed = !!done; });
-  }
+  if (!meta._analyzed && !meta._queued) queueFileAnalysis(file, index);
 }
 
 const UP_ZONE_INIT = `<div class="up-zone-ico">📂</div>
@@ -2098,81 +2096,105 @@ async function handleFiles(files) {
   selectPreviewFile(0);
 }
 
-function resetAutoFills() {
-  [['upTag','tagBadge'],['upDate','dateBadge'],['upTime','timeBadge'],
-   ['upNote','noteBadge'],['upCat','catBadge'],['upTeam','teamBadge'],['upArea',null]
-  ].forEach(([id,badge])=>{
-    const el=document.getElementById(id); if(el&&!el.dataset.me) el.value='';
-    if(badge) document.getElementById(badge).style.display='none';
-  });
-  if(!document.getElementById('wtRg').dataset.me){
-    document.querySelector('input[name="upWt"][value="신규"]').checked=true;
-    document.getElementById('wtBadge').style.display='none';
-  }
+// 사진마다 OCR을 하나씩 순서대로 돌린다(Tesseract 워커 하나를 공유하므로 동시 실행은
+// 안 함). 예전엔 파일을 바꿀 때마다 진행 중이던 분석을 취소(currentOCRAbort)해서, 결과가
+// 나오기 전에 다음 사진으로 넘어가면(=사용자가 빠르게 훑어보면) 그 사진은 끝내 자동
+// 채움이 안 된 채로 남았다 — "여러 장 중 첫 장만 자동인식된다"는 증상의 원인
+// (2026-09-02 발견). 이제 결과를 DOM이 아니라 그 사진의 meta에 직접 쓰기 때문에, 화면을
+// 이미 떠났어도 큐에서 순서가 오면 계속 분석되고 끝나면 조용히 그 사진의 meta에 반영된다
+// — 다시 그 사진을 선택하면 이미 채워진 값이 바로 보인다.
+let ocrQueue = Promise.resolve();
+const OCR_FIELD_TO_ID = {tag:'upTag', date:'upDate', time:'upTime', cat:'upCat', team:'upTeam', note:'upNote'};
+
+function queueFileAnalysis(file, index) {
+  const meta = pendingMeta[index];
+  if (!meta || meta._queued) return;
+  meta._queued = true;
+  ocrQueue = ocrQueue
+    .then(() => runFileAnalysis(file, index, meta))
+    .then(done => { if (pendingMeta[index]===meta) { meta._analyzed=!!done; meta._queued=false; } })
+    .catch(()=>{ meta._queued=false; });
 }
 
-async function runFileAnalysis(file) {
-  currentOCRAbort=true;
-  await new Promise(r=>setTimeout(r,30));
-  currentOCRAbort=false;
-  currentAnalysisFile=file;
+// index가 여전히 화면에 보이는 사진일 때만 폼/OCR 진행바를 갱신한다.
+function refreshIfVisible(index) {
+  if (index !== selectedFileIndex) return;
+  const meta = pendingMeta[index]; if (meta) applyMetaToForm(meta);
+}
 
-  resetAutoFills();
+function metaSetIfAuto(meta, field, val) {
+  if (!val || (meta.manualFields && meta.manualFields[OCR_FIELD_TO_ID[field]])) return;
+  meta[field] = val;
+}
+
+async function runFileAnalysis(file, index, meta) {
+  // meta는 큐에 넣은 시점의 그 사진 객체 그대로 받는다 — 도중에 창을 닫고 새 배치를
+  // 열어도(같은 index에 다른 사진이 올 수 있음) pendingMeta[index]를 매번 다시 읽지
+  // 않고 이 참조와 비교해 "그 사이 배치가 바뀌었는지"를 판별한다(2026-09-02).
+  currentAnalysisFile=file; currentAnalysisIndex=index;
+  if (!meta || pendingMeta[index]!==meta) return false;
+
+  // 자동 채움 대상 필드는 재시도 시 한 번 비워준다(수동 입력은 보존) — 사진을 처음 보는
+  // 경우엔 이미 빈 상태라 실질적으로 변화 없음.
+  ['tag','date','time','cat','team','note'].forEach(f=>{
+    if (!(meta.manualFields && meta.manualFields[OCR_FIELD_TO_ID[f]])) meta[f]='';
+  });
+  if (!(meta.manualFields && meta.manualFields.wtRg)) meta.wt='신규';
+  refreshIfVisible(index);
 
   const fnP=parseFilename(file.name);
-  if(fnP.tag  &&!document.getElementById('upTag').dataset.me)  {document.getElementById('upTag').value=fnP.tag;  document.getElementById('tagBadge').style.display='';}
-  if(fnP.team &&!document.getElementById('upTeam').dataset.me) {document.getElementById('upTeam').value=fnP.team; document.getElementById('teamBadge').style.display='';}
-  if(fnP.note &&!document.getElementById('upNote').dataset.me) {document.getElementById('upNote').value=fnP.note; document.getElementById('noteBadge').style.display='';}
+  metaSetIfAuto(meta,'tag',fnP.tag); metaSetIfAuto(meta,'team',fnP.team); metaSetIfAuto(meta,'note',fnP.note);
+  refreshIfVisible(index);
 
-  const ocrBar=document.getElementById('ocrBar'), ocrIcon=document.getElementById('ocrIcon');
-  const ocrStatus=document.getElementById('ocrStatus'), retryBtn=document.getElementById('ocrRetryBtn');
-  ocrBar.style.display='flex'; ocrIcon.className='ocr-spin'; ocrIcon.textContent='⏳';
-  ocrStatus.textContent='EXIF 읽는 중...'; retryBtn.style.display='none';
+  if (index===selectedFileIndex) {
+    const ocrBar=document.getElementById('ocrBar'), ocrIcon=document.getElementById('ocrIcon');
+    const ocrStatus=document.getElementById('ocrStatus'), retryBtn=document.getElementById('ocrRetryBtn');
+    ocrBar.style.display='flex'; ocrIcon.className='ocr-spin'; ocrIcon.textContent='⏳';
+    ocrStatus.textContent='EXIF 읽는 중...'; retryBtn.style.display='none';
+  }
 
   const exifStr=await readExifDate(file);
-  if(exifStr){
+  if (pendingMeta[index]!==meta) return false; // 그 사이 창이 닫히고 새 배치로 바뀜
+  if (exifStr) {
     const parts=exifStr.split(' ');
-    afAuto('Date',parts[0]?.replace(/:/g,'-'),'dateBadge');
-    afAuto('Time',parts[1]?.slice(0,5),'timeBadge');
+    metaSetIfAuto(meta,'date',parts[0]?.replace(/:/g,'-'));
+    metaSetIfAuto(meta,'time',parts[1]?.slice(0,5));
+    refreshIfVisible(index);
   }
 
-  ocrStatus.textContent='OCR 분석 중...';
+  if (index===selectedFileIndex) document.getElementById('ocrStatus').textContent='OCR 분석 중...';
   try {
     const worker=await getOCRWorker(p=>{
-      if(currentOCRAbort)return;
-      ocrStatus.textContent=`OCR 분석 중... ${Math.round(p*100)}%`;
+      if (index===selectedFileIndex) document.getElementById('ocrStatus').textContent=`OCR 분석 중... ${Math.round(p*100)}%`;
     });
-    if(currentOCRAbort){ocrBar.style.display='none';return false;}
+    if (pendingMeta[index]!==meta) return false;
     const {data:{text}}=await worker.recognize(file);
-    if(currentOCRAbort)return false;
+    if (pendingMeta[index]!==meta) return false;
     const parsed=parseOCRText(text);
-    if(parsed.tag  &&!document.getElementById('upTag').dataset.me)  {document.getElementById('upTag').value=parsed.tag;  document.getElementById('tagBadge').style.display='';}
-    if(parsed.date &&!document.getElementById('upDate').dataset.me) {document.getElementById('upDate').value=parsed.date; document.getElementById('dateBadge').style.display='';}
-    if(parsed.time &&!document.getElementById('upTime').dataset.me) {document.getElementById('upTime').value=parsed.time; document.getElementById('timeBadge').style.display='';}
-    if(parsed.wt   &&!document.getElementById('wtRg').dataset.me)   {const r=document.querySelector(`input[name="upWt"][value="${parsed.wt}"]`);if(r){r.checked=true;document.getElementById('wtBadge').style.display='';}}
-    if(parsed.cat  &&!document.getElementById('upCat').dataset.me)  {document.getElementById('upCat').value=parsed.cat;  document.getElementById('catBadge').style.display='';}
-    if(parsed.team &&!document.getElementById('upTeam').dataset.me) {document.getElementById('upTeam').value=parsed.team; document.getElementById('teamBadge').style.display='';}
-    if(parsed.note &&!document.getElementById('upNote').dataset.me) {document.getElementById('upNote').value=parsed.note; document.getElementById('noteBadge').style.display='';}
-    ocrIcon.className=''; ocrIcon.textContent='✅'; ocrStatus.textContent='OCR 완료';
+    metaSetIfAuto(meta,'tag',parsed.tag); metaSetIfAuto(meta,'date',parsed.date); metaSetIfAuto(meta,'time',parsed.time);
+    metaSetIfAuto(meta,'cat',parsed.cat); metaSetIfAuto(meta,'team',parsed.team); metaSetIfAuto(meta,'note',parsed.note);
+    if (parsed.wt && !(meta.manualFields && meta.manualFields.wtRg)) meta.wt=parsed.wt;
+    refreshIfVisible(index);
+    if (index===selectedFileIndex) {
+      document.getElementById('ocrIcon').className=''; document.getElementById('ocrIcon').textContent='✅';
+      document.getElementById('ocrStatus').textContent='OCR 완료';
+    }
     return true;
   } catch(e) {
-    if(!currentOCRAbort){ocrIcon.className=''; ocrIcon.textContent='❌'; ocrStatus.textContent='OCR 실패'; retryBtn.style.display='';}
-    return !currentOCRAbort; // 진짜 실패면 완료 취급(수동 재시도로 넘김), 중간에 끊긴 거면 다음 방문 때 다시 시도
+    if (index===selectedFileIndex) {
+      document.getElementById('ocrIcon').className=''; document.getElementById('ocrIcon').textContent='❌';
+      document.getElementById('ocrStatus').textContent='OCR 실패';
+      document.getElementById('ocrRetryBtn').style.display='';
+    }
+    return false; // 실패해도 완료로 치지 않음 — 재시도 버튼이나 재방문 시 다시 시도 가능
   }
-}
-
-function afAuto(field, val, badgeId) {
-  if (!val) return;
-  const el = document.getElementById('up'+field);
-  if (!el || el.dataset.me) return;
-  el.value = val;
-  document.getElementById(badgeId).style.display = '';
 }
 
 function retryOCR() {
-  if (!currentAnalysisFile) return;
   const meta = pendingMeta[selectedFileIndex];
-  runFileAnalysis(currentAnalysisFile).then(done => { if (meta) meta._analyzed = !!done; });
+  if (!meta) return;
+  meta._analyzed=false; meta._queued=false;
+  queueFileAnalysis(pendingFiles[selectedFileIndex], selectedFileIndex);
 }
 
 ['upTag','upNote','upDate','upTime'].forEach(id=>{
