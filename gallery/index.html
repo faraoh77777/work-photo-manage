@@ -1841,8 +1841,11 @@ function loadPhotos() {
     updateHeader();
   };
 }
-function savePhotoToDB(p)  { return new Promise(res=>{ txStore('photos','readwrite').put(p).onsuccess=()=>res(); }); }
-function deletePhotoDB(id) { return new Promise(res=>{ txStore('photos','readwrite').delete(id).onsuccess=()=>res(); }); }
+// onerror가 없으면 저장이 실패했을 때 Promise가 영원히 안 풀려서, 호출한 쪽(예:
+// saveDetailEdit)의 await가 그대로 멈춰버린다 — "저장 눌러도 반응 없음"으로 보이는
+// 원인이었다(2026-09-03). reject를 넣어 실패가 호출한 쪽에 전달되게 한다.
+function savePhotoToDB(p)  { return new Promise((res,rej)=>{ const req=txStore('photos','readwrite').put(p); req.onsuccess=()=>res(); req.onerror=()=>rej(req.error); }); }
+function deletePhotoDB(id) { return new Promise((res,rej)=>{ const req=txStore('photos','readwrite').delete(id); req.onsuccess=()=>res(); req.onerror=()=>rej(req.error); }); }
 
 // ── 드래그 앤 드롭 ───────────────────────────────────
 // 사진(<img>)을 클릭할 때 마우스가 살짝 움직이면 브라우저가 "이미지를 페이지 안에서
@@ -3040,7 +3043,13 @@ async function saveDetailEdit() {
   p.cat  = document.getElementById('eCat').value;
   p.team = document.getElementById('eTeam').value;
   p.area = document.getElementById('eArea').value;
-  await savePhotoToDB(p);
+  try {
+    await savePhotoToDB(p);
+  } catch (e) {
+    console.error('[사진 수정 저장 실패]', e);
+    alert('수정 내용을 저장하지 못했습니다. 다시 시도해 주세요.' + (e && e.message ? '\n' + e.message : ''));
+    return; // 수정 모드를 그대로 유지 — 입력한 내용을 잃지 않고 다시 저장 시도 가능
+  }
   if (p.cloud_url) syncMetaToCloud(p); // 클라우드 원본에도 반영 — 실패해도 로컬 저장은 이미 끝났으니 조용히 넘어감
   photos.sort((a,b)=>(b.date+b.created).localeCompare(a.date+a.created));
   cancelDetailEdit();
