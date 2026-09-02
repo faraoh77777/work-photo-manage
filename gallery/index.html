@@ -660,7 +660,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
             <input type="radio" name="batchMode" value="uncat" style="accent-color:var(--ac);">
             <span>
               <strong>미분류 사진만</strong><br>
-              <span style="font-size:0.72rem;color:var(--tx3);">작업분류·기기번호·팀명·날짜·특이사항 중 하나라도 빠진 사진만 분석</span>
+              <span style="font-size:0.72rem;color:var(--tx3);">작업분류·기기번호·팀명·날짜 중 하나라도 빠진 사진만 분석</span>
             </span>
           </label>
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.82rem;padding:8px 10px;border:1px solid var(--bd);border-radius:7px;background:var(--bg);">
@@ -1542,12 +1542,14 @@ function openBatch() {
   document.getElementById('batchOverlay').classList.add('show');
 }
 
-// 인식 범위가 작업분류 하나가 아니라 7개 항목(날짜/시간/작업구분/작업분류/팀명/
-// 기기번호/특이사항)으로 늘어났으므로, "미분류"도 작업분류만 보지 않고 이 중
-// 하나라도 비어있으면 대상으로 잡는다(2026-09-02) — 작업분류는 채워져 있어도
-// 기기번호·팀명 등이 빠진 사진이 "분석할 사진이 없습니다"로 걸러지던 문제 수정.
+// 인식 범위가 작업분류 하나가 아니라 여러 항목으로 늘어났으므로, "미분류"도 작업분류만
+// 보지 않고 기기번호·팀명·날짜 중 하나라도 비어있으면 대상으로 잡는다(2026-09-02) —
+// 작업분류는 채워져 있어도 기기번호·팀명 등이 빠진 사진이 "분석할 사진이 없습니다"로
+// 걸러지던 문제 수정. 단 특이사항(note)은 원래 대부분 사진에서 정상적으로 비어있는
+// 값이라(특별히 남길 말이 있을 때만 씀) 조건에서 뺀다 — 넣었더니 사실상 거의 모든
+// 사진이 "미분류"에 걸려서 "전체"와 구분이 없어지는 문제가 있었다(2026-09-02 발견).
 function isBatchIncomplete(p){
-  return !p.cat || p.cat==='Others' || !p.tag || !p.team || !p.date || !p.note;
+  return !p.cat || p.cat==='Others' || !p.tag || !p.team || !p.date;
 }
 async function startBatch() {
   const checked = document.querySelector('input[name="batchMode"]:checked');
