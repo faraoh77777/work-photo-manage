@@ -197,7 +197,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 .det-photo-col .up-zone { min-height: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 10px; padding: 12px; }
 /* 사진을 고르면 확대/이동(휠로 확대, 드래그로 이동)까지 상세 모달과 동일하게 지원(2026-09-02) */
 .up-preview-wrap { position: relative; width: 100%; height: 260px; border-radius: 6px; overflow: hidden; background: var(--bg); }
-.up-preview-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; transform-origin: center center; transition: transform 0.15s ease-out; touch-action: none; }
+.up-preview-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; transform-origin: center center; transition: transform 0.15s ease-out; touch-action: none; -webkit-user-drag: none; user-select: none; }
 .up-preview-wrap img.dragging { transition: none; cursor: grabbing; }
 .up-preview-wrap img.zoomed { cursor: grab; }
 .up-preview-hint { font-size: 0.67rem; color: var(--tx3); text-align: center; margin-top: 6px; }
@@ -259,7 +259,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 
 /* 사진 상세 모달 */
 .det-img-wrap { position: relative; border-radius: 8px; overflow: hidden; margin-bottom: 16px; background: var(--bg); }
-.det-img-wrap img { width: 100%; max-height: 380px; object-fit: contain; display: block; transform-origin: center center; transition: transform 0.15s ease-out; touch-action: none; }
+.det-img-wrap img { width: 100%; max-height: 380px; object-fit: contain; display: block; transform-origin: center center; transition: transform 0.15s ease-out; touch-action: none; -webkit-user-drag: none; user-select: none; }
 .det-img-wrap img.dragging { transition: none; cursor: grabbing; }
 .det-img-wrap img.zoomed { cursor: grab; }
 .det-zoom-ctrl { position: absolute; top: 8px; left: 8px; display: flex; align-items: center; gap: 4px; z-index: 5; }
@@ -436,7 +436,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
             <div class="up-zone-sub">JPG, PNG, HEIC 지원 · 여러 장 선택 가능</div>
           </div>
           <div id="upPreviewWrap" class="up-preview-wrap" style="display:none;">
-            <img id="upPreviewImg" src="" alt="">
+            <img id="upPreviewImg" src="" alt="" draggable="false">
             <div class="det-zoom-ctrl">
               <button type="button" class="det-zoom-btn" onclick="zoomUpBy(-0.4)" title="축소">−</button>
               <button type="button" class="det-zoom-btn" id="upZoomPct" onclick="resetUpZoom()" title="원래 크기로">100%</button>
@@ -568,7 +568,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
     <div class="det-body">
       <div class="det-photo-col">
         <div class="det-img-wrap" id="detImgWrap">
-          <img id="detImg" src="" alt="">
+          <img id="detImg" src="" alt="" draggable="false">
           <div class="det-zoom-ctrl">
             <button type="button" class="det-zoom-btn" onclick="zoomDetBy(-0.4)" title="축소">−</button>
             <button type="button" class="det-zoom-btn" id="detZoomPct" onclick="resetDetZoom()" title="원래 크기로">100%</button>
@@ -1599,11 +1599,27 @@ function savePhotoToDB(p)  { return new Promise(res=>{ txStore('photos','readwri
 function deletePhotoDB(id) { return new Promise(res=>{ txStore('photos','readwrite').delete(id).onsuccess=()=>res(); }); }
 
 // ── 드래그 앤 드롭 ───────────────────────────────────
+// 업로드 미리보기/상세 사진(<img>)은 브라우저가 기본적으로 "드래그해서 옮길 수 있는
+// 요소"로 취급한다 — 사진을 클릭할 때 마우스가 살짝 움직이기만 해도 이게 "페이지 안에서
+// 이미지를 드래그하는 중"으로 인식돼, 아래 dragenter 핸들러가 이걸 외부 파일이 들어오는
+// 것으로 착각해 "여기에 놓으면 업로드됩니다" 전체화면 안내가 잘못 떴다(2026-09-02,
+// 사진 클릭하면 파일선택 화면으로 돌아가는 것처럼 보이던 원인). 실제 파일 드래그만
+// dataTransfer.types에 "Files"가 있으므로 그걸로 걸러낸다.
+function isRealFileDrag(e){
+  return e.dataTransfer && e.dataTransfer.types && Array.prototype.includes.call(e.dataTransfer.types,'Files');
+}
 let dragCnt = 0;
-document.addEventListener('dragenter', e => { e.preventDefault(); if(++dragCnt===1) document.getElementById('dropOverlay').classList.add('active'); });
-document.addEventListener('dragleave', e => { e.preventDefault(); if(--dragCnt===0) document.getElementById('dropOverlay').classList.remove('active'); });
-document.addEventListener('dragover',  e => e.preventDefault());
+document.addEventListener('dragenter', e => {
+  if(!isRealFileDrag(e)) return;
+  e.preventDefault(); if(++dragCnt===1) document.getElementById('dropOverlay').classList.add('active');
+});
+document.addEventListener('dragleave', e => {
+  if(!isRealFileDrag(e)) return;
+  e.preventDefault(); if(--dragCnt===0) document.getElementById('dropOverlay').classList.remove('active');
+});
+document.addEventListener('dragover',  e => { if(isRealFileDrag(e)) e.preventDefault(); });
 document.addEventListener('drop', e => {
+  if(!isRealFileDrag(e)) return;
   e.preventDefault(); dragCnt=0;
   document.getElementById('dropOverlay').classList.remove('active');
   if(e.dataTransfer.files.length){ openUpload(); setTimeout(()=>handleFiles(e.dataTransfer.files),80); }

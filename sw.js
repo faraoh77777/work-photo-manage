@@ -1,6 +1,6 @@
 // 이 파일 내용이 바뀌어야 브라우저가 새 버전을 감지해 업데이트 배너를 띄운다.
 // index.html/admin.html 등을 배포할 때마다 아래 버전 문자열을 함께 올려줄 것.
-const SW_VERSION = '2026-09-02-6';
+const SW_VERSION = '2026-09-02-7';
 const CACHE_NAME = 'wp-shell-' + SW_VERSION;
 
 // 현장에서 신호가 완전히 끊긴 상태로 앱을 "새로" 열어도 흰 화면 대신 마지막으로
