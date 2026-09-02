@@ -660,7 +660,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
             <input type="radio" name="batchMode" value="uncat" checked style="accent-color:var(--ac);">
             <span>
               <strong>미분류 사진만</strong><br>
-              <span style="font-size:0.72rem;color:var(--tx3);">분류가 없거나 Others인 사진만 분석</span>
+              <span style="font-size:0.72rem;color:var(--tx3);">작업분류·기기번호·팀명·날짜·특이사항 중 하나라도 빠진 사진만 분석</span>
             </span>
           </label>
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.82rem;padding:8px 10px;border:1px solid var(--bd);border-radius:7px;background:var(--bg);">
@@ -1535,11 +1535,18 @@ function openBatch() {
   document.getElementById('batchOverlay').classList.add('show');
 }
 
+// 인식 범위가 작업분류 하나가 아니라 7개 항목(날짜/시간/작업구분/작업분류/팀명/
+// 기기번호/특이사항)으로 늘어났으므로, "미분류"도 작업분류만 보지 않고 이 중
+// 하나라도 비어있으면 대상으로 잡는다(2026-09-02) — 작업분류는 채워져 있어도
+// 기기번호·팀명 등이 빠진 사진이 "분석할 사진이 없습니다"로 걸러지던 문제 수정.
+function isBatchIncomplete(p){
+  return !p.cat || p.cat==='Others' || !p.tag || !p.team || !p.date || !p.note;
+}
 async function startBatch() {
   const mode = document.querySelector('input[name="batchMode"]:checked').value;
   const menuPhotos = photos.filter(p => (p.menu||'시공')===activeMenu);
   batchTargets = mode === 'uncat'
-    ? menuPhotos.filter(p => !p.cat || p.cat === 'Others')
+    ? menuPhotos.filter(isBatchIncomplete)
     : menuPhotos;
 
   if (batchTargets.length === 0) { alert('분석할 사진이 없습니다.'); return; }
