@@ -1704,9 +1704,11 @@ async function runBatchAnalysis(p, index, meta) {
   try {
     const blob = p.blob || await (await fetch(p.dataUrl)).blob();
     if (batchAbort || batchMeta[index]!==meta) return false;
+    const cropped = await cropWatermarkForOCR(blob);
+    if (batchAbort || batchMeta[index]!==meta) return false;
     const worker = await getOCRWorker(()=>{});
     if (batchAbort || batchMeta[index]!==meta) return false;
-    const { data: { text } } = await worker.recognize(blob);
+    const { data: { text } } = await worker.recognize(cropped);
     if (batchAbort || batchMeta[index]!==meta) return false;
     const parsed = parseOCRText(text);
     batchMetaSetIfAuto(meta,'tag',parsed.tag); batchMetaSetIfAuto(meta,'date',parsed.date);
@@ -2195,7 +2197,45 @@ async function getOCRWorker(onProgress) {
   if (ocrWorker) return ocrWorker;
   await loadTesseract();
   ocrWorker = await Tesseract.createWorker(['kor','eng'],1,{logger:m=>{if(m.status==='recognizing text')onProgress(m.progress);}});
+  // 이제 OCR에는 워터마크만 잘라낸 작은 블록을 넘기므로(cropWatermarkForOCR),
+  // 페이지 전체 레이아웃 분석 대신 "글자 블록 하나"로 가정하는 모드가 더 정확하다.
+  await ocrWorker.setParameters({tessedit_pageseg_mode:'6'});
   return ocrWorker;
+}
+
+// ── 워터마크 영역 크롭(OCR 전처리) ──────────────────────
+// 촬영 워터마크는 항상 사진 우측 하단에 찍힌다(index.html renderCanvas: W-boxW~W,
+// H-boxH~H). 사진 전체를 OCR에 넣으면 배경 때문에 인식률이 떨어지고, 카카오톡을
+// 거치며 압축된 사진은 작은 글자가 더 뭉개져 특히 인식이 잘 안 된다 — 우측 하단만
+// 잘라 확대해서 넘기면 배경 노이즈가 사라지고 저해상도 사진도 글자가 커져 인식률이
+// 올라간다. 워터마크 없는 사진(갤러리에서 그대로 가져온 원본 등)은 크롭해도 해당
+// 영역에 별다른 텍스트가 없을 뿐, 기존과 동일하게 인식 결과가 없는 것으로 처리된다.
+async function cropWatermarkForOCR(source) {
+  const url = URL.createObjectURL(source);
+  try {
+    const img = await new Promise((res, rej) => {
+      const im = new Image();
+      im.onload = () => res(im);
+      im.onerror = rej;
+      im.src = url;
+    });
+    const W = img.naturalWidth, H = img.naturalHeight;
+    if (!W || !H) return source;
+    // 워터마크 박스 최대 크기(W*0.75+padX*2 ≈ 0.79W, 최대 6줄 ≈ 0.28H)보다 여유 있게 자른다.
+    const cropW = Math.round(W * 0.85), cropH = Math.round(H * 0.4);
+    const sx = W - cropW, sy = H - cropH;
+    // 카카오톡 등을 거치며 작아진 사진은 글자가 뭉개지므로, 잘라낸 영역이 작으면 확대한다.
+    const scale = Math.min(3, Math.max(1, 1000 / cropW));
+    const cv = document.createElement('canvas');
+    cv.width = Math.round(cropW * scale);
+    cv.height = Math.round(cropH * scale);
+    cv.getContext('2d').drawImage(img, sx, sy, cropW, cropH, 0, 0, cv.width, cv.height);
+    return cv;
+  } catch (e) {
+    return source; // 크롭 실패 시 기존처럼 원본 전체를 OCR에 넘긴다
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 // ── OCR 텍스트 파서 ──────────────────────────────────
@@ -2535,11 +2575,13 @@ async function runFileAnalysis(file, index, meta) {
 
   if (index===selectedFileIndex) document.getElementById('ocrStatus').textContent='OCR 분석 중...';
   try {
+    const cropped = await cropWatermarkForOCR(file);
+    if (pendingMeta[index]!==meta) return false;
     const worker=await getOCRWorker(p=>{
       if (index===selectedFileIndex) document.getElementById('ocrStatus').textContent=`OCR 분석 중... ${Math.round(p*100)}%`;
     });
     if (pendingMeta[index]!==meta) return false;
-    const {data:{text}}=await worker.recognize(file);
+    const {data:{text}}=await worker.recognize(cropped);
     if (pendingMeta[index]!==meta) return false;
     const parsed=parseOCRText(text);
     metaSetIfAuto(meta,'tag',parsed.tag); metaSetIfAuto(meta,'date',parsed.date); metaSetIfAuto(meta,'time',parsed.time);
