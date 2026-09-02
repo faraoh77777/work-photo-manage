@@ -69,7 +69,7 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
 
   <!-- 새 현장 만들기 -->
   <div class="card">
-    <div class="card-title">🏗️ 새 현장 만들기</div>
+    <div class="card-title">새 현장 만들기</div>
     <div class="hint">
       회사/현장마다 사진·회원 데이터를 완전히 분리하고 싶다면, 무료 Supabase 프로젝트를
       새로 만들어 이 앱에 연결하세요. 그 순간부터 데이터는 그 현장만의 것이 됩니다.
@@ -98,7 +98,7 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
 
   <!-- 직원 초대 링크 -->
   <div class="card" id="inviteCard" style="display:none;">
-    <div class="card-title">👥 직원 초대 링크</div>
+    <div class="card-title">직원 초대 링크</div>
     <div class="hint">
       아래 링크(또는 QR코드)를 직원에게 카톡 등으로 보내면, 그 직원 폰의 앱이
       자동으로 지금 이 현장에 연결됩니다. Supabase 정보를 직접 입력할 필요가 없습니다.
@@ -109,7 +109,7 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
       <button class="btn btn-secondary" style="width:auto;padding:11px 14px;" onclick="copyInviteLink()">복사</button>
     </div>
     <div id="qrBox"></div>
-    <button class="btn btn-secondary" id="kakaoShareBtn" style="display:none;" onclick="shareInviteLink()">💬 카톡으로 공유</button>
+    <button class="btn btn-secondary" id="kakaoShareBtn" style="display:none;" onclick="shareInviteLink()">카톡으로 공유</button>
   </div>
 
   <a class="back-link" id="backLink" href="login.html">← 로그인 화면으로 돌아가기</a>
@@ -214,7 +214,7 @@ function refreshCurrentSiteUI(){
 }
 refreshCurrentSiteUI();
 
-// admin.html "🏗️ 현장 관리" 카드에서 로그인된 채로 들어온 경우엔 admin.html로 바로
+// admin.html "현장 관리" 카드에서 로그인된 채로 들어온 경우엔 admin.html로 바로
 // 돌아갈 수 있게 링크를 바꿔준다 — 예전엔 항상 login.html로만 가서(자동전환으로
 // index.html까지는 가지만 admin.html로는 못 감), 관리자가 여기 왔다가 되돌아가려면
 // 불필요하게 한 단계를 더 거쳐야 했다.

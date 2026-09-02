@@ -106,14 +106,14 @@ textarea.f{resize:none;height:80px;line-height:1.5;}
 
   <div class="app-header">
     <a class="hdr-back" href="../index.html">← 작업사진</a>
-    <div class="app-title">📋 작업지시 공유</div>
+    <div class="app-title">작업지시 공유</div>
     <div class="app-sub">현장 사진과 작업지시 내용을 카톡·이메일로 바로 보냅니다</div>
   </div>
 
   <div class="card">
-    <div class="flbl">✨ AI로 작성하기 (선택)</div>
+    <div class="flbl">AI로 작성하기 (선택)</div>
     <textarea class="f" id="aiHint" placeholder="예: 3층 배관 보온재 내일까지 교체 지시, 협력사 담당자 확인 필요" style="height:48px;margin-bottom:8px;"></textarea>
-    <button type="button" class="sbtn" id="aiDraftBtn" onclick="generateAiDraft()" style="background:linear-gradient(135deg,#8E44AD,#5B2C6F);color:#fff;">✨ AI로 제목·내용 작성하기</button>
+    <button type="button" class="sbtn" id="aiDraftBtn" onclick="generateAiDraft()" style="background:linear-gradient(135deg,#8E44AD,#5B2C6F);color:#fff;">AI로 제목·내용 작성하기</button>
     <div class="footnote" style="text-align:left;margin-top:6px;">간단한 메모만 적으면 AI가 정식 문장으로 다듬어 아래 제목·내용에 채워줍니다. 그대로 보내지 말고 꼭 확인 후 보내주세요.</div>
   </div>
 
@@ -138,8 +138,8 @@ textarea.f{resize:none;height:80px;line-height:1.5;}
     <div id="recipList"></div>
   </div>
 
-  <button class="sbtn sbtn-kakao" id="kakaoBtn" onclick="shareKakao()">💬 카톡·문자로 공유</button>
-  <button class="sbtn sbtn-mail" id="mailBtn" onclick="sendEmail()">📧 이메일로 보내기</button>
+  <button class="sbtn sbtn-kakao" id="kakaoBtn" onclick="shareKakao()">카톡·문자로 공유</button>
+  <button class="sbtn sbtn-mail" id="mailBtn" onclick="sendEmail()">이메일로 보내기</button>
 
   <div class="footnote">보낸 기록은 자동으로 저장됩니다.</div>
 </div>

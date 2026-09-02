@@ -628,7 +628,7 @@ async function importLocalFilesGrouped(files) {
     alert("불러오기 실패: " + e.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = "💻 PC에서 선택 불러오기";
+    btn.textContent = "PC에서 선택 불러오기";
   }
 }
 
@@ -654,7 +654,7 @@ async function importLocalFilesIndividually(files) {
     alert("불러오기 실패: " + e.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = "📄 개별 불러오기";
+    btn.textContent = "개별 불러오기";
   }
 }
 

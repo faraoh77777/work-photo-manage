@@ -61,7 +61,7 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
 
   <!-- 로그인/권한 확인 전엔 아무것도 안 보여준다 -->
   <div id="gateCard" class="card" style="display:none;">
-    <div class="card-title">🔒 접근 제한</div>
+    <div class="card-title">접근 제한</div>
     <div class="hint" id="gateMsg"></div>
     <a class="link-btn" href="index.html">현장작업일보(근로자) 화면으로 이동</a>
   </div>
@@ -83,12 +83,12 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
     </div>
 
     <div class="card">
-      <div class="card-title">👥 회원 승인 대기 <span class="cnt" id="pendingCount">0</span></div>
+      <div class="card-title">회원 승인 대기 <span class="cnt" id="pendingCount">0</span></div>
       <div id="pendingList"></div>
     </div>
 
     <div class="card">
-      <div class="card-title">🏷️ 작업 분류 관리</div>
+      <div class="card-title">작업 분류 관리</div>
       <div class="menu-tabs" id="catMenuTabs"></div>
       <div class="chip-row" id="catChips"></div>
       <div class="add-row">
@@ -98,7 +98,7 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
     </div>
 
     <div class="card">
-      <div class="card-title">📍 작업 구역 관리</div>
+      <div class="card-title">작업 구역 관리</div>
       <div class="chip-row" id="areaChips"></div>
       <div class="add-row">
         <input type="text" id="newAreaInput" class="f" placeholder="새 구역 이름"/>
@@ -110,29 +110,29 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
         <select id="defaultAreaSelect" class="f" onchange="tempDefaultArea=this.value;"></select>
       </div>
       <button onclick="saveCatAreaChanges()" style="width:100%;margin-top:14px;background:#2E5F9E;
-        color:#fff;border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:800;cursor:pointer;">💾 분류·구역 저장</button>
+        color:#fff;border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:800;cursor:pointer;">분류·구역 저장</button>
     </div>
 
     <div class="card">
-      <div class="card-title">🏗️ 현장 관리</div>
+      <div class="card-title">현장 관리</div>
       <div class="hint">다른 회사/현장을 이 앱에 새로 연결하거나, 직원 초대 링크를 만듭니다.</div>
       <a class="link-btn" href="site-setup.html">새 현장 만들기 / 직원 초대 링크</a>
     </div>
 
     <div class="card">
-      <div class="card-title">🖼️ 사진 · 일보 열람</div>
+      <div class="card-title">사진 · 일보 열람</div>
       <div class="hint">현재 현장에 올라온 사진과 작업 기록을 모아 보고, 분류별로 내려받을 수 있습니다.</div>
       <a class="link-btn" href="gallery/index.html">사진/일보 갤러리 열기</a>
     </div>
 
     <div class="card">
-      <div class="card-title">📋 작업지시 공유</div>
+      <div class="card-title">작업지시 공유</div>
       <div class="hint">현장 사진과 작업지시 내용을 카톡·이메일로 보냅니다. (근로자도 사용 가능)</div>
       <a class="link-btn" href="gallery/share.html">작업지시 공유 화면 열기</a>
     </div>
 
     <div class="card">
-      <div class="card-title">📧 수신자 관리</div>
+      <div class="card-title">수신자 관리</div>
       <div class="hint">작업지시 공유에서 이메일로 보낼 때 고를 수 있는 사람 목록입니다.</div>
       <div class="chip-row" id="recipChips"></div>
       <div class="add-row" style="margin-bottom:6px;">
@@ -157,7 +157,7 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
     </div>
 
     <div class="card">
-      <div class="card-title">🗂️ 작업지시 발송 기록 <span class="cnt" id="sentSharesCount">0</span></div>
+      <div class="card-title">작업지시 발송 기록 <span class="cnt" id="sentSharesCount">0</span></div>
       <div id="sentSharesList"></div>
     </div>
   </div>
