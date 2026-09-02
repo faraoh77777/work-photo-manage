@@ -3113,12 +3113,13 @@ document.addEventListener('keydown', e => {
 });
 
 // ── 오버레이 바깥 클릭 닫기 ─────────────────────────
-['upOverlay','detOverlay','setOverlay','batchOverlay','batchEditOverlay'].forEach(id=>{
+// batchOverlay(자동분류)는 항목별 검토·저장 중 실수로 바깥을 클릭해 닫히면
+// 진행 상황을 잃을 수 있어 제외 — ✕ 버튼이나 ESC로만 닫는다.
+['upOverlay','detOverlay','setOverlay','batchEditOverlay'].forEach(id=>{
   document.getElementById(id).addEventListener('click', e=>{
     if(e.target.id===id){
       e.target.classList.remove('show');
       if(id==='upOverlay') currentOCRAbort=true;
-      if(id==='batchOverlay') batchAbort=true;
     }
   });
 });
