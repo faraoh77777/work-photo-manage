@@ -278,7 +278,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 .det-body { display: grid; grid-template-columns: minmax(280px, 400px) 1fr; }
 .det-photo-col { padding: 24px 26px; background: var(--bg); border-right: 1px solid var(--bd); }
 .det-photo-col .det-img-wrap { margin-bottom: 0; }
-.det-photo-col .det-img-wrap img { max-height: none; height: 320px; }
+.det-photo-col .det-img-wrap img { max-height: none; height: 440px; }
 .det-fname { font-size: 0.76rem; color: var(--tx2); text-align: center; margin-top: 10px; word-break: break-all; }
 .det-content-col { padding: 24px 26px; min-width: 0; }
 /* 사진 상세창은 보기 모드(#detView, 짧음)와 수정 모드(#detEdit, 입력칸이 많아 긺)를
@@ -294,7 +294,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 @media (max-width: 900px) {
   .det-body { grid-template-columns: 1fr; }
   .det-photo-col { border-right: none; border-bottom: 1px solid var(--bd); }
-  .det-photo-col .det-img-wrap img { height: 240px; }
+  .det-photo-col .det-img-wrap img { height: 320px; }
 }
 @media (max-width: 560px) {
   .det-meta, .fg-grid { grid-template-columns: 1fr; }
