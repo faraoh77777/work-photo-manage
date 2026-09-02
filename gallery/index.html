@@ -634,6 +634,8 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
     <div class="det-footer" id="detFooterView" style="justify-content:flex-end;">
       <div class="act-grp">
         <button class="btn btn-danger" onclick="deletePhoto()">삭제</button>
+        <button class="btn btn-ghost" onclick="navigateDetail(-1)" title="이전 사진">◀ 이전</button>
+        <button class="btn btn-ghost" onclick="navigateDetail(1)" title="다음 사진">다음 ▶</button>
         <button class="btn btn-ghost" onclick="openDetailEdit()">수정</button>
         <button class="btn btn-ghost" onclick="downloadPhoto()">다운로드</button>
         <button class="btn btn-ghost" onclick="closeDetail()">닫기</button>
