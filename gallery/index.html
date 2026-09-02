@@ -690,7 +690,10 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
               <button type="button" class="det-zoom-btn" onclick="zoomBatchBy(0.4)" title="확대">+</button>
             </div>
           </div>
-          <div class="up-analyze-status" id="batchAnalyzeStatus" style="margin-top:10px;"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;">
+            <div class="up-analyze-status" id="batchAnalyzeStatus" style="margin:0;"></div>
+            <button type="button" class="btn btn-ghost" id="batchStopBtn" style="display:none;flex:none;padding:4px 10px;font-size:0.72rem;height:auto;" onclick="stopBatchAnalysis()">⏸ 분석 중단</button>
+          </div>
           <div class="up-thumbs" id="batchThumbs"></div>
         </div>
         <div class="det-content-col">
@@ -1642,15 +1645,28 @@ function updateBatchThumbStatus(index){
 }
 function updateBatchAnalyzeStatus(){
   const el = document.getElementById('batchAnalyzeStatus');
+  const stopBtn = document.getElementById('batchStopBtn');
   if (!el) return;
   const total = batchMeta.length;
-  if (!total) { el.style.display='none'; return; }
+  if (!total) { el.style.display='none'; if(stopBtn) stopBtn.style.display='none'; return; }
   const done = batchMeta.filter(m=>m._analyzed).length;
   const saved = batchMeta.filter(m=>m._saved).length;
+  const stillGoing = done<total && !batchAbort;
   el.style.display='block';
+  if (stopBtn) stopBtn.style.display = stillGoing ? '' : 'none';
   el.textContent = done>=total
     ? `✅ 분석 완료 (${total}장) — 저장됨 ${saved}장, 한 장씩 확인 후 저장하세요`
-    : `⏳ 사진 분석 중... ${done}/${total}장 완료 (저장됨 ${saved}장)`;
+    : stillGoing
+      ? `⏳ 사진 분석 중... ${done}/${total}장 완료 (저장됨 ${saved}장)`
+      : `⏸ 분석 중단됨 — ${done}/${total}장까지 완료 (저장됨 ${saved}장). 분석된 사진만 검토·저장할 수 있습니다.`;
+}
+
+// "분석 중단" — 나머지 사진의 OCR을 더 돌리지 않고, 이미 끝난 사진은 그대로 검토·저장할
+// 수 있게 둔다(모달을 닫지 않음). closeBatch()와 같은 batchAbort 플래그를 쓰되, 여기서는
+// 창을 닫지 않고 상태 표시만 갱신한다(2026-09-02).
+function stopBatchAnalysis(){
+  batchAbort = true;
+  updateBatchAnalyzeStatus();
 }
 
 function batchMetaSetIfAuto(meta, field, val) {
