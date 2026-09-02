@@ -281,6 +281,11 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 .det-photo-col .det-img-wrap img { max-height: none; height: 320px; }
 .det-fname { font-size: 0.76rem; color: var(--tx2); text-align: center; margin-top: 10px; word-break: break-all; }
 .det-content-col { padding: 24px 26px; min-width: 0; }
+/* 사진 상세창은 보기 모드(#detView, 짧음)와 수정 모드(#detEdit, 입력칸이 많아 긺)를
+   같은 자리에서 전환하는데, 높이가 자동이라 모드 바꿀 때마다 창 크기가 눈에 띄게
+   바뀌었다. 수정 모드 기준으로 최소 높이를 고정해 항상 같은 크기로 보이게 한다
+   (2026-09-02). */
+#detModal .det-content-col { min-height: 480px; }
 .fg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 22px; }
 .fg-grid .fg { margin-bottom: 0; }
 .fg-grid .fg-span2 { grid-column: 1 / -1; }
@@ -294,6 +299,8 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 @media (max-width: 560px) {
   .det-meta, .fg-grid { grid-template-columns: 1fr; }
   .det-footer { justify-content: flex-start; }
+  /* 좁은 화면에서는 수정 모드 입력칸이 1열로 쌓여 더 길어지므로 최소 높이도 늘려준다. */
+  #detModal .det-content-col { min-height: 760px; }
 }
 
 /* 상세 모달 텍스트 — 창에 여유가 있으므로 필드 제목·값·본문 글자를 한 단계씩 키움 */
