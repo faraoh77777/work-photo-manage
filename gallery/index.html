@@ -1600,27 +1600,17 @@ function savePhotoToDB(p)  { return new Promise(res=>{ txStore('photos','readwri
 function deletePhotoDB(id) { return new Promise(res=>{ txStore('photos','readwrite').delete(id).onsuccess=()=>res(); }); }
 
 // ── 드래그 앤 드롭 ───────────────────────────────────
-// 업로드 미리보기/상세 사진(<img>)은 브라우저가 기본적으로 "드래그해서 옮길 수 있는
-// 요소"로 취급한다 — 사진을 클릭할 때 마우스가 살짝 움직이기만 해도 이게 "페이지 안에서
-// 이미지를 드래그하는 중"으로 인식돼, 아래 dragenter 핸들러가 이걸 외부 파일이 들어오는
-// 것으로 착각해 "여기에 놓으면 업로드됩니다" 전체화면 안내가 잘못 떴다(2026-09-02,
-// 사진 클릭하면 파일선택 화면으로 돌아가는 것처럼 보이던 원인). 실제 파일 드래그만
-// dataTransfer.types에 "Files"가 있으므로 그걸로 걸러낸다.
-function isRealFileDrag(e){
-  return e.dataTransfer && e.dataTransfer.types && Array.prototype.includes.call(e.dataTransfer.types,'Files');
-}
+// 사진(<img>)을 클릭할 때 마우스가 살짝 움직이면 브라우저가 "이미지를 페이지 안에서
+// 드래그하는 중"으로 오인해 아래 dragenter가 외부 파일 드롭으로 착각하던 문제가
+// 있었다(2026-09-02). dataTransfer.types로 걸러보려 했으나 실제 파일 드래그 앤 드롭까지
+// 막혀버려서(파일 탐색기에서 끌어다 놓아도 업로드 안 되던 문제) 되돌림 — 대신 근본
+// 원인인 이미지 자체 드래그는 #upPreviewImg/#detImg에 draggable=false로 막아뒀으므로
+// 이 핸들러들은 원래 방식 그대로 둔다.
 let dragCnt = 0;
-document.addEventListener('dragenter', e => {
-  if(!isRealFileDrag(e)) return;
-  e.preventDefault(); if(++dragCnt===1) document.getElementById('dropOverlay').classList.add('active');
-});
-document.addEventListener('dragleave', e => {
-  if(!isRealFileDrag(e)) return;
-  e.preventDefault(); if(--dragCnt===0) document.getElementById('dropOverlay').classList.remove('active');
-});
-document.addEventListener('dragover',  e => { if(isRealFileDrag(e)) e.preventDefault(); });
+document.addEventListener('dragenter', e => { e.preventDefault(); if(++dragCnt===1) document.getElementById('dropOverlay').classList.add('active'); });
+document.addEventListener('dragleave', e => { e.preventDefault(); if(--dragCnt===0) document.getElementById('dropOverlay').classList.remove('active'); });
+document.addEventListener('dragover',  e => e.preventDefault());
 document.addEventListener('drop', e => {
-  if(!isRealFileDrag(e)) return;
   e.preventDefault(); dragCnt=0;
   document.getElementById('dropOverlay').classList.remove('active');
   if(e.dataTransfer.files.length){ openUpload(); setTimeout(()=>handleFiles(e.dataTransfer.files),80); }
