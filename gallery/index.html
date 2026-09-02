@@ -265,6 +265,12 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 .det-zoom-ctrl { position: absolute; top: 8px; left: 8px; display: flex; align-items: center; gap: 4px; z-index: 5; }
 .det-zoom-btn { min-width: 28px; height: 28px; padding: 0 6px; border: none; border-radius: 6px; background: rgba(0,0,0,0.55); color: #fff; font-size: 0.85rem; line-height: 1; cursor: pointer; }
 .det-zoom-btn:hover { background: rgba(0,0,0,0.75); }
+/* 이전/다음을 footer 대신 사진 위에 겹친 화살표로(2026-09-02) — 보기/수정 모드 어디서든
+   사진을 보면서 바로 넘길 수 있고, 두 모드가 #detImgWrap을 공유하므로 한 번만 두면 된다. */
+.det-nav-btn { position: absolute; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 50%; border: none; background: rgba(0,0,0,0.5); color: #fff; font-size: 1rem; line-height: 1; cursor: pointer; z-index: 5; display: flex; align-items: center; justify-content: center; }
+.det-nav-btn:hover { background: rgba(0,0,0,0.75); }
+.det-nav-prev { left: 8px; }
+.det-nav-next { right: 8px; }
 .det-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 0.8rem; }
 .det-row { display: flex; flex-direction: column; gap: 2px; }
 .det-lbl { font-size: 0.66rem; color: var(--tx3); font-weight: 600; }
@@ -582,6 +588,8 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
             <button type="button" class="det-zoom-btn" id="detZoomPct" onclick="resetDetZoom()" title="원래 크기로">100%</button>
             <button type="button" class="det-zoom-btn" onclick="zoomDetBy(0.4)" title="확대">+</button>
           </div>
+          <button type="button" class="det-nav-btn det-nav-prev" onpointerdown="event.stopPropagation()" onclick="navigateDetail(-1)" title="이전 사진">◀</button>
+          <button type="button" class="det-nav-btn det-nav-next" onpointerdown="event.stopPropagation()" onclick="navigateDetail(1)" title="다음 사진">▶</button>
         </div>
         <div class="det-fname" id="dName"></div>
       </div>
@@ -626,11 +634,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
       </div>
     </div>
 
-    <div class="det-footer" id="detFooterView">
-      <div class="nav-grp">
-        <button class="btn btn-ghost" onclick="navigateDetail(-1)">◀ 이전</button>
-        <button class="btn btn-ghost" onclick="navigateDetail(1)">다음 ▶</button>
-      </div>
+    <div class="det-footer" id="detFooterView" style="justify-content:flex-end;">
       <div class="act-grp">
         <button class="btn btn-danger" onclick="deletePhoto()">🗑 삭제</button>
         <button class="btn btn-ghost" onclick="openDetailEdit()">✏️ 수정</button>
@@ -638,11 +642,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
         <button class="btn btn-ghost" onclick="closeDetail()">닫기</button>
       </div>
     </div>
-    <div class="det-footer" id="detFooterEdit" style="display:none;">
-      <div class="nav-grp">
-        <button class="btn btn-ghost" onclick="navigateDetail(-1)">◀ 이전</button>
-        <button class="btn btn-ghost" onclick="navigateDetail(1)">다음 ▶</button>
-      </div>
+    <div class="det-footer" id="detFooterEdit" style="display:none;justify-content:flex-end;">
       <div class="act-grp">
         <button class="btn btn-ghost" onclick="cancelDetailEdit()">취소</button>
         <button class="btn btn-primary" onclick="saveDetailEdit()">💾 저장</button>
