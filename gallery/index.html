@@ -657,7 +657,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
       <div id="batchOptions" style="margin-bottom:16px;">
         <div style="display:flex;flex-direction:column;gap:8px;">
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:0.82rem;padding:8px 10px;border:1px solid var(--bd);border-radius:7px;background:var(--bg);">
-            <input type="radio" name="batchMode" value="uncat" checked style="accent-color:var(--ac);">
+            <input type="radio" name="batchMode" value="uncat" style="accent-color:var(--ac);">
             <span>
               <strong>미분류 사진만</strong><br>
               <span style="font-size:0.72rem;color:var(--tx3);">작업분류·기기번호·팀명·날짜·특이사항 중 하나라도 빠진 사진만 분석</span>
@@ -1530,6 +1530,10 @@ const BATCH_FIELD_TO_ID = {tag:'bTag', date:'bDate', time:'bTime', cat:'bCat', t
 function openBatch() {
   batchAbort = false;
   batchTargets = []; batchMeta = []; batchSelectedIndex = -1;
+  // 둘 다 미리 선택돼 있지 않게 한다 — "미분류 사진만"이 기본 체크돼 있으면 모드를
+  // 직접 고르지 않고 "분석 시작"만 눌러도 그 기본값으로 그냥 진행돼버렸다(2026-09-02
+  // 발견). 아래 startBatch()에서 아무것도 안 골랐으면 시작을 막는다.
+  document.querySelectorAll('input[name="batchMode"]').forEach(r=>r.checked=false);
   document.getElementById('batchOptionsStage').style.display = '';
   document.getElementById('batchReviewStage').style.display = 'none';
   document.getElementById('batchOverlay').classList.add('show');
@@ -1543,7 +1547,9 @@ function isBatchIncomplete(p){
   return !p.cat || p.cat==='Others' || !p.tag || !p.team || !p.date || !p.note;
 }
 async function startBatch() {
-  const mode = document.querySelector('input[name="batchMode"]:checked').value;
+  const checked = document.querySelector('input[name="batchMode"]:checked');
+  if (!checked) { alert('분석 범위를 먼저 선택해 주세요.'); return; }
+  const mode = checked.value;
   const menuPhotos = photos.filter(p => (p.menu||'시공')===activeMenu);
   batchTargets = mode === 'uncat'
     ? menuPhotos.filter(isBatchIncomplete)
