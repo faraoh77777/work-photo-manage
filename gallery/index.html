@@ -398,7 +398,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
   <div class="content">
     <div class="filterbar">
       <select id="fDate" onchange="renderPhotos()"><option value="">전체 날짜</option></select>
-      <input type="text" id="fSearch" placeholder="기기번호 검색..." oninput="renderPhotos()">
+      <input type="text" id="fSearch" placeholder="기기번호/파일명 검색..." oninput="renderPhotos()">
       <select id="fTeam" onchange="renderPhotos()">
         <option value="">전체 팀명</option>
       </select>
@@ -1993,17 +1993,24 @@ function updateIncompleteBadge(){
   }
 }
 
+// 검색창은 기기번호와 파일명을 함께 본다 — 카카오톡 등을 거쳐 워터마크 인식이
+// 안 된 사진도 파일명으로는 찾을 수 있는 경우가 많아서.
+function matchesSearch(p, search) {
+  if (!search) return true;
+  return (p.tag||'').toLowerCase().includes(search) || (p.name||'').toLowerCase().includes(search);
+}
+
 function getFiltered() {
   const search = document.getElementById('fSearch').value.toLowerCase().trim();
   if(dupFilterOn){
     const dupSet = getDuplicateTagSet();
     return photos
-      .filter(p => (p.menu||'시공')===activeMenu && dupSet.has(normTag(p.tag)) && (!search || (p.tag||'').toLowerCase().includes(search)))
+      .filter(p => (p.menu||'시공')===activeMenu && dupSet.has(normTag(p.tag)) && matchesSearch(p, search))
       .sort((a,b) => normTag(a.tag).localeCompare(normTag(b.tag)) || (b.date+b.created).localeCompare(a.date+a.created));
   }
   if(incompleteFilterOn){
     return photos
-      .filter(p => (p.menu||'시공')===activeMenu && isIncomplete(p) && (!search || (p.tag||'').toLowerCase().includes(search)))
+      .filter(p => (p.menu||'시공')===activeMenu && isIncomplete(p) && matchesSearch(p, search))
       .sort((a,b) => (b.date+b.created).localeCompare(a.date+a.created));
   }
   const date   = document.getElementById('fDate').value;
@@ -2017,7 +2024,7 @@ function getFiltered() {
     (!date   || p.date === date) &&
     (!team   || p.team === team) &&
     (!wt     || p.wt   === wt) &&
-    (!search || (p.tag||'').toLowerCase().includes(search))
+    matchesSearch(p, search)
   );
 }
 
