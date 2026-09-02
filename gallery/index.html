@@ -63,7 +63,6 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 .sb-cat { display: flex; align-items: center; gap: 5px; padding: 5px 7px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; color: var(--tx2); transition: background .1s, color .1s; margin-bottom: 1px; }
 .sb-cat:hover { background: rgba(255,255,255,0.05); color: var(--tx); }
 .sb-cat.sel   { background: rgba(47,129,247,0.12); color: var(--ac2); }
-.sb-cat-ico { font-size: 0.9rem; flex-shrink: 0; }
 .sb-cat-nm  { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.78rem; }
 .sb-cnt { font-size: 0.62rem; color: var(--tx3); background: var(--bg); border-radius: 8px; padding: 1px 5px; min-width: 16px; text-align: center; flex-shrink: 0; }
 .sb-cnt.has { color: var(--ac2); background: rgba(47,129,247,0.1); }
@@ -325,7 +324,6 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 .folder-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; background: var(--bg); border: 1px solid var(--bd2); border-radius: 6px; font-size: 0.8rem; }
 .folder-item label { display: flex; align-items: center; gap: 7px; flex: 1; cursor: pointer; }
 .folder-item label input[type=checkbox] { accent-color: var(--ac); width: 14px; height: 14px; }
-.fi-ico { font-size: 0.9rem; }
 .fi-cnt { font-size: 0.7rem; color: var(--tx3); margin-left: auto; }
 .fi-del { background: none; border: none; cursor: pointer; color: var(--tx3); font-size: 0.85rem; padding: 2px 4px; border-radius: 4px; }
 .fi-del:hover { color: var(--red); background: rgba(248,81,73,0.1); }
@@ -352,7 +350,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
     <div class="hdr-crumb" id="hdrCrumb"><span class="cc">전체 사진</span></div>
     <div class="spacer"></div>
     <a class="btn btn-ghost" href="../admin.html" style="text-decoration:none;display:inline-flex;align-items:center;">← <span class="hdr-admin-txt">관리자 화면</span></a>
-    <button class="btn btn-ghost" onclick="openSettings()" title="설정">⚙️</button>
+    <button class="btn btn-ghost" onclick="openSettings()" title="설정">설정</button>
     <span id="hdrUserChip" style="font-size:0.78rem;color:var(--tx2);padding:0 4px;white-space:nowrap;"></span>
     <button class="btn btn-ghost" onclick="galleryLogout()" title="로그아웃" style="color:var(--red);border-color:var(--red);">로그아웃</button>
   </div>
@@ -368,10 +366,10 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
     <option value="화기/유도">화기/유도</option>
   </select>
   <div class="spacer"></div>
-  <button class="btn btn-ghost" id="folderBtn" onclick="loadFromFolder()" title="PC 폴더에서 사진 불러오기" style="display:none">📂 폴더</button>
-  <button class="btn btn-ghost" id="syncBtn" onclick="openSyncModal()" title="클라우드에서 사진 가져오기">☁️ 동기화</button>
-  <button class="btn btn-ghost" onclick="openBatch()" title="OCR로 전체 자동 분류">🔄 자동 분류</button>
-  <button class="btn btn-ghost" onclick="openPhotoSheet()" title="이 PC에서 사진대지생성기(photo-sheet 폴더)가 실행 중이어야 열립니다">🖨️ 사진대지</button>
+  <button class="btn btn-ghost" id="folderBtn" onclick="loadFromFolder()" title="PC 폴더에서 사진 불러오기" style="display:none">폴더</button>
+  <button class="btn btn-ghost" id="syncBtn" onclick="openSyncModal()" title="클라우드에서 사진 가져오기">동기화</button>
+  <button class="btn btn-ghost" onclick="openBatch()" title="OCR로 전체 자동 분류">자동 분류</button>
+  <button class="btn btn-ghost" onclick="openPhotoSheet()" title="이 PC에서 사진대지생성기(photo-sheet 폴더)가 실행 중이어야 열립니다">사진대지</button>
   <button class="btn btn-ghost" id="dupFilterBtn" onclick="toggleDupFilter()" title="같은 기기번호가 여러 장인 사진만 모아보기" style="display:none;color:var(--orange);border-color:rgba(240,136,62,.4);"></button>
   <button class="btn btn-ghost" id="incompleteFilterBtn" onclick="toggleIncompleteFilter()" title="작업분류·기기번호·작업구역·팀명 중 하나라도 비어있는 사진만 모아보기" style="display:none;color:var(--orange);border-color:rgba(240,136,62,.4);"></button>
   <button class="btn btn-primary" onclick="openUpload()">+ 사진 추가</button>
@@ -387,7 +385,6 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
   <div class="sidebar" id="sidebar">
     <div class="sb-top">
       <div class="sb-all sel" id="sbAll" onclick="selectAllCat()">
-        <span>🗂️</span>
         <span style="flex:1">전체 보기</span>
         <span class="sb-cnt has" id="sbAllCnt">0</span>
       </div>
@@ -411,9 +408,9 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
       </select>
       <div class="f-sep"></div>
       <button class="f-reset" onclick="resetFilter()">초기화</button>
-      <button class="f-reset" id="selModeBtn" onclick="toggleSelMode()">☑️ 선택</button>
-      <button class="f-reset" onclick="selectAll()">🔲 전체 선택</button>
-      <button class="f-reset" id="delFilterBtn" onclick="deleteSelected()" style="display:none;color:var(--red);border:1px solid var(--red);">🗑 선택 삭제</button>
+      <button class="f-reset" id="selModeBtn" onclick="toggleSelMode()">선택</button>
+      <button class="f-reset" onclick="selectAll()">전체 선택</button>
+      <button class="f-reset" id="delFilterBtn" onclick="deleteSelected()" style="display:none;color:var(--red);border:1px solid var(--red);">선택 삭제</button>
       <span class="f-count" id="fCount"></span>
     </div>
     <div class="scroll" id="mainScroll"><div id="viewContent"></div></div>
@@ -423,11 +420,11 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 <!-- 선택 다운로드 바 -->
 <div class="sel-bar" id="selBar">
   <button class="btn btn-ghost" id="selAllBtn" onclick="selectAllFiltered()">전체 선택</button>
-  <button class="btn btn-danger" id="delSelBtn" onclick="deleteSelected()" disabled>🗑 삭제</button>
-  <button class="btn btn-ghost" id="beBtn" onclick="openBatchEdit()" disabled>✏️ 일괄 수정</button>
+  <button class="btn btn-danger" id="delSelBtn" onclick="deleteSelected()" disabled>삭제</button>
+  <button class="btn btn-ghost" id="beBtn" onclick="openBatchEdit()" disabled>일괄 수정</button>
   <span id="selCount" style="font-size:0.82rem;color:var(--tx2);">0장 선택됨</span>
   <button class="btn btn-ghost" onclick="exitSelMode()">취소</button>
-  <button class="btn btn-primary" id="dlSelBtn" onclick="downloadSelected()" disabled>⬇️ 다운로드</button>
+  <button class="btn btn-primary" id="dlSelBtn" onclick="downloadSelected()" disabled>다운로드</button>
 </div>
 
 <!-- 드래그 오버레이 -->
@@ -437,7 +434,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 <div class="overlay" id="upOverlay">
   <div class="modal modal-detail">
     <div class="det-header">
-      <div class="det-header-title">📷 사진 추가</div>
+      <div class="det-header-title">사진 추가</div>
       <button class="m-close" id="upCloseBtn" onclick="closeUpload()">✕</button>
     </div>
     <div class="det-body">
@@ -473,7 +470,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
         <div class="ocr-bar" id="ocrBar" style="display:none;">
           <span id="ocrIcon" class="ocr-spin">⏳</span>
           <span id="ocrStatus">OCR 분석 중...</span>
-          <button class="ocr-retry" id="ocrRetryBtn" onclick="retryOCR()" style="display:none">🔄 재시도</button>
+          <button class="ocr-retry" id="ocrRetryBtn" onclick="retryOCR()" style="display:none">재시도</button>
         </div>
         <div class="prog" id="upProg" style="display:none;">
           <div class="prog-lbl" id="upProgLbl"></div>
@@ -531,7 +528,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 
         <div class="m-footer">
           <button class="btn btn-ghost" onclick="closeUpload()">취소</button>
-          <button class="btn btn-primary" id="upSaveBtn" onclick="savePhotos()">💾 저장</button>
+          <button class="btn btn-primary" id="upSaveBtn" onclick="savePhotos()">저장</button>
         </div>
       </div>
     </div>
@@ -542,7 +539,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 <div class="overlay" id="batchEditOverlay">
   <div class="modal" style="width:480px;max-width:96vw;">
     <button class="m-close" onclick="closeBatchEdit()">✕</button>
-    <div class="m-title">✏️ 선택 일괄 수정 (<span id="beCount">0</span>장)</div>
+    <div class="m-title">선택 일괄 수정 (<span id="beCount">0</span>장)</div>
     <p style="font-size:0.78rem;color:var(--tx3);margin-bottom:14px;line-height:1.6;">
       값을 지정한 항목만 선택된 사진 전체에 적용됩니다.<br>"-- 변경 안함 --" 또는 빈 칸으로 두면 그대로 유지됩니다.
     </p>
@@ -566,7 +563,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
     </div>
     <div class="m-footer">
       <button class="btn btn-ghost" onclick="closeBatchEdit()">취소</button>
-      <button class="btn btn-primary" id="beSaveBtn" onclick="saveBatchEdit()">💾 적용</button>
+      <button class="btn btn-primary" id="beSaveBtn" onclick="saveBatchEdit()">적용</button>
     </div>
   </div>
 </div>
@@ -636,16 +633,16 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 
     <div class="det-footer" id="detFooterView" style="justify-content:flex-end;">
       <div class="act-grp">
-        <button class="btn btn-danger" onclick="deletePhoto()">🗑 삭제</button>
-        <button class="btn btn-ghost" onclick="openDetailEdit()">✏️ 수정</button>
-        <button class="btn btn-ghost" onclick="downloadPhoto()">⬇️ 다운로드</button>
+        <button class="btn btn-danger" onclick="deletePhoto()">삭제</button>
+        <button class="btn btn-ghost" onclick="openDetailEdit()">수정</button>
+        <button class="btn btn-ghost" onclick="downloadPhoto()">다운로드</button>
         <button class="btn btn-ghost" onclick="closeDetail()">닫기</button>
       </div>
     </div>
     <div class="det-footer" id="detFooterEdit" style="display:none;justify-content:flex-end;">
       <div class="act-grp">
         <button class="btn btn-ghost" onclick="cancelDetailEdit()">취소</button>
-        <button class="btn btn-primary" onclick="saveDetailEdit()">💾 저장</button>
+        <button class="btn btn-primary" onclick="saveDetailEdit()">저장</button>
       </div>
     </div>
   </div>
@@ -657,7 +654,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 <div class="overlay" id="batchOverlay">
   <div class="modal modal-detail">
     <div class="det-header">
-      <div class="det-header-title">🔄 전체 자동 분류</div>
+      <div class="det-header-title">전체 자동 분류</div>
       <button class="m-close" onclick="closeBatch()">✕</button>
     </div>
 
@@ -687,7 +684,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
       </div>
       <div class="m-footer">
         <button class="btn btn-ghost" onclick="closeBatch()">취소</button>
-        <button class="btn btn-primary" id="batchStartBtn" onclick="startBatch()">🔍 분석 시작</button>
+        <button class="btn btn-primary" id="batchStartBtn" onclick="startBatch()">분석 시작</button>
       </div>
     </div>
 
@@ -705,7 +702,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;">
             <div class="up-analyze-status" id="batchAnalyzeStatus" style="margin:0;"></div>
-            <button type="button" class="btn btn-ghost" id="batchStopBtn" style="display:none;flex:none;padding:4px 10px;font-size:0.72rem;height:auto;" onclick="stopBatchAnalysis()">⏸ 분석 중단</button>
+            <button type="button" class="btn btn-ghost" id="batchStopBtn" style="display:none;flex:none;padding:4px 10px;font-size:0.72rem;height:auto;" onclick="stopBatchAnalysis()">분석 중단</button>
           </div>
           <div class="up-thumbs" id="batchThumbs"></div>
         </div>
@@ -751,10 +748,10 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
             </div>
             <div style="display:flex;gap:8px;">
               <button class="btn btn-ghost" onclick="closeBatch()">닫기</button>
-              <button class="btn btn-primary" onclick="saveBatchCurrent()">💾 이 사진 저장</button>
+              <button class="btn btn-primary" onclick="saveBatchCurrent()">이 사진 저장</button>
             </div>
           </div>
-          <button class="btn btn-primary" id="batchSaveAllBtn" style="width:100%;" onclick="saveBatchAll()">✅ 분석 끝난 사진 전체 저장</button>
+          <button class="btn btn-primary" id="batchSaveAllBtn" style="width:100%;" onclick="saveBatchAll()">분석 끝난 사진 전체 저장</button>
         </div>
       </div>
     </div>
@@ -765,21 +762,21 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 <div class="overlay" id="setOverlay">
   <div class="modal" style="width:500px;">
     <button class="m-close" onclick="closeSettings()">✕</button>
-    <div class="m-title">⚙️ 설정</div>
+    <div class="m-title">설정</div>
 
     <div style="margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--bd);">
-      <div style="font-size:0.8rem;font-weight:700;color:var(--tx2);margin-bottom:8px;">💾 PC 저장 폴더</div>
+      <div style="font-size:0.8rem;font-weight:700;color:var(--tx2);margin-bottom:8px;">PC 저장 폴더</div>
       <div style="font-size:0.74rem;color:var(--tx3);margin-bottom:8px;line-height:1.6;">동기화 시 사진을 PC 폴더에 자동 저장합니다.<br>Chrome / Edge 전용 기능입니다.</div>
       <div id="folderStatus" style="font-size:0.77rem;color:var(--tx3);margin-bottom:10px;">폴더가 지정되지 않았습니다.</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
-        <button class="btn btn-ghost" onclick="pickFolder()">📁 폴더 선택</button>
-        <button class="btn btn-ghost" id="folderAllowBtn" onclick="requestFolderPermission()" style="display:none">🔓 허용</button>
-        <button class="btn btn-ghost" id="folderScanBtn" onclick="loadFromFolder()" style="display:none">🔄 새로고침</button>
+        <button class="btn btn-ghost" onclick="pickFolder()">폴더 선택</button>
+        <button class="btn btn-ghost" id="folderAllowBtn" onclick="requestFolderPermission()" style="display:none">허용</button>
+        <button class="btn btn-ghost" id="folderScanBtn" onclick="loadFromFolder()" style="display:none">새로고침</button>
       </div>
     </div>
 
     <div style="margin-bottom:18px;">
-      <div style="font-size:0.8rem;font-weight:700;color:var(--tx2);margin-bottom:10px;">📁 작업 분류 폴더 관리</div>
+      <div style="font-size:0.8rem;font-weight:700;color:var(--tx2);margin-bottom:10px;">작업 분류 폴더 관리</div>
       <div class="folder-list" id="folderList"></div>
       <div class="add-row">
         <input type="text" id="newCat" placeholder="새 분류 이름...">
@@ -788,7 +785,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
     </div>
 
     <div style="margin-bottom:18px;">
-      <div style="font-size:0.8rem;font-weight:700;color:var(--tx2);margin-bottom:10px;">👥 팀명 관리</div>
+      <div style="font-size:0.8rem;font-weight:700;color:var(--tx2);margin-bottom:10px;">팀명 관리</div>
       <div class="chip-row" id="teamChips"></div>
       <div class="add-row">
         <input type="text" id="newTeam" placeholder="새 팀명 입력...">
@@ -797,7 +794,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
     </div>
 
     <div style="margin-bottom:18px;">
-      <div style="font-size:0.8rem;font-weight:700;color:var(--tx2);margin-bottom:10px;">📍 작업구역 관리</div>
+      <div style="font-size:0.8rem;font-weight:700;color:var(--tx2);margin-bottom:10px;">작업구역 관리</div>
       <div class="chip-row" id="areaChips"></div>
       <div class="add-row">
         <input type="text" id="newArea" placeholder="새 구역 이름...">
@@ -806,7 +803,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
     </div>
 
     <div style="margin-bottom:18px;">
-      <div style="font-size:0.8rem;font-weight:700;color:var(--tx2);margin-bottom:10px;">📝 특이사항 프리셋</div>
+      <div style="font-size:0.8rem;font-weight:700;color:var(--tx2);margin-bottom:10px;">특이사항 프리셋</div>
       <div class="chip-row" id="notePresetChips"></div>
       <div class="add-row">
         <input type="text" id="newNotePreset" placeholder="자주 쓰는 특이사항...">
@@ -817,12 +814,12 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
     <div style="margin-bottom:18px;">
       <div style="font-size:0.8rem;font-weight:700;color:var(--tx2);margin-bottom:8px;">클라우드 재동기화</div>
       <div style="font-size:0.74rem;color:var(--tx3);margin-bottom:8px;line-height:1.6;">이 기기에서 사진 정보를 수정했는데 서버에 반영이 안 된 것 같으면 눌러주세요.</div>
-      <button class="btn btn-ghost" id="resyncAllBtn" onclick="resyncAllMetaToCloud()">♻️ 로컬 수정 내용 서버로 재동기화</button>
+      <button class="btn btn-ghost" id="resyncAllBtn" onclick="resyncAllMetaToCloud()">로컬 수정 내용 서버로 재동기화</button>
     </div>
 
     <div style="border-top:1px solid var(--bd);padding-top:14px;">
       <div style="font-size:0.8rem;font-weight:700;color:var(--tx2);margin-bottom:10px;">위험 구역</div>
-      <button class="btn btn-danger" onclick="clearAll()">🗑 모든 사진 삭제</button>
+      <button class="btn btn-danger" onclick="clearAll()">모든 사진 삭제</button>
     </div>
 
     <div class="m-footer">
@@ -835,7 +832,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 <div class="overlay" id="syncOverlay">
   <div class="modal" style="width:420px;">
     <button class="m-close" onclick="closeSyncModal()">✕</button>
-    <div class="m-title">☁️ 동기화</div>
+    <div class="m-title">동기화</div>
     <div style="font-size:0.74rem;color:var(--tx3);margin-bottom:16px;line-height:1.6;">
       사진이 계속 쌓여서 한 번에 전부 받으면 느리고 무거울 수 있습니다.<br>
       받아올 기간·분류를 골라주세요.
@@ -866,7 +863,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 
     <div class="m-footer">
       <button class="btn btn-ghost" onclick="closeSyncModal()">취소</button>
-      <button class="btn btn-primary" onclick="startSyncFromModal()" id="syncStartBtn">☁️ 동기화 시작</button>
+      <button class="btn btn-primary" onclick="startSyncFromModal()" id="syncStartBtn">동기화 시작</button>
     </div>
   </div>
 </div>
@@ -1132,7 +1129,7 @@ async function syncFromSupabase(opts){
     if (dirHandle) {
       msg += folderOk
         ? `\n💾 ${folderSaved}장 PC 폴더 저장 완료 (${dirHandle.name})`
-        : '\n⚠️ PC 폴더 저장 실패 — 설정에서 🔓 허용 버튼을 클릭 후 재시도해 주세요.';
+        : '\n⚠️ PC 폴더 저장 실패 — 설정에서 허용 버튼을 클릭 후 재시도해 주세요.';
     }
     if (remaining>0) msg += `\n📥 ${remaining}장 더 남았습니다 — 동기화 버튼을 다시 눌러 이어받아 주세요.`;
     alert(msg);
@@ -1140,7 +1137,7 @@ async function syncFromSupabase(opts){
     console.error('동기화 오류:',e);
     alert('동기화 실패: '+e.message);
   }finally{
-    btn.disabled=false; btn.textContent='☁️ 동기화';
+    btn.disabled=false; btn.textContent='동기화';
   }
 }
 
@@ -1208,7 +1205,7 @@ async function resyncAllMetaToCloud(){
     if(btn) btn.textContent=`⏳ 재동기화 중 (${i+1}/${targets.length})...`;
     await syncMetaToCloud(targets[i]);
   }
-  if(btn){ btn.disabled=false; btn.textContent='♻️ 로컬 수정 내용 서버로 재동기화'; }
+  if(btn){ btn.disabled=false; btn.textContent='로컬 수정 내용 서버로 재동기화'; }
   alert(`✅ ${targets.length}장 서버 재동기화 완료`);
 }
 
@@ -1405,7 +1402,7 @@ async function loadFromFolder() {
   } catch(e) {
     alert('폴더 스캔 실패: ' + e.message);
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '📂 폴더'; }
+    if (btn) { btn.disabled = false; btn.textContent = '폴더'; }
     if (scanBtn) { scanBtn.disabled = false; }
   }
 }
@@ -1900,7 +1897,6 @@ function renderSidebar() {
       </select>` : '';
     return `<div class="sb-wt-group">
       <div class="sb-cat${sel?' sel':''}" onclick='toggleWtFolder(${J(wt)})'>
-        <span class="sb-cat-ico">📁</span>
         <span class="sb-cat-nm">${wt}</span>
         ${wtPhotos.length?`<span class="sb-cnt has">${wtPhotos.length}</span>`:''}
         <span class="sb-caret">${isOpen?'▾':'▸'}</span>
@@ -1910,7 +1906,6 @@ function renderSidebar() {
   }).join('') + `
     <div class="sb-wt-group">
       <div class="sb-cat${selOtherFolder?' sel':''}" onclick='toggleOtherFolder()'>
-        <span class="sb-cat-ico">📁</span>
         <span class="sb-cat-nm">기타</span>
         ${otherCount?`<span class="sb-cnt has">${otherCount}</span>`:''}
       </div>
@@ -1966,7 +1961,7 @@ function updateDupBadge(){
   const count = photos.filter(p=>(p.menu||'시공')===activeMenu && dupSet.has(normTag(p.tag))).length;
   if(count>0){
     btn.style.display='';
-    btn.textContent = dupFilterOn ? '✕ 중복 보기 해제' : `⚠️ 중복 ${count}`;
+    btn.textContent = dupFilterOn ? '중복 보기 해제' : `중복 ${count}`;
   } else {
     btn.style.display='none';
     if(dupFilterOn){ dupFilterOn=false; }
@@ -1989,7 +1984,7 @@ function updateIncompleteBadge(){
   const count = photos.filter(p=>(p.menu||'시공')===activeMenu && isIncomplete(p)).length;
   if(count>0){
     btn.style.display='';
-    btn.textContent = incompleteFilterOn ? '✕ 미입력 보기 해제' : `📝 미입력 ${count}`;
+    btn.textContent = incompleteFilterOn ? '미입력 보기 해제' : `미입력 ${count}`;
   } else {
     btn.style.display='none';
     if(incompleteFilterOn){ incompleteFilterOn=false; }
@@ -2061,7 +2056,7 @@ function renderPhotos(keepLimit) {
     const msg = base
       ? '<strong>검색 결과 없음</strong><br>조건을 변경해 보세요.'
       : (selCat
-        ? `<strong>${CAT_ICON[selCat]||'📁'} ${selCat}</strong><br>사진이 없습니다. + 사진 추가 버튼으로 업로드하세요.`
+        ? `<strong>${selCat}</strong><br>사진이 없습니다. + 사진 추가 버튼으로 업로드하세요.`
         : '<strong>사진이 없습니다</strong><br>사진을 드래그하거나 + 사진 추가를 클릭하세요.');
     vc.innerHTML = `<div class="empty"><div class="ei">${base?'🔍':'📂'}</div><p>${msg}</p></div>`;
     return;
@@ -2074,7 +2069,7 @@ function renderPhotos(keepLimit) {
     toRender.forEach(p => { const k=p.cat||'Others'; if(!groups[k])groups[k]=[]; groups[k].push(p); });
     const sortedKeys = Object.keys(groups).sort((a,b)=>(cats.indexOf(a)<0?999:cats.indexOf(a))-(cats.indexOf(b)<0?999:cats.indexOf(b)));
     sortedKeys.forEach(k => {
-      html += `<div style="margin-bottom:6px;margin-top:14px;font-size:0.75rem;font-weight:700;color:var(--tx2);">${CAT_ICON[k]||'📁'} ${k} <span style="font-weight:400;color:var(--tx3);">${groups[k].length}장</span></div>`;
+      html += `<div style="margin-bottom:6px;margin-top:14px;font-size:0.75rem;font-weight:700;color:var(--tx2);">${k} <span style="font-weight:400;color:var(--tx3);">${groups[k].length}장</span></div>`;
       html += `<div class="photo-grid" style="margin-bottom:4px;">${groups[k].map(p=>photoCard(p)).join('')}</div>`;
     });
   } else {
@@ -2123,15 +2118,14 @@ function downloadPhoto(id) {
 // ── 헤더 브레드크럼 ──────────────────────────────────
 function updateHeader() {
   const el = document.getElementById('hdrCrumb');
-  if (selOtherFolder) { el.innerHTML = `<span class="cc">📁 기타</span>`; return; }
+  if (selOtherFolder) { el.innerHTML = `<span class="cc">기타</span>`; return; }
   if (!selCat && !selWt) {
     const cnt=photos.filter(p=>(p.menu||'시공')===activeMenu).length;
     el.innerHTML = `<span class="cc">전체 사진</span><span class="cs">&nbsp;총 ${cnt}장</span>`; return;
   }
-  if (!selCat) { el.innerHTML = `<span class="cc">📁 ${selWt}</span>`; return; }
-  const m = selWt ? (WT_META[selWt]||{icon:'📷'}) : null;
-  el.innerHTML = `<span class="cc">${CAT_ICON[selCat]||'📁'} ${selCat}</span>` +
-    (selWt ? `<span class="cs">›</span><span class="cc">${m.icon} ${selWt}</span>` : '');
+  if (!selCat) { el.innerHTML = `<span class="cc">${selWt}</span>`; return; }
+  el.innerHTML = `<span class="cc">${selCat}</span>` +
+    (selWt ? `<span class="cs">›</span><span class="cc">${selWt}</span>` : '');
 }
 
 // ── EXIF 파서 ─────────────────────────────────────────
@@ -2671,7 +2665,7 @@ async function savePhotos(){
   resetFilter();
   populateDateFilter();
   renderSidebar(); renderPhotos(); updateHeader(); closeUpload();
-  btn.disabled=false; btn.textContent='💾 저장';
+  btn.disabled=false; btn.textContent='저장';
 }
 
 // ── 필터 초기화 ───────────────────────────────────────
@@ -2689,7 +2683,7 @@ function toggleSelMode() {
   selMode = !selMode;
   if (!selMode) selectedIds.clear();
   document.getElementById('selBar').classList.toggle('show', selMode);
-  document.getElementById('selModeBtn').textContent = selMode ? '✕ 선택 끄기' : '☑️ 선택';
+  document.getElementById('selModeBtn').textContent = selMode ? '선택 끄기' : '선택';
   document.getElementById('delFilterBtn').style.display = selMode ? '' : 'none';
   updateSelBar();
   renderPhotos();
@@ -2699,7 +2693,7 @@ function exitSelMode() {
   selMode = false;
   selectedIds.clear();
   document.getElementById('selBar').classList.remove('show');
-  document.getElementById('selModeBtn').textContent = '☑️ 선택';
+  document.getElementById('selModeBtn').textContent = '선택';
   document.getElementById('delFilterBtn').style.display = 'none';
   renderPhotos();
 }
@@ -2719,7 +2713,7 @@ function selectAll() {
   if (!selMode) {
     selMode = true;
     document.getElementById('selBar').classList.add('show');
-    document.getElementById('selModeBtn').textContent = '✕ 선택 끄기';
+    document.getElementById('selModeBtn').textContent = '선택 끄기';
     document.getElementById('delFilterBtn').style.display = '';
     updateSelBar();
     renderPhotos();
@@ -2799,7 +2793,7 @@ async function saveBatchEdit(){
     await savePhotoToDB(p);
     if (p.cloud_url) syncMetaToCloud(p);
   }
-  btn.disabled = false; btn.textContent = '💾 적용';
+  btn.disabled = false; btn.textContent = '적용';
   closeBatchEdit();
   photos.sort((a,b) => (b.date+b.created).localeCompare(a.date+a.created));
   renderSidebar(); renderPhotos(); updateHeader();
@@ -3011,11 +3005,10 @@ function renderFolderList(){
     return`<div class="folder-item">
       <label>
         <input type="checkbox" ${enabledCats.has(cat)?'checked':''} onchange='toggleFolder(${J(cat)},this.checked)'>
-        <span class="fi-ico">${CAT_ICON[cat]||'📁'}</span>
         <span>${cat}</span>
       </label>
       ${cnt?`<span class="fi-cnt">${cnt}장</span>`:''}
-      <button class="fi-del" onclick="removeCat(${i})" title="삭제">🗑</button>
+      <button class="fi-del" onclick="removeCat(${i})" title="삭제">✕</button>
     </div>`;
   }).join('');
 }
@@ -3062,7 +3055,7 @@ function clearAll(){
   // 그 사실을 안 알려준 채로 진짜 영구 삭제됐다(2026-08-23 발견). 실제 범위와 위험한
   // 부분(클라우드 미동기화 사진)을 구분해서 알려준다.
   const unsynced=photos.filter(p=>!p.cloud_url).length;
-  var msg='이 기기에 저장된 사진 캐시를 지웁니다. 클라우드에 이미 올라간 사진은 "☁️ 동기화"로 다시 받을 수 있습니다.';
+  var msg='이 기기에 저장된 사진 캐시를 지웁니다. 클라우드에 이미 올라간 사진은 "동기화"로 다시 받을 수 있습니다.';
   if(unsynced>0) msg+='\n\n⚠️ 이 중 '+unsynced+'장은 클라우드에 아직 안 올라간 사진이라, 이 작업으로 영구히 사라집니다.';
   msg+='\n\n계속할까요?';
   if(!confirm(msg))return;
