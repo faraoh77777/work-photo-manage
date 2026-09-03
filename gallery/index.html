@@ -410,7 +410,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
         <option>신규</option><option>진행중</option><option>완료</option><option>변경전</option><option>변경후</option>
       </select>
       <div class="f-sep"></div>
-      <button class="f-reset" onclick="resetFilter()">초기화</button>
+      <button class="f-reset" onclick="resetFilter()" title="이 기기의 로컬 사진 캐시를 지웁니다 — 클라우드에 올라간 사진은 &quot;동기화&quot;로 다시 받아야 보입니다">초기화</button>
       <button class="f-reset" id="selModeBtn" onclick="toggleSelMode()">선택</button>
       <button class="f-reset" onclick="selectAll()">전체 선택</button>
       <button class="f-reset" id="delFilterBtn" onclick="deleteSelected()" style="display:none;color:var(--red);border:1px solid var(--red);">선택 삭제</button>
@@ -2142,12 +2142,7 @@ function matchesSearch(p, search) {
   return (p.tag||'').toLowerCase().includes(search) || (p.name||'').toLowerCase().includes(search);
 }
 
-// "초기화" 버튼이 한 번만 화면을 비우는 용도(2026-09-03 요청)로 쓰는 1회성 플래그.
-// getFiltered()가 소비하자마자 꺼지므로, 그 다음 무엇이든 다시 렌더되면(필터를
-// 만지든 사진을 저장/삭제하든) 자동으로 원래 필터링된 목록이 돌아온다.
-let viewCleared = false;
 function getFiltered() {
-  if (viewCleared) { viewCleared = false; return []; }
   const search = document.getElementById('fSearch').value.toLowerCase().trim();
   if(dupFilterOn){
     const dupSet = getDuplicateTagSet();
@@ -2895,12 +2890,11 @@ async function savePhotos(){
 }
 
 // ── 필터 초기화 ───────────────────────────────────────
+// 화면만 비우는 흉내(필터로 안 보이게)로는 부족하다는 요청(2026-09-03) — 실제로
+// 이 기기의 로컬 캐시를 지워서 사진이 진짜로 없어지고, "동기화"를 다시 눌러야만
+// 보이게 한다. 설정의 "모든 사진 삭제"(clearAll)와 동일한 동작을 재사용한다.
 function resetFilter() {
-  // 필터 값은 그대로 두고(필터를 지우는 버튼이 아니라, 화면을 잠깐 비우는
-  // 버튼으로 써 달라는 요청 — 2026-09-03) 화면만 사진 0장으로 비운다.
-  // 이후 다른 필터를 만지거나 사진을 저장/삭제하면 자동으로 다시 채워진다.
-  viewCleared = true;
-  renderPhotos();
+  clearAll();
 }
 
 // ── 선택 모드 ────────────────────────────────────────
