@@ -1642,7 +1642,14 @@ function selectBatchPreview(index) {
   const prev = batchSelectedIndex;
   if (prev!==-1 && prev!==index && batchMeta[prev]) snapshotBatchToMeta(prev);
   batchSelectedIndex = index;
-  document.querySelectorAll('#batchThumbs .up-thumb-item').forEach((el,i)=>el.classList.toggle('sel', i===index));
+  document.querySelectorAll('#batchThumbs .up-thumb-item').forEach((el,i)=>{
+    const sel = i===index;
+    el.classList.toggle('sel', sel);
+    // 고른 썸네일이 항상 줄 가운데로 오도록 스크롤한다(2026-09-03 요청) — 가운데
+    // 자리가 고정되면, 그 자리를 계속 클릭하는 것만으로 다음/이전 사진이 한 장씩
+    // 걸리며 넘어간다.
+    if (sel) el.scrollIntoView({ behavior:'smooth', inline:'center', block:'nearest' });
+  });
   const p = batchTargets[index], meta = batchMeta[index];
   if (!p || !meta) return;
   document.getElementById('batchPreviewImg').src = photoImgSrc(p);
