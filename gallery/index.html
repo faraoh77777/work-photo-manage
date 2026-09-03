@@ -1333,9 +1333,9 @@ function parseWorkFilename(name) {
     const wmap = { new:'신규', done:'완료', 'in-progress':'진행중', 'mod-before':'변경전', 'mod-after':'변경후' };
     r.wt = wmap[wtM[1].toLowerCase()] || '';
   }
-  // 기기번호
-  const tagM = name.match(/\b([A-Z]{1,4}-\d{3,6}[A-Z]?)\b/);
-  if (tagM) r.tag = tagM[1];
+  // 기기번호 — parseOCRText와 같은 이유로 3단("2121-UV-3203") 패턴을 먼저 찾는다.
+  const tagM = name.match(/\b(\d{2,4}-[A-Z]{1,4}-\d{2,6}[A-Z]?)\b/i) || name.match(/\b([A-Z]{1,4}-\d{3,6}[A-Z]?)\b/);
+  if (tagM) r.tag = tagM[1].toUpperCase();
   // 작업분류 (파일명의 _를 공백으로 치환 후 매칭)
   const namePlain = name.replace(/_/g, ' ');
   for (const cat of cats) {
@@ -2409,7 +2409,12 @@ async function cropWatermarkForOCR(source) {
 // ── OCR 텍스트 파서 ──────────────────────────────────
 function parseOCRText(text) {
   const r={}, t=text.replace(/\r/g,'');
-  const tagM=t.match(/(?:TAG|기기\s*번호)\s*[:\s]+([A-Za-z]{1,4}[-_]?\d{3,6}[A-Za-z]?)/i)||t.match(/\b([A-Z]{1,4}-\d{3,6}[A-Z]?)\b/);
+  // 실제 기기번호는 "2121-UV-3203"처럼 앞에 구역/유닛 번호가 붙는 3단 구성이 대부분인데
+  // (뒤 2단 "UV-3203"만 찾는 패턴만 있으면 앞자리가 통째로 빠진다 — 2026-09-03 신고),
+  // 3단 패턴을 먼저 찾고 없을 때만 2단짜리로 폴백한다.
+  const tagM=t.match(/(?:TAG|기기\s*번호)\s*[:\s]+((?:\d{2,4}[-_])?[A-Za-z]{1,4}[-_]\d{2,6}[A-Za-z]?)/i)
+           ||t.match(/\b(\d{2,4}-[A-Z]{1,4}-\d{2,6}[A-Z]?)\b/i)
+           ||t.match(/\b([A-Z]{1,4}-\d{3,6}[A-Z]?)\b/);
   if(tagM) r.tag=tagM[1].trim().toUpperCase();
   const dateM=t.match(/(\d{4})[-:/](\d{2})[-:/](\d{2})/);
   if(dateM) r.date=`${dateM[1]}-${dateM[2]}-${dateM[3]}`;
