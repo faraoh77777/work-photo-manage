@@ -371,6 +371,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
   <button class="btn btn-ghost" onclick="openBatch()" title="OCR로 전체 자동 분류">자동 분류</button>
   <button class="btn btn-ghost" onclick="openPhotoSheet()" title="이 PC에서 사진대지생성기(photo-sheet 폴더)가 실행 중이어야 열립니다">사진대지</button>
   <button class="btn btn-ghost" id="dupFilterBtn" onclick="toggleDupFilter()" title="같은 기기번호가 여러 장인 사진만 모아보기" style="display:none;color:var(--orange);border-color:rgba(240,136,62,.4);"></button>
+  <button class="btn btn-ghost" id="dupCleanBtn" onclick="cleanupExactDuplicates()" title="파일 내용이 완전히 같은 사진(같은 걸 여러 번 올린 경우)을 찾아 로컬+클라우드에서 같이 정리">중복 사진 정리</button>
   <button class="btn btn-ghost" id="incompleteFilterBtn" onclick="toggleIncompleteFilter()" title="작업분류·기기번호·작업구역·팀명 중 하나라도 비어있는 사진만 모아보기" style="display:none;color:var(--orange);border-color:rgba(240,136,62,.4);"></button>
   <button class="btn btn-primary" onclick="openUpload()">+ 사진 추가</button>
 </div>
@@ -1874,6 +1875,92 @@ async function deletePhotoCloudRow(p){
     const {error} = await sbClient.from('work_photos').delete().eq('id', p.cloud_id);
     if(error) console.warn('[삭제] 클라우드 행 삭제 실패:', error.message);
   }catch(e){ console.warn('[삭제] 클라우드 삭제 예외:', e); }
+}
+
+// ── 중복 사진(파일 내용 동일) 정리 ──────────────────────
+// dupFilterBtn(기기번호 텍스트 중복)과는 다른 기준이다 — 카카오톡 등을 거치며 파일명이
+// 랜덤하게 바뀐 채로 같은 사진이 여러 번 올라간 경우, 기기번호는 비어있거나 서로 달라서
+// 텍스트 비교로는 못 잡는다. 사진 파일 내용을 SHA-256으로 비교해 완전히 같은 사진만
+// 찾아낸다(2026-09-03, 실제로 74827.jpg류 중복을 이 방식으로 찾아서 정리한 사례 있음).
+// 같은 그룹 안에서 기기번호가 서로 다르면(계기 여러 대를 한 장에 담아 각각 기록했을
+// 수도 있어) 잘못 지우면 기록이 사라지니, 자동 삭제 대상에서 빼고 사람이 보게 한다.
+async function hashBlob(blob){
+  const buf = await blob.arrayBuffer();
+  const digest = await crypto.subtle.digest('SHA-256', buf);
+  return [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function scorePhotoForKeep(p){
+  let s=0;
+  if(p.cat && p.cat!=='Others') s+=100;
+  if(p.tag) s+=10;
+  if(p.area) s+=1;
+  if(p.team) s+=1;
+  if(p.note) s+=1;
+  return s;
+}
+async function cleanupExactDuplicates(){
+  const btn = document.getElementById('dupCleanBtn');
+  const withBlob = photos.filter(p=>p.blob);
+  if(withBlob.length===0){ alert('검사할 사진이 없습니다.'); return; }
+  const groupsByHash = {};
+  try{
+    if(btn) btn.disabled=true;
+    for(let i=0;i<withBlob.length;i++){
+      if(btn) btn.textContent=`⏳ 검사 중... ${i+1}/${withBlob.length}`;
+      const p = withBlob[i];
+      try{
+        const h = await hashBlob(p.blob);
+        (groupsByHash[h]=groupsByHash[h]||[]).push(p);
+      }catch(e){ console.warn('[중복 정리] 해시 실패:', p.name, e); }
+    }
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent='중복 사진 정리'; }
+  }
+
+  const dupGroups = Object.values(groupsByHash).filter(g=>g.length>1);
+  if(dupGroups.length===0){ alert('완전히 같은 사진 중복이 없습니다.'); return; }
+
+  const safeGroups=[], riskyGroups=[];
+  dupGroups.forEach(g=>{
+    const tags=[...new Set(g.map(p=>(p.tag||'').trim()).filter(t=>t&&t!=='-'))];
+    (tags.length<=1 ? safeGroups : riskyGroups).push(g);
+  });
+
+  const safeDeletes=[];
+  safeGroups.forEach(g=>{
+    const sorted = g.slice().sort((a,b)=>{
+      const sd = scorePhotoForKeep(b)-scorePhotoForKeep(a);
+      if(sd!==0) return sd;
+      return (a.created||'').localeCompare(b.created||'');
+    });
+    sorted.slice(1).forEach(p=>safeDeletes.push(p));
+  });
+
+  let msg = `완전히 같은 사진 중복 ${dupGroups.length}그룹을 찾았습니다.\n\n`;
+  msg += `✅ 안전하게 지울 수 있는 사진: ${safeDeletes.length}장 (기기번호가 같거나 비어있어 정보 손실 없음)`;
+  if(riskyGroups.length>0){
+    msg += `\n⚠️ 기기번호가 서로 달라 자동 삭제에서 제외한 그룹: ${riskyGroups.length}개 — 직접 확인이 필요합니다.`;
+  }
+  if(safeDeletes.length===0){ alert(msg); return; }
+  msg += `\n\n안전한 ${safeDeletes.length}장을 지금 삭제할까요? (로컬+클라우드, 되돌릴 수 없습니다)`;
+  if(!confirm(msg)) return;
+
+  for(const p of safeDeletes){
+    await deletePhotoDB(p.id);
+    await deletePhotoCloudRow(p);
+    revokePhotoUrl(p.id);
+  }
+  const delIds = new Set(safeDeletes.map(p=>p.id));
+  photos = photos.filter(p=>!delIds.has(p.id));
+  renderSidebar(); renderPhotos(); updateHeader();
+
+  let doneMsg = `✅ ${safeDeletes.length}장 삭제 완료 (로컬+클라우드)`;
+  if(riskyGroups.length>0){
+    doneMsg += `\n\n⚠️ 기기번호가 서로 다른 ${riskyGroups.length}그룹은 자동으로 건너뛰었습니다(직접 확인 필요):\n`;
+    doneMsg += riskyGroups.slice(0,10).map(g=>g.map(p=>p.tag||'(빈값)').join(' / ')).join('\n');
+    if(riskyGroups.length>10) doneMsg += `\n...외 ${riskyGroups.length-10}건`;
+  }
+  alert(doneMsg);
 }
 
 // ── 드래그 앤 드롭 ───────────────────────────────────
