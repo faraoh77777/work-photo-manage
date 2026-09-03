@@ -340,6 +340,10 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 .add-row input:focus { outline: none; border-color: var(--ac); }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<!-- 여러 장 선택 다운로드를 zip 하나로 묶는 데 사용(2026-09-03) — 파일마다 따로
+     다운로드하면 브라우저의 "저장 위치 확인" 설정에 따라 저장 창이 장 수만큼
+     계속 열리는 문제가 있었다. -->
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 </head>
 <body>
 
@@ -3068,28 +3072,71 @@ async function saveBatchEdit(){
   renderSidebar(); renderPhotos(); updateHeader();
 }
 
+// 사진마다 따로 <a download>를 눌러 여러 번 다운로드했더니, 브라우저의 "다운로드
+// 전 저장 위치 확인" 설정이 켜져 있으면 그 저장 창이 장 수만큼 하나씩 계속
+// 열렸다(2026-09-03 신고) — 이건 브라우저 설정이라 코드로 그 창 자체는 못 없애지만,
+// 여러 장을 zip 하나로 묶어 다운로드 한 번만 일어나게 하면 저장 창도 한 번만 뜬다.
+// 한 장만 고른 경우엔 굳이 압축할 필요 없이 그 사진 그대로 받는다.
 async function downloadSelected() {
   const ids = [...selectedIds];
   if (!ids.length) return;
   const btn = document.getElementById('dlSelBtn');
   btn.disabled = true;
-  btn.textContent = '⏳ 다운로드 중...';
-  for (let i = 0; i < ids.length; i++) {
-    const p = photos.find(x => String(x.id) === ids[i]);
-    if (!p) continue;
-    const a = document.createElement('a');
-    a.href = photoImgSrc(p);
-    a.download = p.name || ('WORK_' + (p.date||'nodate') + '_' + (p.tag||'NOTAG') + '.jpg');
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    if (i < ids.length - 1) await new Promise(r => setTimeout(r, 150));
+
+  if (ids.length === 1) {
+    const p = photos.find(x => String(x.id) === ids[0]);
+    if (p) {
+      const a = document.createElement('a');
+      a.href = photoImgSrc(p);
+      a.download = p.name || ('WORK_' + (p.date||'nodate') + '_' + (p.tag||'NOTAG') + '.jpg');
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+    btn.textContent = '✅ 완료!';
+  } else {
+    try {
+      const zip = new JSZip();
+      const usedNames = new Set();
+      for (let i = 0; i < ids.length; i++) {
+        const p = photos.find(x => String(x.id) === ids[i]);
+        if (!p || !p.blob) continue;
+        btn.textContent = `⏳ 압축 중... ${i+1}/${ids.length}`;
+        let name = p.name || ('WORK_' + (p.date||'nodate') + '_' + (p.tag||'NOTAG') + '.jpg');
+        if (usedNames.has(name)) {
+          const dot = name.lastIndexOf('.');
+          const base = dot>=0 ? name.slice(0,dot) : name, ext = dot>=0 ? name.slice(dot) : '';
+          let n = 2, cand = `${base}(${n})${ext}`;
+          while (usedNames.has(cand)) { n++; cand = `${base}(${n})${ext}`; }
+          name = cand;
+        }
+        usedNames.add(name);
+        zip.file(name, p.blob);
+      }
+      btn.textContent = '⏳ 압축 파일 만드는 중...';
+      const content = await zip.generateAsync({ type: 'blob' }, (meta) => {
+        btn.textContent = `⏳ 압축 파일 만드는 중... ${Math.round(meta.percent)}%`;
+      });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `사진_${ids.length}장_${new Date().toISOString().slice(0,10)}.zip`;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      btn.textContent = '✅ ' + ids.length + '장 완료!';
+    } catch(e) {
+      console.error('압축 다운로드 실패:', e);
+      alert('압축 다운로드에 실패했습니다: ' + e.message);
+    }
   }
-  btn.textContent = '✅ ' + ids.length + '장 완료!';
+
   setTimeout(() => {
     btn.disabled = selectedIds.size === 0;
-    btn.textContent = '⬇️ 선택 다운로드';
+    btn.textContent = '다운로드';
   }, 2000);
 }
 
