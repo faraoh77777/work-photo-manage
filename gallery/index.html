@@ -2142,7 +2142,12 @@ function matchesSearch(p, search) {
   return (p.tag||'').toLowerCase().includes(search) || (p.name||'').toLowerCase().includes(search);
 }
 
+// "초기화" 버튼이 한 번만 화면을 비우는 용도(2026-09-03 요청)로 쓰는 1회성 플래그.
+// getFiltered()가 소비하자마자 꺼지므로, 그 다음 무엇이든 다시 렌더되면(필터를
+// 만지든 사진을 저장/삭제하든) 자동으로 원래 필터링된 목록이 돌아온다.
+let viewCleared = false;
 function getFiltered() {
+  if (viewCleared) { viewCleared = false; return []; }
   const search = document.getElementById('fSearch').value.toLowerCase().trim();
   if(dupFilterOn){
     const dupSet = getDuplicateTagSet();
@@ -2891,8 +2896,10 @@ async function savePhotos(){
 
 // ── 필터 초기화 ───────────────────────────────────────
 function resetFilter() {
-  ['fDate','fSearch'].forEach(id=>document.getElementById(id).value='');
-  ['fTeam','fWt'].forEach(id=>document.getElementById(id).value='');
+  // 필터 값은 그대로 두고(필터를 지우는 버튼이 아니라, 화면을 잠깐 비우는
+  // 버튼으로 써 달라는 요청 — 2026-09-03) 화면만 사진 0장으로 비운다.
+  // 이후 다른 필터를 만지거나 사진을 저장/삭제하면 자동으로 다시 채워진다.
+  viewCleared = true;
   renderPhotos();
 }
 
