@@ -1863,6 +1863,19 @@ function loadPhotos() {
 function savePhotoToDB(p)  { return new Promise((res,rej)=>{ const req=txStore('photos','readwrite').put(p); req.onsuccess=()=>res(); req.onerror=()=>rej(req.error); }); }
 function deletePhotoDB(id) { return new Promise((res,rej)=>{ const req=txStore('photos','readwrite').delete(id); req.onsuccess=()=>res(); req.onerror=()=>rej(req.error); }); }
 
+// 로컬에서만 삭제하고 클라우드 work_photos 행은 그대로 두면, 나중에 "동기화"(클라우드→
+// 로컬) 할 때 지운 사진이 다시 내려와 버린다(2026-09-03 신고). cloud_id로 그 행 하나만
+// 정확히 지정해서 클라우드에서도 같이 삭제한다 — 사진 파일(Storage)은 다른 행이 같은
+// 파일을 참조하고 있을 수 있어(중복 업로드 사례 있었음) 건드리지 않고 DB 행만 지운다.
+// 실패해도(연결 안 됨/네트워크 오류 등) 로컬 삭제 자체는 막지 않는다.
+async function deletePhotoCloudRow(p){
+  if(!p || p.cloud_id==null || !sbClient) return;
+  try{
+    const {error} = await sbClient.from('work_photos').delete().eq('id', p.cloud_id);
+    if(error) console.warn('[삭제] 클라우드 행 삭제 실패:', error.message);
+  }catch(e){ console.warn('[삭제] 클라우드 삭제 예외:', e); }
+}
+
 // ── 드래그 앤 드롭 ───────────────────────────────────
 // 사진(<img>)을 클릭할 때 마우스가 살짝 움직이면 브라우저가 "이미지를 페이지 안에서
 // 드래그하는 중"으로 오인해 아래 dragenter가 외부 파일 드롭으로 착각하던 문제가
@@ -2837,8 +2850,12 @@ async function deleteSelected() {
   if (!ids.length) return;
   if (!confirm(ids.length + '장을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) return;
   for (const sid of ids) {
-    const id = photos.find(p => String(p.id) === sid)?.id;
-    if (id !== undefined) { await deletePhotoDB(id); revokePhotoUrl(id); }
+    const p = photos.find(p => String(p.id) === sid);
+    if (p !== undefined) {
+      await deletePhotoDB(p.id);
+      await deletePhotoCloudRow(p);
+      revokePhotoUrl(p.id);
+    }
   }
   photos = photos.filter(p => !selectedIds.has(String(p.id)));
   exitSelMode();
@@ -3080,7 +3097,9 @@ function applyEditNotePreset(sel) {
 }
 async function deletePhoto(){
   if(!confirm('이 사진을 삭제하시겠습니까?'))return;
+  const p = photos.find(x=>x.id===currentDetailId);
   await deletePhotoDB(currentDetailId);
+  if(p) await deletePhotoCloudRow(p);
   revokePhotoUrl(currentDetailId);
   photos=photos.filter(p=>p.id!==currentDetailId);
   closeDetail(); renderSidebar(); renderPhotos(); updateHeader();
