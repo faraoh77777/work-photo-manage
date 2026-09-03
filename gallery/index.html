@@ -199,8 +199,6 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 .up-preview-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; transform-origin: center center; transition: transform 0.15s ease-out; touch-action: none; -webkit-user-drag: none; user-select: none; }
 .up-preview-wrap img.dragging { transition: none; cursor: grabbing; }
 .up-preview-wrap img.zoomed { cursor: grab; }
-/* 자동분류 검토창 미리보기 — 클릭하면 다음 사진으로 넘어감을 커서로 알려준다 */
-#batchPreviewImg:not(.zoomed) { cursor: pointer; }
 .up-preview-hint { font-size: 0.67rem; color: var(--tx3); text-align: center; margin-top: 6px; }
 .up-analyze-status { font-size: 0.72rem; color: var(--tx2); margin-bottom: 6px; }
 .up-thumbs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 4px; }
@@ -1576,10 +1574,6 @@ function zoomBatchBy(delta){
   function endDrag(){ if(!batchDragging)return; batchDragging=false; img.classList.remove('dragging'); }
   wrap.addEventListener('pointerup', endDrag);
   wrap.addEventListener('pointercancel', endDrag);
-  // 가운데 미리보기 사진을 클릭하면 다음 사진으로 넘어간다(2026-09-03 요청) — 확대
-  // 중(batchZoom>1)일 때는 사진을 끌어보는 중일 수 있어 그때는 클릭해도 안 넘어간다.
-  // 확대/축소 버튼은 img 바깥(형제 요소)이라 여기 걸리지 않는다.
-  img.addEventListener('click', ()=>{ if(batchZoom<=1) navigateBatch(1); });
 })();
 
 // ── 전체 자동 분류 — 검토형(2026-09-02) ────────────────────
