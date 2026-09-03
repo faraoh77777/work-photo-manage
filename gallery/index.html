@@ -1118,15 +1118,20 @@ async function syncFromSupabase(opts){
     // 동기화 중 PC 폴더 자동 저장은 하지 않는다(2026-09-03 변경) — 검토 전 사진까지
     // 그대로 PC에 쌓이는 게 문제라, 검토·분류가 끝난 뒤 선택 모드에서 "선택 PC 저장"
     // 버튼으로 직접 저장하도록 분리했다. openFolderSaveModal()/confirmFolderSave() 참고.
+    // "324장 동기화 완료"만 보여주면 "전체가 324장이란 뜻인가?"로 헷갈려했다
+    // (2026-09-03 신고 — 이 숫자는 "이번에 새로 받은 개수"였을 뿐 전체 수가 아니었음).
+    // 이번 동기화에서 실패한 사진도(왜 실패했는지 이유와 함께) 그동안은 콘솔에만
+    // 남기고 화면엔 안 보여줬는데, 같이 알려주도록 추가한다.
     let saved=0;
+    const failList=[]; // {name, reason}
     for(let i=0;i<recsToProcess.length;i++){
       const rec=recsToProcess[i];
+      const fname=rec.photo_url.split('/').pop().split('?')[0];
       btn.textContent='⏳ '+(i+1)+'/'+recsToProcess.length+'장 다운로드...';
       try{
         const resp=await fetch(rec.photo_url);
         if(!resp.ok) throw new Error('HTTP '+resp.status);
         const blob=await resp.blob();
-        const fname=rec.photo_url.split('/').pop().split('?')[0];
 
         const fnP = parseWorkFilename(fname);
         const mn = localStorage.getItem('member_name')||'';
@@ -1144,13 +1149,23 @@ async function syncFromSupabase(opts){
         await savePhotoToDB(photo);
         photos.unshift(photo);
         saved++;
-      }catch(e){ console.error('다운로드 실패:',rec.photo_url,e); }
+      }catch(e){
+        console.error('다운로드 실패:',rec.photo_url,e);
+        failList.push({name:fname, reason:(e&&e.message)||String(e)});
+      }
     }
     photos.sort((a,b)=>(b.date+b.created).localeCompare(a.date+a.created));
     const newSenders=[...new Set(photos.map(p=>p.team).filter(t=>t&&!teams.includes(t)))];
     if(newSenders.length){teams.push(...newSenders);saveSettings();}
     populateDateFilter(); populateSelects(); renderSidebar(); renderPhotos(); updateHeader();
-    let msg = `✅ ${saved}장 동기화 완료!`;
+    const totalNow = photos.filter(p=>(p.menu||'시공')===activeMenu).length;
+    let msg = `✅ 새로 받음 ${saved}장 (전체 ${totalNow}장)`;
+    if (failList.length){
+      msg += `\n⚠️ 동기화 안 됨 ${failList.length}장:`;
+      const shown = failList.slice(0,5);
+      shown.forEach(f=>{ msg += `\n · ${f.name} — ${f.reason}`; });
+      if (failList.length>shown.length) msg += `\n · ...외 ${failList.length-shown.length}건`;
+    }
     if (dirHandle) msg += `\n💾 검토·분류가 끝난 사진은 "선택" 모드에서 고른 뒤 "PC 저장" 버튼으로 저장해 주세요.`;
     alert(msg);
   }catch(e){
