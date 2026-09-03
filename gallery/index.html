@@ -428,6 +428,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
   <span id="selCount" style="font-size:0.82rem;color:var(--tx2);">0장 선택됨</span>
   <button class="btn btn-ghost" onclick="exitSelMode()">취소</button>
   <button class="btn btn-primary" id="dlSelBtn" onclick="downloadSelected()" disabled>다운로드</button>
+  <button class="btn btn-ghost" id="folderSelBtn" onclick="saveSelectedToFolder()" disabled style="display:none" title="설정에서 지정한 PC 폴더에 작업분류별로 저장">PC 저장</button>
 </div>
 
 <!-- 드래그 오버레이 -->
@@ -779,7 +780,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 
     <div style="margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--bd);">
       <div style="font-size:0.8rem;font-weight:700;color:var(--tx2);margin-bottom:8px;">PC 저장 폴더</div>
-      <div style="font-size:0.74rem;color:var(--tx3);margin-bottom:8px;line-height:1.6;">동기화 시 사진을 PC 폴더에 자동 저장합니다.<br>Chrome / Edge 전용 기능입니다.</div>
+      <div style="font-size:0.74rem;color:var(--tx3);margin-bottom:8px;line-height:1.6;">폴더를 지정해 두면, 검토·분류가 끝난 사진을 "선택" 모드에서 골라 "PC 저장" 버튼으로 저장할 수 있습니다(작업분류별 하위 폴더로 정리됨). 동기화할 때 자동으로 저장되진 않습니다.<br>Chrome / Edge 전용 기능입니다.</div>
       <div id="folderStatus" style="font-size:0.77rem;color:var(--tx3);margin-bottom:10px;">폴더가 지정되지 않았습니다.</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
         <button class="btn btn-ghost" onclick="pickFolder()">폴더 선택</button>
@@ -1096,11 +1097,10 @@ async function syncFromSupabase(opts){
     const recsToProcess=newRecs.slice(0,BATCH_LIMIT);
     const remaining=newRecs.length-recsToProcess.length;
 
-    // 폴더 저장 권한 사전 확인 (루프마다 팝업 방지 — user gesture 컨텍스트 유지)
-    const folderOk = dirHandle ? await verifyFolderPermission() : false;
-    if (dirHandle && !folderOk) console.warn('[동기화] 폴더 권한 없음 — 파일 저장 건너뜀');
-
-    let saved=0, folderSaved=0;
+    // 동기화 중 PC 폴더 자동 저장은 하지 않는다(2026-09-03 변경) — 검토 전 사진까지
+    // 그대로 PC에 쌓이는 게 문제라, 검토·분류가 끝난 뒤 선택 모드에서 "선택 PC 저장"
+    // 버튼으로 직접 저장하도록 분리했다. saveSelectedToFolder() 참고.
+    let saved=0;
     for(let i=0;i<recsToProcess.length;i++){
       const rec=recsToProcess[i];
       btn.textContent='⏳ '+(i+1)+'/'+recsToProcess.length+'장 다운로드...';
@@ -1109,12 +1109,6 @@ async function syncFromSupabase(opts){
         if(!resp.ok) throw new Error('HTTP '+resp.status);
         const blob=await resp.blob();
         const fname=rec.photo_url.split('/').pop().split('?')[0];
-
-        // PC 폴더에 작업분류별 서브폴더로 저장
-        if(folderOk){
-          const ok = await savePhotoToFolder(blob, fname, rec.cat||'');
-          if(ok) folderSaved++;
-        }
 
         const fnP = parseWorkFilename(fname);
         const mn = localStorage.getItem('member_name')||'';
@@ -1139,11 +1133,7 @@ async function syncFromSupabase(opts){
     if(newSenders.length){teams.push(...newSenders);saveSettings();}
     populateDateFilter(); populateSelects(); renderSidebar(); renderPhotos(); updateHeader();
     let msg = `✅ ${saved}장 동기화 완료!`;
-    if (dirHandle) {
-      msg += folderOk
-        ? `\n💾 ${folderSaved}장 PC 폴더 저장 완료 (${dirHandle.name})`
-        : '\n⚠️ PC 폴더 저장 실패 — 설정에서 허용 버튼을 클릭 후 재시도해 주세요.';
-    }
+    if (dirHandle) msg += `\n💾 검토·분류가 끝난 사진은 "선택" 모드에서 고른 뒤 "PC 저장" 버튼으로 저장해 주세요.`;
     if (remaining>0) msg += `\n📥 ${remaining}장 더 남았습니다 — 동기화 버튼을 다시 눌러 이어받아 주세요.`;
     alert(msg);
   }catch(e){
@@ -1271,17 +1261,21 @@ function updateFolderUI() {
   const scanBtn   = document.getElementById('folderScanBtn');
   const allowBtn  = document.getElementById('folderAllowBtn');
   const hdrBtn    = document.getElementById('folderBtn');
+  const selBtn    = document.getElementById('folderSelBtn');
   if (dirHandle) {
     if (status)   status.innerHTML = `<span style="color:var(--green);">✅ ${dirHandle.name}</span>`;
     if (scanBtn)  scanBtn.style.display  = '';
     if (allowBtn) allowBtn.style.display = '';
     if (hdrBtn)   hdrBtn.style.display   = '';
+    if (selBtn)   selBtn.style.display   = '';
   } else {
     if (status)   status.textContent = '폴더가 지정되지 않았습니다.';
     if (scanBtn)  scanBtn.style.display  = 'none';
     if (allowBtn) allowBtn.style.display = 'none';
     if (hdrBtn)   hdrBtn.style.display   = 'none';
+    if (selBtn)   selBtn.style.display   = 'none';
   }
+  updateSelBar();
 }
 
 async function savePhotoToFolder(blob, filename, cat) {
@@ -1313,7 +1307,7 @@ async function requestFolderPermission() {
   const status = document.getElementById('folderStatus');
   if (ok) {
     if (status) status.innerHTML = `<span style="color:var(--green);">✅ ${dirHandle.name} (접근 허용됨)</span>`;
-    alert('✅ 폴더 접근이 허용되었습니다. 이제 동기화하면 자동 저장됩니다.');
+    alert('✅ 폴더 접근이 허용되었습니다. "선택" 모드에서 사진을 고른 뒤 "PC 저장" 버튼으로 저장할 수 있습니다.');
   } else {
     alert('❌ 폴더 접근이 거부되었습니다. 브라우저 주소창 왼쪽 🔒 아이콘에서 권한을 허용해 주세요.');
   }
@@ -2965,6 +2959,7 @@ function updateSelBar() {
   document.getElementById('dlSelBtn').disabled = count === 0;
   document.getElementById('delSelBtn').disabled = count === 0;
   document.getElementById('beBtn').disabled = count === 0;
+  document.getElementById('folderSelBtn').disabled = count === 0 || !dirHandle;
   const filtered = getFiltered();
   const allSel = filtered.length > 0 && filtered.every(p => selectedIds.has(String(p.id)));
   document.getElementById('selAllBtn').textContent = allSel ? '전체 해제' : '전체 선택';
@@ -3052,6 +3047,34 @@ async function downloadSelected() {
   setTimeout(() => {
     btn.disabled = selectedIds.size === 0;
     btn.textContent = '⬇️ 선택 다운로드';
+  }, 2000);
+}
+
+// 예전엔 동기화할 때마다 PC 폴더에 자동 저장했는데, 검토·분류 전 사진까지 그대로
+// 쌓이는 문제가 있었다(2026-09-03 요청) — 검토가 끝난 사진만 골라서 저장하도록
+// "선택" 모드의 이 버튼으로 옮김. savePhotoToFolder()를 그대로 재사용한다.
+async function saveSelectedToFolder() {
+  const ids = [...selectedIds];
+  if (!ids.length) return;
+  if (!dirHandle) { alert('먼저 설정에서 PC 저장 폴더를 지정해 주세요.'); return; }
+  const ok = await verifyFolderPermission();
+  if (!ok) { alert('❌ 폴더 접근 권한이 없습니다. 설정에서 "허용"을 눌러 주세요.'); return; }
+
+  const btn = document.getElementById('folderSelBtn');
+  btn.disabled = true;
+  let done = 0, failed = 0;
+  for (let i = 0; i < ids.length; i++) {
+    const p = photos.find(x => String(x.id) === ids[i]);
+    if (!p || !p.blob) { failed++; continue; }
+    btn.textContent = `⏳ ${i+1}/${ids.length}...`;
+    const saved = await savePhotoToFolder(p.blob, p.name || (p.tag||'photo')+'.jpg', p.cat||'');
+    if (saved) done++; else failed++;
+  }
+  btn.textContent = `✅ ${done}장 저장 완료!`;
+  if (failed>0) alert(`${done}장 저장 완료, ${failed}장 실패했습니다. (사진에 원본 파일이 없거나 폴더 쓰기 오류)`);
+  setTimeout(() => {
+    btn.disabled = selectedIds.size === 0 || !dirHandle;
+    btn.textContent = 'PC 저장';
   }, 2000);
 }
 
