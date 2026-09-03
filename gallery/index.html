@@ -326,6 +326,10 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 .folder-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; background: var(--bg); border: 1px solid var(--bd2); border-radius: 6px; font-size: 0.8rem; }
 .folder-item label { display: flex; align-items: center; gap: 7px; flex: 1; cursor: pointer; }
 .folder-item label input[type=checkbox] { accent-color: var(--ac); width: 14px; height: 14px; }
+.folder-save-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--bg); border: 1px solid var(--bd2); border-radius: 6px; }
+.folder-save-row img { width: 42px; height: 42px; object-fit: cover; border-radius: 4px; flex: none; background: var(--sf2); }
+.folder-save-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.76rem; color: var(--tx2); }
+.folder-save-cat { flex: none; width: 160px; background: var(--sf); color: var(--tx); border: 1px solid var(--bd); border-radius: 5px; padding: 5px 6px; font-size: 0.76rem; font-family: inherit; }
 .fi-cnt { font-size: 0.7rem; color: var(--tx3); margin-left: auto; }
 .fi-del { background: none; border: none; cursor: pointer; color: var(--tx3); font-size: 0.85rem; padding: 2px 4px; border-radius: 4px; }
 .fi-del:hover { color: var(--red); background: rgba(248,81,73,0.1); }
@@ -428,7 +432,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
   <span id="selCount" style="font-size:0.82rem;color:var(--tx2);">0장 선택됨</span>
   <button class="btn btn-ghost" onclick="exitSelMode()">취소</button>
   <button class="btn btn-primary" id="dlSelBtn" onclick="downloadSelected()" disabled>다운로드</button>
-  <button class="btn btn-ghost" id="folderSelBtn" onclick="saveSelectedToFolder()" disabled style="display:none" title="설정에서 지정한 PC 폴더에 작업분류별로 저장">PC 저장</button>
+  <button class="btn btn-ghost" id="folderSelBtn" onclick="openFolderSaveModal()" disabled style="display:none" title="설정에서 지정한 PC 폴더에 작업분류별로 저장 — 사진마다 분류를 확인·수정할 수 있음">PC 저장</button>
 </div>
 
 <!-- 드래그 오버레이 -->
@@ -572,6 +576,23 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
     <div class="m-footer">
       <button class="btn btn-ghost" onclick="closeBatchEdit()">취소</button>
       <button class="btn btn-primary" id="beSaveBtn" onclick="saveBatchEdit()">적용</button>
+    </div>
+  </div>
+</div>
+
+<!-- PC 저장 확인 모달 — 사진마다 작업분류를 골라서 저장(2026-09-03) -->
+<div class="overlay" id="folderSaveOverlay">
+  <div class="modal" style="width:560px;max-height:82vh;display:flex;flex-direction:column;">
+    <button class="m-close" onclick="closeFolderSaveModal()">✕</button>
+    <div class="m-title">PC 저장</div>
+    <p style="font-size:0.78rem;color:var(--tx3);margin-bottom:12px;line-height:1.6;">
+      사진마다 저장할 작업분류를 확인·수정한 뒤 저장하세요. 폴더에 같은 이름의 파일이
+      이미 있으면 덮어쓰지 않고 건너뜁니다.
+    </p>
+    <div id="folderSaveList" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:6px;"></div>
+    <div class="m-footer">
+      <button class="btn btn-ghost" onclick="closeFolderSaveModal()">취소</button>
+      <button class="btn btn-primary" id="folderSaveConfirmBtn" onclick="confirmFolderSave()">저장 시작</button>
     </div>
   </div>
 </div>
@@ -1098,7 +1119,7 @@ async function syncFromSupabase(opts){
 
     // 동기화 중 PC 폴더 자동 저장은 하지 않는다(2026-09-03 변경) — 검토 전 사진까지
     // 그대로 PC에 쌓이는 게 문제라, 검토·분류가 끝난 뒤 선택 모드에서 "선택 PC 저장"
-    // 버튼으로 직접 저장하도록 분리했다. saveSelectedToFolder() 참고.
+    // 버튼으로 직접 저장하도록 분리했다. openFolderSaveModal()/confirmFolderSave() 참고.
     let saved=0;
     for(let i=0;i<recsToProcess.length;i++){
       const rec=recsToProcess[i];
@@ -1276,12 +1297,19 @@ function updateFolderUI() {
   updateSelBar();
 }
 
+// 반환값: 'saved'(새로 저장) / 'skipped'(같은 이름 파일이 이미 있어 안 건드림) / 'failed'
 async function savePhotoToFolder(blob, filename, cat) {
   try {
     // cats 배열과 대소문자 무관 매칭으로 정확한 폴더명 사용
     const matched = cats.find(c => c.toLowerCase() === (cat||'').toLowerCase().replace(/_/g,' '));
     const folderName = matched || cat || 'Others';
     const subDir = await dirHandle.getDirectoryHandle(folderName, { create: true });
+    // 이미 저장된 사진을 다시 덮어쓰지 않는다(2026-09-03 요청) — 있으면 그대로 건너뜀.
+    try {
+      await subDir.getFileHandle(filename, { create: false });
+      console.log('[폴더 저장 건너뜀-이미 있음]', folderName + '/' + filename);
+      return 'skipped';
+    } catch (notFound) { /* 없으면 정상 진행 */ }
     const fh = await subDir.getFileHandle(filename, { create: true });
     const writable = await fh.createWritable();
     // Blob → ArrayBuffer 변환 후 write (InvalidStateError 방지)
@@ -1292,10 +1320,10 @@ async function savePhotoToFolder(blob, filename, cat) {
     await writable.write(new Uint8Array(ab));
     await writable.close();
     console.log('[폴더 저장 완료]', folderName + '/' + filename);
-    return true;
+    return 'saved';
   } catch(e) {
     console.error('[폴더 저장 실패]', filename, e);
-    return false;
+    return 'failed';
   }
 }
 
@@ -3052,29 +3080,53 @@ async function downloadSelected() {
 // 예전엔 동기화할 때마다 PC 폴더에 자동 저장했는데, 검토·분류 전 사진까지 그대로
 // 쌓이는 문제가 있었다(2026-09-03 요청) — 검토가 끝난 사진만 골라서 저장하도록
 // "선택" 모드의 이 버튼으로 옮김. savePhotoToFolder()를 그대로 재사용한다.
-async function saveSelectedToFolder() {
+// PC 저장 전에 사진마다 작업분류를 확인·수정할 수 있게 확인창을 띄운다(2026-09-03
+// 요청 — 사진마다 다른 분류로 각각 저장하고 싶어함). 저장은 savePhotoToFolder()가
+// 담당하며, 이미 같은 이름 파일이 있으면 덮어쓰지 않고 건너뛴다.
+function openFolderSaveModal() {
   const ids = [...selectedIds];
   if (!ids.length) return;
   if (!dirHandle) { alert('먼저 설정에서 PC 저장 폴더를 지정해 주세요.'); return; }
+  const list = document.getElementById('folderSaveList');
+  list.innerHTML = ids.map(sid => {
+    const p = photos.find(x => String(x.id) === sid);
+    if (!p) return '';
+    const matched = cats.find(c => c.toLowerCase() === (p.cat||'').toLowerCase().replace(/_/g,' '));
+    const defaultCat = matched || 'Others';
+    return `<div class="folder-save-row" data-id="${sid}">
+      <img src="${photoImgSrc(p)}" alt="">
+      <div class="folder-save-name" title="${p.name||''}">${p.name||'(이름 없음)'}</div>
+      <select class="folder-save-cat" data-id="${sid}">
+        ${cats.map(c=>`<option value="${c}"${c===defaultCat?' selected':''}>${c}</option>`).join('')}
+      </select>
+    </div>`;
+  }).join('');
+  document.getElementById('folderSaveOverlay').classList.add('show');
+}
+function closeFolderSaveModal(){ document.getElementById('folderSaveOverlay').classList.remove('show'); }
+
+async function confirmFolderSave() {
   const ok = await verifyFolderPermission();
   if (!ok) { alert('❌ 폴더 접근 권한이 없습니다. 설정에서 "허용"을 눌러 주세요.'); return; }
-
-  const btn = document.getElementById('folderSelBtn');
+  const rows = [...document.querySelectorAll('#folderSaveList .folder-save-cat')];
+  if (!rows.length) return;
+  const btn = document.getElementById('folderSaveConfirmBtn');
   btn.disabled = true;
-  let done = 0, failed = 0;
-  for (let i = 0; i < ids.length; i++) {
-    const p = photos.find(x => String(x.id) === ids[i]);
+  let saved=0, skipped=0, failed=0;
+  for (let i=0;i<rows.length;i++){
+    const sel = rows[i];
+    const p = photos.find(x=>String(x.id)===sel.dataset.id);
+    btn.textContent = `⏳ ${i+1}/${rows.length}...`;
     if (!p || !p.blob) { failed++; continue; }
-    btn.textContent = `⏳ ${i+1}/${ids.length}...`;
-    const saved = await savePhotoToFolder(p.blob, p.name || (p.tag||'photo')+'.jpg', p.cat||'');
-    if (saved) done++; else failed++;
+    const result = await savePhotoToFolder(p.blob, p.name || (p.tag||'photo')+'.jpg', sel.value);
+    if (result==='saved') saved++; else if (result==='skipped') skipped++; else failed++;
   }
-  btn.textContent = `✅ ${done}장 저장 완료!`;
-  if (failed>0) alert(`${done}장 저장 완료, ${failed}장 실패했습니다. (사진에 원본 파일이 없거나 폴더 쓰기 오류)`);
-  setTimeout(() => {
-    btn.disabled = selectedIds.size === 0 || !dirHandle;
-    btn.textContent = 'PC 저장';
-  }, 2000);
+  btn.disabled = false; btn.textContent = '저장 시작';
+  closeFolderSaveModal();
+  let msg = `✅ 저장 ${saved}장`;
+  if (skipped) msg += `, 이미 있어서 건너뜀 ${skipped}장`;
+  if (failed) msg += `, 실패 ${failed}장`;
+  alert(msg);
 }
 
 // ── 사진 상세 모달 ───────────────────────────────────
@@ -3365,7 +3417,7 @@ document.getElementById('newNotePreset').addEventListener('keydown',e=>{if(e.key
 // ── 키보드 ESC ───────────────────────────────────────
 document.addEventListener('keydown', e => {
   if(e.key==='Escape'){
-    ['upOverlay','detOverlay','setOverlay','batchOverlay','batchEditOverlay'].forEach(id=>{
+    ['upOverlay','detOverlay','setOverlay','batchOverlay','batchEditOverlay','folderSaveOverlay'].forEach(id=>{
       document.getElementById(id).classList.remove('show');
     });
     currentOCRAbort=true;
@@ -3376,7 +3428,7 @@ document.addEventListener('keydown', e => {
 // ── 오버레이 바깥 클릭 닫기 ─────────────────────────
 // batchOverlay(자동분류)는 항목별 검토·저장 중 실수로 바깥을 클릭해 닫히면
 // 진행 상황을 잃을 수 있어 제외 — ✕ 버튼이나 ESC로만 닫는다.
-['upOverlay','detOverlay','setOverlay','batchEditOverlay'].forEach(id=>{
+['upOverlay','detOverlay','setOverlay','batchEditOverlay','folderSaveOverlay'].forEach(id=>{
   document.getElementById(id).addEventListener('click', e=>{
     if(e.target.id!==id) return;
     // detOverlay(사진 상세)는 수정 모드(detEdit 표시 중)일 때 바깥을 클릭하면
