@@ -1090,12 +1090,11 @@ async function syncFromSupabase(opts){
       return;
     }
 
-    // 이제 원본을 base64가 아니라 Blob으로 저장해서(메모리 부담이 훨씬 적음) +
-    // 동기화 전에 기간/분류를 먼저 골라서 범위가 좁혀지므로, 한도를 넉넉히 올려도 된다.
-    // 그래도 "전체 기간"처럼 아주 넓게 고른 경우를 대비해 안전장치는 남겨둔다.
-    const BATCH_LIMIT=200;
-    const recsToProcess=newRecs.slice(0,BATCH_LIMIT);
-    const remaining=newRecs.length-recsToProcess.length;
+    // 예전엔 한 번에 200장까지만 받고 나머지는 "다시 눌러 이어받으세요"로 남겨뒀는데,
+    // 몇 번 눌렀는지가 기기/브라우저마다 달라서 같은 계정인데도 사진 수량이 서로
+    // 다르게 보이는 원인이 됐다(2026-09-03 신고: 크롬-네이버 브라우저 수량 불일치).
+    // 한 번 누르면 새 사진을 전부 받아오도록 제한을 없앤다.
+    const recsToProcess=newRecs;
 
     // 동기화 중 PC 폴더 자동 저장은 하지 않는다(2026-09-03 변경) — 검토 전 사진까지
     // 그대로 PC에 쌓이는 게 문제라, 검토·분류가 끝난 뒤 선택 모드에서 "선택 PC 저장"
@@ -1134,7 +1133,6 @@ async function syncFromSupabase(opts){
     populateDateFilter(); populateSelects(); renderSidebar(); renderPhotos(); updateHeader();
     let msg = `✅ ${saved}장 동기화 완료!`;
     if (dirHandle) msg += `\n💾 검토·분류가 끝난 사진은 "선택" 모드에서 고른 뒤 "PC 저장" 버튼으로 저장해 주세요.`;
-    if (remaining>0) msg += `\n📥 ${remaining}장 더 남았습니다 — 동기화 버튼을 다시 눌러 이어받아 주세요.`;
     alert(msg);
   }catch(e){
     console.error('동기화 오류:',e);
