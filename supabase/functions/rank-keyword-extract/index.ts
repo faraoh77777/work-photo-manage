@@ -141,19 +141,62 @@ function titleContainsKeyword(title: string, keyword: string): boolean {
   return norm(title).includes(norm(keyword));
 }
 
+// 네이버 검색 API가 blog.naver.com 이외의 도메인(티스토리, 개인 도메인 등)을 함께 반환할 수 있다.
+// 그런 임의 URL을 서버에서 그대로 fetch하면 SSRF 통로가 되므로, 크롤링 대상은 네이버 블로그
+// 도메인으로만 한정한다 — 허용 목록에 없으면 아예 fetch하지 않고 null을 반환한다.
+const ALLOWED_SCRAPE_HOSTS = new Set(["blog.naver.com", "m.blog.naver.com"]);
+
 // 네이버 블로그는 PC 링크(blog.naver.com/아이디/글번호)가 본문을 iframe으로 물고 있어
 // 그대로 fetch하면 본문이 안 잡힌다 — 모바일 페이지(m.blog.naver.com)로 바꾸면 본문이 그대로 나온다.
-function toScrapableUrl(link: string): string {
+function toScrapableUrl(link: string): string | null {
   try {
     const u = new URL(link);
+    if (!ALLOWED_SCRAPE_HOSTS.has(u.hostname)) return null;
     if (u.hostname === "blog.naver.com") {
       u.hostname = "m.blog.naver.com";
-      return u.toString();
     }
-    return link;
+    return u.toString();
   } catch {
-    return link;
+    return null;
   }
+}
+
+// 네이버 블로그 본문만 골라내는 헬퍼 — 스마트에디터 3.0(se-main-container)과 구 에디터
+// (postViewArea) 두 컨테이너를 순서대로 시도한다. 이 컨테이너 밖에는 메뉴/구독버튼/관련글/
+// 댓글 같은 모든 글에 공통으로 붙는 사이트 UI가 있어서, 그걸 포함해 집계하면 "공통 키워드"나
+// 글자수/이미지수 평균이 실제 본문과 무관하게 오염된다. 컨테이너를 못 찾으면(템플릿 변경 등)
+// 페이지 전체로 폴백한다 — 지표가 다소 부정확해지더라도 아예 안 나오는 것보단 낫다.
+const MAIN_CONTAINER_STARTS = [
+  /<div[^>]*class="[^"]*\bse-main-container\b[^"]*"[^>]*>/i,
+  /<div[^>]*id="postViewArea"[^>]*>/i,
+];
+
+// startIdx는 이미 열린 <div ...> 바로 다음 위치. 같은 깊이에서 짝이 맞는 </div>를 찾아
+// 그 사이의 내용만 반환한다(중첩 div 고려). 짝을 못 찾으면 null.
+function extractBalancedDiv(html: string, startIdx: number): string | null {
+  const tagRe = /<div\b[^>]*>|<\/div>/gi;
+  tagRe.lastIndex = startIdx;
+  let depth = 1;
+  let m: RegExpExecArray | null;
+  while ((m = tagRe.exec(html))) {
+    if (m[0].toLowerCase() === "</div>") {
+      depth--;
+      if (depth === 0) return html.slice(startIdx, m.index);
+    } else {
+      depth++;
+    }
+  }
+  return null;
+}
+
+function extractMainContentHtml(html: string): string {
+  for (const startRe of MAIN_CONTAINER_STARTS) {
+    const m = startRe.exec(html);
+    if (!m) continue;
+    const body = extractBalancedDiv(html, m.index + m[0].length);
+    if (body) return body;
+  }
+  return html; // 컨테이너를 못 찾으면 페이지 전체로 폴백
 }
 
 serve(async (req: Request) => {
@@ -210,10 +253,12 @@ serve(async (req: Request) => {
         const rank = from + idx;
         const title = stripHtml(item.title || "");
         const description = stripHtml(item.description || "");
-        const html = await fetchWithTimeout(toScrapableUrl(item.link), FETCH_TIMEOUT_MS);
-        const bodyText = html ? stripHtml(html) : "";
-        const imageCount = html ? (html.match(/<img[\s>]/gi) || []).length : null;
-        const charCount = html ? bodyText.replace(/\s+/g, "").length : null;
+        const scrapableUrl = toScrapableUrl(item.link);
+        const html = scrapableUrl ? await fetchWithTimeout(scrapableUrl, FETCH_TIMEOUT_MS) : null;
+        const articleHtml = html ? extractMainContentHtml(html) : null;
+        const bodyText = articleHtml ? stripHtml(articleHtml) : "";
+        const imageCount = articleHtml ? (articleHtml.match(/<img[\s>]/gi) || []).length : null;
+        const charCount = articleHtml ? bodyText.replace(/\s+/g, "").length : null;
         return {
           rank,
           title,
