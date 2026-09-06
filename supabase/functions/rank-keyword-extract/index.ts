@@ -4,6 +4,11 @@
 // 상위(1위~선택한 순위)에 뜨는 블로그 글들을 가져와서, 그 글들이 실제로 어떤 단어를 많이
 // 쓰는지 간단한 빈도분석으로 뽑아준다 — "상위노출 글들은 어떤 키워드를 쓰는가"를 보는 용도.
 //
+// 같은 크롤링 결과로 "상위노출 요인 분석"도 함께 내려준다 — 글자수/이미지 수/제목에 키워드
+// 포함 여부/발행일 최신성처럼, 상위 노출 글들이 공통으로 가진 특징을 통계로 보여준다.
+// (검색엔진의 실제 순위 알고리즘을 알아내는 건 아니고, 어디까지나 "상위권 글들의 관찰된
+// 공통 특징"이라는 점에 주의 — 상관관계일 뿐 인과관계를 증명하지 않는다.)
+//
 // 이 기능은 work-photo-manage 앱(작업사진 관리)과는 무관한 별도 도구다.
 //
 // ⚠ 형태소 분석기(NLP)를 쓰지 않는 "간단 빈도분석" 버전이다. 조사가 안 떨어져 나가는 경우가
@@ -119,6 +124,23 @@ async function fetchWithTimeout(url: string, ms: number): Promise<string | null>
   }
 }
 
+// 네이버 검색 API가 postdate를 "20240115" 형식으로 주므로 파싱해서 경과일수를 구한다.
+function daysAgoFromPostdate(postdate: string | undefined): number | null {
+  if (!postdate || !/^\d{8}$/.test(postdate)) return null;
+  const y = Number(postdate.slice(0, 4));
+  const m = Number(postdate.slice(4, 6));
+  const d = Number(postdate.slice(6, 8));
+  const published = Date.UTC(y, m - 1, d);
+  const diffMs = Date.now() - published;
+  return Math.max(0, Math.round(diffMs / 86400000));
+}
+
+// 제목에 검색 키워드가 (공백 무시하고) 포함돼 있는지 — 대소문자 구분 없이 확인.
+function titleContainsKeyword(title: string, keyword: string): boolean {
+  const norm = (s: string) => s.replace(/\s+/g, "").toLowerCase();
+  return norm(title).includes(norm(keyword));
+}
+
 // 네이버 블로그는 PC 링크(blog.naver.com/아이디/글번호)가 본문을 iframe으로 물고 있어
 // 그대로 fetch하면 본문이 안 잡힌다 — 모바일 페이지(m.blog.naver.com)로 바꾸면 본문이 그대로 나온다.
 function toScrapableUrl(link: string): string {
@@ -175,11 +197,14 @@ serve(async (req: Request) => {
       throw new Error(`네이버 검색 API 오류: ${detail}`);
     }
 
-    const items: { title: string; link: string; description: string }[] = Array.isArray(searchRaw.items)
+    const items: { title: string; link: string; description: string; postdate?: string }[] = Array.isArray(
+      searchRaw.items,
+    )
       ? searchRaw.items
       : [];
 
-    // 2) 각 문서를 병렬로 가져와 본문 텍스트를 뽑는다 — 하나 실패해도 나머지로 계속 진행한다.
+    // 2) 각 문서를 병렬로 가져와 본문 텍스트 + 상위노출 요인(글자수/이미지 수 등)을 함께 뽑는다.
+    //    하나 실패해도 나머지로 계속 진행한다.
     const docs = await Promise.all(
       items.map(async (item, idx) => {
         const rank = from + idx;
@@ -187,15 +212,37 @@ serve(async (req: Request) => {
         const description = stripHtml(item.description || "");
         const html = await fetchWithTimeout(toScrapableUrl(item.link), FETCH_TIMEOUT_MS);
         const bodyText = html ? stripHtml(html) : "";
+        const imageCount = html ? (html.match(/<img[\s>]/gi) || []).length : null;
+        const charCount = html ? bodyText.replace(/\s+/g, "").length : null;
         return {
           rank,
           title,
           link: item.link,
           ok: !!html,
           text: [title, description, bodyText].join(" "),
+          factors: {
+            charCount,
+            imageCount,
+            titleHasKeyword: titleContainsKeyword(title, keyword),
+            daysAgo: daysAgoFromPostdate(item.postdate),
+          },
         };
       }),
     );
+
+    // 2-1) 상위노출 요인 요약 통계 — 크롤링에 성공한 문서만 글자수/이미지수 평균에 반영한다.
+    const okDocs = docs.filter((d) => d.ok);
+    const avg = (nums: number[]) => (nums.length ? Math.round(nums.reduce((a, b) => a + b, 0) / nums.length) : null);
+    const daysAgoList = docs.map((d) => d.factors.daysAgo).filter((v): v is number => v != null);
+    const summary = {
+      docCount: docs.length,
+      okCount: okDocs.length,
+      avgCharCount: avg(okDocs.map((d) => d.factors.charCount!)),
+      avgImageCount: avg(okDocs.map((d) => d.factors.imageCount!)),
+      titleKeywordRatio: docs.length ? docs.filter((d) => d.factors.titleHasKeyword).length / docs.length : null,
+      avgDaysAgo: avg(daysAgoList),
+      within30DaysRatio: daysAgoList.length ? daysAgoList.filter((d) => d <= 30).length / daysAgoList.length : null,
+    };
 
     // 3) 문서별 등장 여부(문서빈도)를 기준으로 집계한다 — 한 문서에서 같은 단어를 100번 써도
     //    "여러 상위 문서가 공통으로 쓰는 키워드"를 보는 목적엔 1번으로 세는 게 더 의미 있다.
@@ -225,8 +272,9 @@ serve(async (req: Request) => {
         keyword,
         from,
         to,
-        docs: docs.map((d) => ({ rank: d.rank, title: d.title, link: d.link, ok: d.ok })),
+        docs: docs.map((d) => ({ rank: d.rank, title: d.title, link: d.link, ok: d.ok, factors: d.factors })),
         keywords,
+        summary,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

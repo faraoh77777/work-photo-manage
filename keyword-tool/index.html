@@ -63,17 +63,21 @@
     padding:0 20px;height:42px;font-size:0.95rem;font-weight:600;cursor:pointer;white-space:nowrap;}
   .rangeRow button:disabled{background:#9aa5b1;cursor:default;}
 
-  .docList{list-style:none;margin:0;padding:0;}
-  .docList li{padding:10px 16px;border-bottom:1px solid #f0f2f5;font-size:0.85rem;display:flex;gap:8px;}
-  .docList li:last-child{border-bottom:none;}
-  .docList .rank{color:var(--sub);font-weight:600;flex:0 0 32px;}
-  .docList a{color:var(--tx);text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .docList a:hover{text-decoration:underline;}
-  .docList .fail{color:var(--danger);font-size:0.76rem;flex:0 0 auto;}
+  .docTitle{display:block;color:var(--tx);text-decoration:none;max-width:360px;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap;}
+  .docTitle:hover{text-decoration:underline;}
+  .docRank{color:var(--sub);font-weight:600;margin-right:6px;}
+  .fail{color:var(--danger);font-size:0.76rem;display:block;}
   .kwCloud{display:flex;flex-wrap:wrap;gap:8px;padding:16px;}
   .kwChip{background:#eef2f8;border-radius:20px;padding:6px 12px;font-size:0.82rem;display:flex;gap:6px;align-items:baseline;}
   .kwChip b{font-size:0.88rem;color:var(--pri);}
   .kwChip small{color:var(--sub);}
+
+  .statGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;
+    background:#f0f2f5;}
+  .statTile{background:var(--card);padding:14px 16px;}
+  .statTile .v{font-size:1.3rem;font-weight:700;color:var(--pri);}
+  .statTile .l{font-size:0.76rem;color:var(--sub);margin-top:2px;}
 </style>
 </head>
 <body>
@@ -133,15 +137,37 @@
       <label>위</label>
       <button id="rkBtn" onclick="doRankExtract()">추출</button>
     </div>
-    <p class="hint">※ 블로그 검색 기준 상위 노출 글을 가져와 어떤 단어를 공통으로 쓰는지 집계합니다. 형태소분석기 없이
-      간단 빈도분석만 하므로 완벽한 명사 추출은 아닙니다 — 최대 20개 글까지 조회합니다.</p>
+    <p class="hint">※ 블로그 검색 기준 상위 노출 글을 가져와 어떤 단어를 공통으로 쓰는지, 어떤 특징을 공유하는지 집계합니다.
+      형태소분석기 없이 간단 빈도분석만 하므로 완벽한 명사 추출은 아니며, 아래 "상위노출 요인"은 검색엔진 알고리즘
+      자체가 아니라 관찰된 상관관계일 뿐입니다 — 최대 20개 글까지 조회합니다.</p>
+
+    <div class="resultCard" id="rkSummaryCard" style="display:none;margin-bottom:14px;">
+      <div class="resultHead">
+        <h2>상위노출 요인 분석</h2>
+        <span id="rkSummaryCount"></span>
+      </div>
+      <div class="statGrid" id="rkSummaryGrid"></div>
+    </div>
 
     <div class="resultCard" id="rkDocCard" style="display:none;margin-bottom:14px;">
       <div class="resultHead">
         <h2>조회한 문서</h2>
         <span id="rkDocCount"></span>
       </div>
-      <ul class="docList" id="rkDocList"></ul>
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align:left;">순위/제목</th>
+              <th>글자수</th>
+              <th>이미지</th>
+              <th>제목에 키워드</th>
+              <th>발행 경과</th>
+            </tr>
+          </thead>
+          <tbody id="rkDocList"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="resultCard" id="rkKwCard" style="display:none;">
@@ -285,6 +311,7 @@ async function doRankExtract(){
   btn.disabled = true;
   var origText = btn.textContent;
   btn.textContent = '조회 중... (수 초 소요)';
+  document.getElementById('rkSummaryCard').style.display = 'none';
   document.getElementById('rkDocCard').style.display = 'none';
   document.getElementById('rkKwCard').style.display = 'none';
 
@@ -295,6 +322,7 @@ async function doRankExtract(){
     });
     var data = await resp.json().catch(function(){ return {}; });
     if (!resp.ok || !data.ok) throw new Error((data && data.error) || ('HTTP ' + resp.status));
+    renderRankSummary(data.summary || {});
     renderRankDocs(data.docs || []);
     renderRankKeywords(data.keywords || []);
   }catch(e){
@@ -306,21 +334,49 @@ async function doRankExtract(){
   }
 }
 
+function pct(n){ return n == null ? '-' : Math.round(n * 100) + '%'; }
+
+function renderRankSummary(s){
+  var card = document.getElementById('rkSummaryCard');
+  var grid = document.getElementById('rkSummaryGrid');
+  document.getElementById('rkSummaryCount').textContent =
+    '문서 ' + (s.docCount || 0) + '개 중 ' + (s.okCount || 0) + '개 분석 성공';
+
+  var tiles = [
+    ['평균 글자수', s.avgCharCount == null ? '-' : numFmt(s.avgCharCount) + '자'],
+    ['평균 이미지 수', s.avgImageCount == null ? '-' : numFmt(s.avgImageCount) + '장'],
+    ['제목에 키워드 포함', pct(s.titleKeywordRatio)],
+    ['평균 발행 경과일', s.avgDaysAgo == null ? '-' : numFmt(s.avgDaysAgo) + '일'],
+    ['최근 30일 이내 발행', pct(s.within30DaysRatio)],
+  ];
+  grid.innerHTML = tiles.map(function(t){
+    return '<div class="statTile"><div class="v">' + t[1] + '</div><div class="l">' + t[0] + '</div></div>';
+  }).join('');
+  card.style.display = 'block';
+}
+
 function renderRankDocs(docs){
   var card = document.getElementById('rkDocCard');
-  var list = document.getElementById('rkDocList');
+  var body = document.getElementById('rkDocList');
   document.getElementById('rkDocCount').textContent = docs.length + '개';
   if (!docs.length){
-    list.innerHTML = '<li class="empty">가져온 문서가 없습니다.</li>';
+    body.innerHTML = '<tr><td colspan="5" class="empty">가져온 문서가 없습니다.</td></tr>';
     card.style.display = 'block';
     return;
   }
-  list.innerHTML = docs.map(function(d){
-    return '<li>' +
-      '<span class="rank">' + d.rank + '위</span>' +
-      '<a href="' + escapeHtml(d.link) + '" target="_blank" rel="noopener">' + escapeHtml(d.title) + '</a>' +
-      (d.ok ? '' : '<span class="fail">본문 읽기 실패(제목만 반영)</span>') +
-    '</li>';
+  body.innerHTML = docs.map(function(d){
+    var f = d.factors || {};
+    return '<tr>' +
+      '<td style="text-align:left;white-space:normal;">' +
+        '<span class="docRank">' + d.rank + '위</span>' +
+        '<a class="docTitle" href="' + escapeHtml(d.link) + '" target="_blank" rel="noopener">' + escapeHtml(d.title) + '</a>' +
+        (d.ok ? '' : '<span class="fail">본문 읽기 실패(제목만 반영)</span>') +
+      '</td>' +
+      '<td>' + (f.charCount == null ? '-' : numFmt(f.charCount) + '자') + '</td>' +
+      '<td>' + (f.imageCount == null ? '-' : numFmt(f.imageCount) + '장') + '</td>' +
+      '<td>' + (f.titleHasKeyword ? 'O' : 'X') + '</td>' +
+      '<td>' + (f.daysAgo == null ? '-' : numFmt(f.daysAgo) + '일 전') + '</td>' +
+    '</tr>';
   }).join('');
   card.style.display = 'block';
 }
