@@ -78,6 +78,13 @@
   .statTile{background:var(--card);padding:14px 16px;}
   .statTile .v{font-size:1.3rem;font-weight:700;color:var(--pri);}
   .statTile .l{font-size:0.76rem;color:var(--sub);margin-top:2px;}
+
+  .barSection{padding:16px;}
+  .barRow{display:grid;grid-template-columns:70px 1fr 46px;align-items:center;gap:10px;padding:4px 0;}
+  .barRow .label{font-size:0.82rem;color:var(--tx);white-space:nowrap;}
+  .barTrack{background:var(--line);border-radius:4px;height:10px;}
+  .barFill{background:var(--pri);height:100%;border-radius:4px;min-width:4px;}
+  .barRow .val{text-align:right;font-size:0.8rem;color:var(--sub);}
 </style>
 </head>
 <body>
@@ -123,6 +130,14 @@
           <tbody id="resultBody"></tbody>
         </table>
       </div>
+    </div>
+
+    <div class="resultCard" id="ageCard" style="display:none;margin-top:10px;">
+      <div class="resultHead">
+        <h2>연령별 검색 관심도</h2>
+        <span id="ageCardSub"></span>
+      </div>
+      <div class="barSection" id="ageChart"></div>
     </div>
   </div>
 
@@ -225,6 +240,7 @@ async function doSearch(){
   var origText = btn.textContent;
   btn.textContent = '검색 중...';
   card.style.display = 'none';
+  document.getElementById('ageCard').style.display = 'none';
 
   try{
     var resp = await fetch(
@@ -234,6 +250,9 @@ async function doSearch(){
     var data = await resp.json().catch(function(){ return {}; });
     if (!resp.ok || !data.ok) throw new Error((data && data.error) || ('HTTP ' + resp.status));
     renderResults(keyword, data.items || []);
+    // 연령별 관심도는 별도 API(데이터랩)라 실패해도 검색량 결과 자체는 그대로 두고, 카드만 숨긴다.
+    var firstKeyword = keyword.split(',')[0].trim();
+    if (firstKeyword) fetchAgeTrend(firstKeyword);
   }catch(e){
     console.error('키워드 조회 실패', e);
     showError('❌ 조회 실패: ' + (e.message || e));
@@ -241,6 +260,41 @@ async function doSearch(){
     btn.disabled = false;
     btn.textContent = origText;
   }
+}
+
+async function fetchAgeTrend(keyword){
+  var card = document.getElementById('ageCard');
+  try{
+    var resp = await fetch(
+      SUPABASE_URL + '/functions/v1/keyword-age-trend?keyword=' + encodeURIComponent(keyword),
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
+    );
+    var data = await resp.json().catch(function(){ return {}; });
+    if (!resp.ok || !data.ok) throw new Error((data && data.error) || ('HTTP ' + resp.status));
+    renderAgeChart(keyword, data.ages || []);
+  }catch(e){
+    console.error('연령별 관심도 조회 실패(검색량 결과에는 영향 없음)', e);
+    card.style.display = 'none';
+  }
+}
+
+function renderAgeChart(keyword, ages){
+  var card = document.getElementById('ageCard');
+  var known = ages.filter(function(a){ return a.sharePct != null; });
+  if (!known.length){
+    card.style.display = 'none';
+    return;
+  }
+  document.getElementById('ageCardSub').textContent = '"' + keyword + '" 기준 · 네이버 데이터랩 (근사치)';
+  document.getElementById('ageChart').innerHTML = known.map(function(a){
+    var w = Math.max(4, Math.round(a.sharePct));
+    return '<div class="barRow" title="' + escapeHtml(a.label) + ' ' + a.sharePct + '%">' +
+      '<span class="label">' + escapeHtml(a.label) + '</span>' +
+      '<span class="barTrack"><span class="barFill" style="width:' + w + '%"></span></span>' +
+      '<span class="val">' + a.sharePct + '%</span>' +
+    '</div>';
+  }).join('');
+  card.style.display = 'block';
 }
 
 function renderResults(keyword, items){
