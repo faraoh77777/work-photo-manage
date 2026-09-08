@@ -125,6 +125,10 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
       <a class="link-btn" href="gallery/index.html">사진/일보 갤러리 열기</a>
     </div>
 
+    <!-- 작업지시 공유 기능: 백엔드(Supabase 테이블·Edge Function 2개) 미배포 상태라
+         이번 원스토어 배포에서는 빼고 다음 업그레이드 때 다시 넣기로 함(2026-09-08).
+         코드/화면(share.html)과 아래 카드 3개는 그대로 남겨두고 진입점만 주석 처리 —
+         나중에 배포 끝나면 이 주석만 풀면 됨.
     <div class="card">
       <div class="card-title">작업지시 공유</div>
       <div class="hint">현장 사진과 작업지시 내용을 카톡·이메일로 보냅니다. (근로자도 사용 가능)</div>
@@ -160,6 +164,7 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
       <div class="card-title">작업지시 발송 기록 <span class="cnt" id="sentSharesCount">0</span></div>
       <div id="sentSharesList"></div>
     </div>
+    -->
   </div>
 
 </div>
@@ -394,8 +399,10 @@ async function initAdmin(){
   // 화면이 잠깐이라도 잘못 보일 수 있었다 — Supabase에서 실제 값을 받아온 뒤에만 그린다.
   renderPendingMembers();
   await fetchSettingsFromSupabase();
-  renderRecipients();
-  renderSentShares();
+  // 작업지시 공유 카드를 숨긴 동안(위 HTML 주석 참고) 이 둘도 같이 꺼둔다 — 화면에
+  // 없는 recipChips/sentSharesList를 채우려다 null 참조 에러만 날 뿐이라 호출 자체를 뺌.
+  // renderRecipients();
+  // renderSentShares();
 }
 
 // ── 📧 수신자 관리 (share_recipients) — gallery/share.html의 이메일 수신자 목록 ──
