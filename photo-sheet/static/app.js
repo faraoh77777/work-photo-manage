@@ -684,6 +684,26 @@ const companyNameInput = document.getElementById("companyName");
 const workTitleInput = document.getElementById("workTitle");
 const supabaseUrlInput = document.getElementById("supabaseUrl");
 const supabaseKeyInput = document.getElementById("supabaseKey");
+const fileNameInput = document.getElementById("fileNameInput");
+
+// ── 파일 이름(2026-09-08 요청) ──────────────────────────
+// "사진관리 구분"을 고르면 자동으로 그 이름으로 채워두되, 사용자가 직접 파일 이름을
+// 고친 뒤에는(예: 특정 도면번호로 저장하고 싶을 때) 더 이상 자동으로 덮어쓰지 않는다.
+let fileNameManuallyEdited = false;
+fileNameInput.addEventListener("input", () => { fileNameManuallyEdited = true; });
+function defaultFileName() {
+  return (workTitleInput.value || "").trim() ? `${workTitleInput.value.trim()}_사진대지` : "사진대지";
+}
+function refreshDefaultFileName() {
+  if (fileNameManuallyEdited && fileNameInput.value.trim()) return;
+  fileNameInput.value = defaultFileName();
+  fileNameManuallyEdited = false;
+}
+// Windows에서 파일명에 못 쓰는 문자만 지우고, 비어있으면 기본값으로 되돌린다.
+function sanitizeFileName(name) {
+  const cleaned = (name || "").replace(/[\\/:*?"<>|]/g, "").trim();
+  return cleaned || defaultFileName();
+}
 
 function updateHdrProjectCompany() {
   const t = [projectNameInput.value, companyNameInput.value].filter(Boolean).join(" · ");
@@ -702,6 +722,7 @@ async function loadSettings() {
   supabaseKeyInput.value = data.supabase_key || "";
   updateSupabaseClient(data.supabase_url, data.supabase_key);
   updateHdrProjectCompany();
+  refreshDefaultFileName();
 }
 
 async function saveSettings() {
@@ -722,7 +743,7 @@ async function saveSettings() {
 
 projectNameInput.addEventListener("blur", saveSettings);
 companyNameInput.addEventListener("blur", saveSettings);
-workTitleInput.addEventListener("change", saveSettings);
+workTitleInput.addEventListener("change", () => { refreshDefaultFileName(); saveSettings(); });
 supabaseUrlInput.addEventListener("blur", saveSettings);
 supabaseKeyInput.addEventListener("blur", saveSettings);
 
@@ -878,10 +899,16 @@ async function download(format) {
     });
     if (!res.ok) throw new Error(await res.text());
     const blob = await res.blob();
-    const filename = filenameFromDisposition(
-      res.headers.get("Content-Disposition"),
-      format === "xlsx" ? "사진대지.xlsx" : "사진대지.pdf"
-    );
+    // 사용자가 "파일 이름" 칸에 직접 적어둔 이름을 우선 쓴다(2026-09-08 요청) —
+    // 비어있으면 예전처럼 서버가 만들어준 이름(Content-Disposition)을 그대로 쓴다.
+    const ext = format === "xlsx" ? "xlsx" : "pdf";
+    const customName = fileNameInput.value.trim();
+    const filename = customName
+      ? `${sanitizeFileName(customName)}.${ext}`
+      : filenameFromDisposition(
+          res.headers.get("Content-Disposition"),
+          format === "xlsx" ? "사진대지.xlsx" : "사진대지.pdf"
+        );
 
     if (supportsFsAccess && saveDirHandle) {
       const fileHandle = await saveDirHandle.getFileHandle(filename, { create: true });
