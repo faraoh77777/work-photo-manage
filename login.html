@@ -169,6 +169,24 @@ var LEGACY_DEFAULT_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
 // 오가는 운영자가 로그인 화면에서 드롭다운으로 바로 전환할 수 있게 하기 위함.
 function loadSiteList(){ try{ return JSON.parse(localStorage.getItem('site_list'))||[]; }catch(e){ return []; } }
 function saveSiteList(list){ localStorage.setItem('site_list',JSON.stringify(list)); }
+
+// 이 기기의 localStorage 기록과는 별개로, "어느 현장이 존재하는지"를 모든 기기/브라우저가
+// 공통으로 알 수 있도록 레거시(기본) Supabase에 site_registry 테이블을 두고 공유한다.
+// PC에서 만든 현장이 모바일에도 보이고, 그 반대도 되게 하기 위함(2026-09-10 추가).
+var registryClient=null;
+try{ registryClient=supabase.createClient(LEGACY_DEFAULT_URL,LEGACY_DEFAULT_KEY); }catch(e){console.error('레지스트리 클라이언트 초기화 실패',e);}
+async function pushToRegistry(url,key,name){
+  if(!registryClient)return;
+  try{ await registryClient.from('site_registry').upsert({url:url,key:key,name:name||null},{onConflict:'url'}); }
+  catch(e){console.error('현장 레지스트리 등록 실패',e);}
+}
+async function fetchRegistrySites(){
+  if(!registryClient)return[];
+  try{
+    var res=await registryClient.from('site_registry').select('url,key,name');
+    return (res.error||!res.data)?[]:res.data;
+  }catch(e){return[];}
+}
 function registerSite(url,key,name){
   if(!url||!key||url===LEGACY_DEFAULT_URL)return;
   var list=loadSiteList();
@@ -176,6 +194,7 @@ function registerSite(url,key,name){
   var entry={url:url,key:key,name:name||''};
   if(idx>=0)list[idx]=entry; else list.push(entry);
   saveSiteList(list);
+  pushToRegistry(url,key,name);
 }
 
 // ── 초대 링크(?site=...)로 들어온 경우, 그 현장의 Supabase로 연결 정보를 갈아끼운다 ──
@@ -217,9 +236,18 @@ try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }catch(e){consol
 // 전에 이미 연결해둔 경우 등) 지금 등록해서 선택 목록에 뒤늦게라도 나타나게 한다.
 registerSite(SUPABASE_URL,SUPABASE_KEY,localStorage.getItem('site_name'));
 
-function renderSiteSelector(){
+async function renderSiteSelector(){
   var wrap=document.getElementById('siteSelectWrap');
-  var all=[{url:LEGACY_DEFAULT_URL,key:LEGACY_DEFAULT_KEY,name:'대선이엔씨(주) 기본현장'}].concat(loadSiteList());
+  var localList=loadSiteList();
+  var serverList=await fetchRegistrySites();
+  // 서버 목록과 이 기기의 로컬 목록을 url 기준으로 합친다(서버가 최신 정보 우선).
+  var merged=localList.slice();
+  serverList.forEach(function(s){
+    var idx=merged.findIndex(function(m){return m.url===s.url;});
+    if(idx>=0)merged[idx]=s; else merged.push(s);
+  });
+  saveSiteList(merged); // 오프라인일 때도 마지막으로 합쳐진 목록이 남아있도록 로컬에도 반영
+  var all=[{url:LEGACY_DEFAULT_URL,key:LEGACY_DEFAULT_KEY,name:'대선이엔씨(주) 기본현장'}].concat(merged);
   if(all.length<2){wrap.style.display='none';return;}
   var sel=document.getElementById('siteSelect');
   sel.innerHTML=all.map(function(s,i){return '<option value="'+i+'">'+(s.name||s.url)+'</option>';}).join('');

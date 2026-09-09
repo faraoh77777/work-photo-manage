@@ -241,8 +241,14 @@ function resetToDefault(){
 
 // login.html의 "운영자 선택 로그인" 드롭다운이 읽는 것과 같은 site_list에
 // 이 현장을 등록해서, 연결 직후부터 선택 목록에 나타나게 한다.
+// 이 기기의 localStorage뿐 아니라 레거시(기본) Supabase의 site_registry 테이블에도
+// 등록해서, 다른 기기/브라우저에서도 이 현장이 login.html 드롭다운에 보이게 한다
+// (PC에서 만든 현장이 모바일에 안 보이던 문제 해결, 2026-09-10).
 var LEGACY_DEFAULT_URL_FOR_LIST='https://dteljgmdbfyxubtpogcj.supabase.co';
-function registerSiteInList(url,key,name){
+var LEGACY_DEFAULT_KEY_FOR_LIST='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
+var registryClient=null;
+try{ registryClient=supabase.createClient(LEGACY_DEFAULT_URL_FOR_LIST,LEGACY_DEFAULT_KEY_FOR_LIST); }catch(e){console.error('레지스트리 클라이언트 초기화 실패',e);}
+async function registerSiteInList(url,key,name){
   if(!url||!key||url===LEGACY_DEFAULT_URL_FOR_LIST)return;
   try{
     var list=JSON.parse(localStorage.getItem('site_list'))||[];
@@ -251,6 +257,10 @@ function registerSiteInList(url,key,name){
     if(idx>=0)list[idx]=entry; else list.push(entry);
     localStorage.setItem('site_list',JSON.stringify(list));
   }catch(e){}
+  if(registryClient){
+    try{ await registryClient.from('site_registry').upsert({url:url,key:key,name:name||null},{onConflict:'url'}); }
+    catch(e){console.error('현장 레지스트리 등록 실패',e);}
+  }
 }
 
 function extractProjectRef(url){
@@ -315,7 +325,7 @@ async function testAndSave(){
     localStorage.setItem('site_supabase_url',url);
     localStorage.setItem('site_supabase_key',key);
     if(name)localStorage.setItem('site_name',name);
-    registerSiteInList(url,key,name);
+    await registerSiteInList(url,key,name);
     if(isEmptySite){
       localStorage.setItem('site_setup_creator','1');
       showStatus('ok','연결 확인 완료! 새 현장으로 연결되었습니다. 잠시 후 회원가입 화면으로 이동합니다 — 다음 가입자(본인)가 이 현장의 운영자로 자동 등록됩니다.');
