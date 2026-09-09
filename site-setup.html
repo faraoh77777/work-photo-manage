@@ -239,6 +239,20 @@ function resetToDefault(){
   alert('현장 연결을 해제했습니다.');
 }
 
+// login.html의 "운영자 선택 로그인" 드롭다운이 읽는 것과 같은 site_list에
+// 이 현장을 등록해서, 연결 직후부터 선택 목록에 나타나게 한다.
+var LEGACY_DEFAULT_URL_FOR_LIST='https://dteljgmdbfyxubtpogcj.supabase.co';
+function registerSiteInList(url,key,name){
+  if(!url||!key||url===LEGACY_DEFAULT_URL_FOR_LIST)return;
+  try{
+    var list=JSON.parse(localStorage.getItem('site_list'))||[];
+    var idx=list.findIndex(function(s){return s.url===url;});
+    var entry={url:url,key:key,name:name||''};
+    if(idx>=0)list[idx]=entry; else list.push(entry);
+    localStorage.setItem('site_list',JSON.stringify(list));
+  }catch(e){}
+}
+
 function extractProjectRef(url){
   var m=String(url||'').trim().match(/^https?:\/\/([a-z0-9-]+)\.supabase\.co/i);
   return m?m[1]:null;
@@ -301,6 +315,7 @@ async function testAndSave(){
     localStorage.setItem('site_supabase_url',url);
     localStorage.setItem('site_supabase_key',key);
     if(name)localStorage.setItem('site_name',name);
+    registerSiteInList(url,key,name);
     if(isEmptySite){
       localStorage.setItem('site_setup_creator','1');
       showStatus('ok','연결 확인 완료! 새 현장으로 연결되었습니다. 잠시 후 회원가입 화면으로 이동합니다 — 다음 가입자(본인)가 이 현장의 운영자로 자동 등록됩니다.');
