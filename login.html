@@ -305,12 +305,21 @@ if(IS_DEFAULT_SITE){
 // 이미 로그인된 경우 바로 이동
 if(localStorage.getItem('member_id')){location.href='index.html';}
 
+function mostCommon(arr){
+  if(!arr.length)return '';
+  var counts={};
+  arr.forEach(function(v){counts[v]=(counts[v]||0)+1;});
+  return Object.keys(counts).reduce(function(a,b){return counts[a]>=counts[b]?a:b;});
+}
+
 async function loadSignupOptions(){
   try{
     var res=await sbClient.from('members').select('company,project');
     if(res.error||!res.data)return;
-    var companies=Array.from(new Set(res.data.map(function(r){return r.company;}).filter(Boolean)));
-    var projects=Array.from(new Set(res.data.map(function(r){return r.project;}).filter(Boolean)));
+    var rawCompanies=res.data.map(function(r){return r.company;}).filter(Boolean);
+    var rawProjects=res.data.map(function(r){return r.project;}).filter(Boolean);
+    var companies=Array.from(new Set(rawCompanies));
+    var projects=Array.from(new Set(rawProjects));
     function toOptions(list){
       return list.map(function(v){
         var o=document.createElement('option');
@@ -320,6 +329,15 @@ async function loadSignupOptions(){
     }
     document.getElementById('companyList').innerHTML=toOptions(companies);
     document.getElementById('projectList').innerHTML=toOptions(projects);
+    // 커스텀(신규) 현장은 회사명/프로젝트명을 하드코딩해두지 않으므로, 이미 가입된
+    // 회원이 있으면 그 값(가장 흔한 값)을 기본값으로 채워준다 — 새 가입자가 매번
+    // 회사명·프로젝트명을 직접 입력해야 했던 불편 해소(2026-09-10).
+    if(!IS_DEFAULT_SITE){
+      var companyEl=document.getElementById('regCompany');
+      var projectEl=document.getElementById('regProject');
+      if(!companyEl.value&&rawCompanies.length)companyEl.value=mostCommon(rawCompanies);
+      if(!projectEl.value&&rawProjects.length)projectEl.value=mostCommon(rawProjects);
+    }
   }catch(e){console.error('가입 옵션 로드 실패',e);}
 }
 loadSignupOptions();
