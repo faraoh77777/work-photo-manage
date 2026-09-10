@@ -188,6 +188,25 @@ if(SUPABASE_URL&&SUPABASE_KEY){
   try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }catch(e){console.error("Supabase 초기화 실패",e);}
 }
 
+// ── 현장 폐쇄 감지 (index.html과 동일, 2026-09-10 추가) ──
+// 관리자 화면을 계속 켜둔 채 쓰는 사람도 현장 폐쇄를 알 수 있도록 확인.
+var LEGACY_DEFAULT_URL_FOR_CLOSE_CHECK='https://dteljgmdbfyxubtpogcj.supabase.co';
+var LEGACY_DEFAULT_KEY_FOR_CLOSE_CHECK='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
+var closeCheckClient=null;
+try{ closeCheckClient=supabase.createClient(LEGACY_DEFAULT_URL_FOR_CLOSE_CHECK,LEGACY_DEFAULT_KEY_FOR_CLOSE_CHECK); }catch(e){}
+async function checkSiteClosed(){
+  if(!closeCheckClient||!SUPABASE_URL||SUPABASE_URL===LEGACY_DEFAULT_URL_FOR_CLOSE_CHECK)return;
+  if(!localStorage.getItem('member_id'))return;
+  try{
+    var res=await closeCheckClient.from('site_registry').select('name,closed').eq('url',SUPABASE_URL).maybeSingle();
+    if(res.data&&res.data.closed){
+      alert((res.data.name||'이 현장')+'은 완료되어 종료(폐쇄)되었습니다.');
+      ['site_supabase_url','site_supabase_key','site_name','member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','senderName'].forEach(function(k){localStorage.removeItem(k);});
+      location.href='login.html';
+    }
+  }catch(e){console.error('현장 폐쇄 확인 실패',e);}
+}
+
 function showT(m){var t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none';},2500);}
 function showTE(m){var t=document.getElementById('toastE');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none';},6000);}
 
@@ -210,6 +229,7 @@ function showTE(m){var t=document.getElementById('toastE');t.textContent=m;t.sty
   document.getElementById('hdrCompany').textContent=localStorage.getItem('member_company')||'';
   document.getElementById('adminBody').style.display='block';
   initAdmin();
+  checkSiteClosed();
 })();
 
 // ── 작업분류/구역 데이터 (index.html과 동일한 저장 구조를 그대로 씀) ──
