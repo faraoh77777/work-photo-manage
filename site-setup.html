@@ -332,8 +332,11 @@ async function testAndSave(){
     var res=await testClient.from('members').select('id').limit(1);
     if(res.error){
       var msg=res.error.message||'';
-      if(msg.toLowerCase().includes('relation')&&msg.toLowerCase().includes('does not exist')){
-        showStatus('err','아직 설정 SQL을 실행하지 않은 것 같습니다. ②단계의 SQL을 먼저 실행해 주세요.');
+      var lowerMsg=msg.toLowerCase();
+      var tableMissing=(lowerMsg.includes('relation')&&lowerMsg.includes('does not exist'))
+        ||(lowerMsg.includes('could not find the table')||lowerMsg.includes('schema cache'));
+      if(tableMissing){
+        showStatus('err','아직 설정 SQL을 실행하지 않았거나, 방금 실행해서 반영에 몇 초 걸리는 것 같습니다. ②단계의 SQL을 실행하셨다면 잠시 후 다시 눌러 주세요.');
       }else{
         showStatus('err','연결 실패: '+msg);
       }
