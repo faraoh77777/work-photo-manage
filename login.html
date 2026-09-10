@@ -315,6 +315,19 @@ if(IS_DEFAULT_SITE){
   document.getElementById('regProject').value='S-OIL SHAHEEN Project 계장공사 3공구(PKG-1)';
 }
 
+// 이 기기에서 쓰던 사람의 이름/전화번호를 기억해뒀다가 새 현장 가입폼에 채워준다.
+// (현장을 전환할 때마다 지워지는 member_name/member_phone과는 별개 키 — 회사/현장은
+// 매번 다를 수 있어도 "이 사람이 누구인지"는 안 바뀌므로, 여러 현장을 연달아 개설/가입하는
+// 사람이 매번 이름·전화번호까지 새로 치지 않아도 되게 하기 위함. 2026-09-10 추가.)
+(function(){
+  try{
+    var rn=localStorage.getItem('remembered_name');
+    var rp=localStorage.getItem('remembered_phone');
+    if(rn)document.getElementById('regName').value=rn;
+    if(rp)document.getElementById('regPhone').value=rp;
+  }catch(e){}
+})();
+
 // 이미 로그인된 경우 바로 이동
 if(localStorage.getItem('member_id')){location.href='index.html';}
 
@@ -540,6 +553,9 @@ async function doSignup(){
     }
   }
   if(isSiteCreator)localStorage.removeItem('site_setup_creator');
+  // 승인 대기라 아직 로그인은 안 시키더라도, 이 사람의 이름/전화번호는 기억해서
+  // 다음에 다른 현장에 또 가입할 때 매번 새로 치지 않아도 되게 한다.
+  try{ localStorage.setItem('remembered_name',name); localStorage.setItem('remembered_phone',phone); }catch(e){}
   if(autoPromote){
     // 현장 개설자(또는 완전히 빈 현장의 첫 가입자)는 바로 로그인까지 시켜준다.
     saveSession(res.data);
@@ -566,6 +582,7 @@ function saveSession(m){
   if(m.category) localStorage.setItem('member_category',m.category);
   localStorage.setItem('member_role',m.role||'근로자');
   localStorage.setItem('member_main_menu',m.main_menu||'시공');
+  try{ localStorage.setItem('remembered_name',m.name); localStorage.setItem('remembered_phone',m.phone); }catch(e){}
 }
 
 function showT(m){var t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none';},2500);}
