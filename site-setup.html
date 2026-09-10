@@ -69,7 +69,8 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
       <div class="cur-site-badge" id="curSiteBadge">-</div>
     </div>
     <div class="hint" id="curSiteHint"></div>
-    <button class="btn btn-danger-outline" id="resetBtn" style="display:none;margin-top:10px;" onclick="resetToDefault()">이 기기의 현장 연결 해제하기</button>
+    <button class="btn btn-danger-outline" id="closeBtn" style="display:none;margin-top:10px;" onclick="closeSite()">이 현장 폐쇄하기 (종료 안내 띄우기)</button>
+    <button class="btn btn-danger-outline" id="resetBtn" style="display:none;margin-top:8px;" onclick="resetToDefault()">이 기기의 현장 연결 해제하기</button>
   </div>
 
   <!-- 새 현장 만들기 -->
@@ -214,6 +215,7 @@ function refreshCurrentSiteUI(){
   badge.textContent=isConnected?'연결됨':'미연결';
   badge.className='cur-site-badge '+(isConnected?'badge-custom':'badge-default');
   document.getElementById('curSiteHint').textContent=isConnected?url:'현장을 새로 만들거나 초대 링크를 받아야 로그인·촬영 전송 등 모든 기능을 쓸 수 있습니다.';
+  document.getElementById('closeBtn').style.display=isConnected?'block':'none';
   document.getElementById('resetBtn').style.display=isConnected?'block':'none';
   document.getElementById('inviteCard').style.display=isConnected?'block':'none';
 }
@@ -266,6 +268,24 @@ async function registerSiteInList(url,key,name){
     try{ await registryClient.from('site_registry').upsert({url:url,key:key,name:name||null},{onConflict:'url'}); }
     catch(e){console.error('현장 레지스트리 등록 실패',e);}
   }
+}
+
+// ── 현장 폐쇄(2026-09-10) ──────────────────────────────────────────
+// Supabase 프로젝트 자체를 지우면 로그인 시도한 사람에게 그냥 "연결 실패"로만
+// 보여서 헷갈린다. 프로젝트를 지우기 전에 이걸 먼저 눌러두면, site_registry에
+// closed=true로 표시되어 login.html이 "완료되어 종료(폐쇄)되었습니다" 안내를
+// 띄우고 현장 선택 목록에서도 자동으로 빠진다. Supabase 데이터 자체는
+// 안 지워지므로, 완전히 지우려면 별도로 프로젝트/조직을 삭제해야 한다.
+async function closeSite(){
+  var url=localStorage.getItem('site_supabase_url');
+  var name=localStorage.getItem('site_name');
+  if(!url||url===LEGACY_DEFAULT_URL_FOR_LIST){alert('기본 현장은 폐쇄할 수 없습니다.');return;}
+  if(!registryClient){alert('레지스트리 연결에 실패해서 폐쇄할 수 없습니다.');return;}
+  if(!confirm('이 현장("'+(name||url)+'")을 폐쇄할까요?\n\n앞으로 이 현장으로 로그인을 시도하는 모든 사람에게 "완료되어 종료되었습니다" 안내가 뜨고, 현장 선택 목록에서도 사라집니다.\n(Supabase에 저장된 사진·회원 데이터 자체는 지워지지 않습니다 — 완전히 지우려면 이용 가이드의 "현장 종료" 안내대로 Supabase 프로젝트를 별도로 삭제하세요.)'))return;
+  try{
+    await registryClient.from('site_registry').update({closed:true}).eq('url',url);
+    alert('현장을 폐쇄했습니다.');
+  }catch(e){alert('폐쇄 실패: '+(e&&e.message||''));}
 }
 
 function extractProjectRef(url){
