@@ -359,6 +359,28 @@ if(SUPABASE_URL&&SUPABASE_KEY){
   catch(e){ console.error('Supabase 초기화 실패',e); }
 }
 
+// ── 현장 폐쇄 감지 (2026-09-10 추가) ──────────────────────────────────
+// login.html의 폐쇄 안내는 "로그인 화면을 새로 열 때"만 동작해서, 이미 로그인한 채
+// 이 화면(촬영 화면)만 계속 쓰는 사람은 관리자가 현장을 폐쇄해도 알 방법이 없었다.
+// 레거시 기본과는 별개 클라이언트로 site_registry를 확인해서, 폐쇄됐으면 로그아웃
+// 처리하고 안내 후 로그인 화면으로 보낸다.
+var LEGACY_DEFAULT_URL_FOR_CLOSE_CHECK='https://dteljgmdbfyxubtpogcj.supabase.co';
+var LEGACY_DEFAULT_KEY_FOR_CLOSE_CHECK='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
+var closeCheckClient=null;
+try{ closeCheckClient=supabase.createClient(LEGACY_DEFAULT_URL_FOR_CLOSE_CHECK,LEGACY_DEFAULT_KEY_FOR_CLOSE_CHECK); }catch(e){}
+async function checkSiteClosed(){
+  if(!closeCheckClient||!SUPABASE_URL||SUPABASE_URL===LEGACY_DEFAULT_URL_FOR_CLOSE_CHECK)return;
+  if(!localStorage.getItem('member_id'))return; // 로그인 안 된 상태는 login.html 진입 시 알아서 처리됨
+  try{
+    var res=await closeCheckClient.from('site_registry').select('name,closed').eq('url',SUPABASE_URL).maybeSingle();
+    if(res.data&&res.data.closed){
+      alert((res.data.name||'이 현장')+'은 완료되어 종료(폐쇄)되었습니다.');
+      ['site_supabase_url','site_supabase_key','site_name','member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','senderName'].forEach(function(k){localStorage.removeItem(k);});
+      location.href='login.html';
+    }
+  }catch(e){console.error('현장 폐쇄 확인 실패',e);}
+}
+
 // ── 인증 체크 / 로컬 전용 모드 분기 ─────────────────────
 (function(){
   if(!localStorage.getItem('member_id')){
@@ -383,6 +405,7 @@ if(SUPABASE_URL&&SUPABASE_KEY){
     if(tabsCard) tabsCard.style.display='none';
   }
 })();
+checkSiteClosed();
 
 // 서버에 연결된 현장이 없는 기기에서 쓰는 최소 모드 — 로그인 없이 촬영/로컬저장/카톡전송만 가능.
 // (버튼 자체를 숨기므로 sendToSupabase 안의 sbClient 널 체크는 방어용으로만 남겨둠.)
@@ -1869,6 +1892,9 @@ if('serviceWorker' in navigator){
         // 끊거나 재웠을 때), 다시 포그라운드로 돌아올 때마다 설정을 한 번 더 조회해서
         // 놓친 변경사항이 있으면 잡아낸다.
         fetchSettingsFromSupabase();
+        // 앱을 계속 켜둔 채(백그라운드) 있는 동안 관리자가 현장을 폐쇄했을 수도 있으니,
+        // 포그라운드로 돌아올 때마다 다시 확인한다.
+        checkSiteClosed();
       }
     });
     reg.update();
