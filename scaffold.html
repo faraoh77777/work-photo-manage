@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>AI 비계 물량산출</title>
+<link rel="icon" type="image/png" sizes="192x192" href="Work%20photo_icon/icon-192.png"/>
+<style>
+:root{--brand-1:#1E3A5F;--brand-2:#2E5F9E;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:100vh;padding:8px;font-size:17px;}
+.wrap{max-width:460px;margin:0 auto;}
+.app-header{background:linear-gradient(135deg,var(--brand-1),var(--brand-2));border-radius:12px;
+  padding:10px 14px;margin-bottom:8px;color:#fff;display:flex;align-items:center;gap:10px;}
+.back-btn{color:#fff;text-decoration:none;font-size:20px;line-height:1;padding:4px;}
+.app-title{font-size:20px;font-weight:800;letter-spacing:0.5px;}
+.app-sub{font-size:11px;opacity:0.75;margin-top:1px;}
+.card{background:#fff;border:1px solid #D1DCE8;border-radius:12px;
+  padding:10px 12px;margin-bottom:8px;box-shadow:0 2px 6px rgba(0,0,0,0.06);}
+.flbl{font-size:11px;font-weight:700;color:#5A7A9A;letter-spacing:0.5px;
+  text-transform:uppercase;margin-bottom:4px;margin-top:8px;}
+.flbl:first-child{margin-top:0;}
+.f{width:100%;background:#F7FAFC;border:1.5px solid #C8D8E8;border-radius:8px;
+  padding:9px 11px;color:#1A2332;font-size:17px;outline:none;font-family:Arial;}
+.f:focus{border-color:var(--brand-2);background:#fff;}
+.f[readonly]{background:#EAF0F8;color:#5A7A9A;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.menu-tabs{display:flex;gap:6px;}
+.menu-tab{flex:1;padding:10px 6px;border:1.5px solid #C8D8E8;background:#F7FAFC;color:#5A7A9A;
+  border-radius:8px;font-size:14px;font-weight:800;cursor:pointer;text-align:center;}
+.menu-tab.active{background:var(--brand-2);border-color:var(--brand-2);color:#fff;}
+.cam-box{width:100%;padding:22px 10px;background:#EAF0F8;border:2px dashed #A0BBD4;
+  border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;text-align:center;}
+.cam-box p{font-size:15px;color:#7A9AB8;margin-top:4px;font-weight:700;}
+.cam-box .icon{font-size:26px;}
+.cap-row{display:flex;gap:8px;margin-top:8px;}
+.cap-row .cam-box{flex:1;padding:14px 8px;}
+.cam-area{position:relative;width:100%;border-radius:10px;overflow:hidden;background:#000;}
+.cam-area img,.cam-area video{display:block;width:100%;height:auto;}
+.cam-area canvas{position:absolute;left:0;top:0;width:100%;height:100%;}
+#scfWorkArea{display:none;}
+.ai-badge{display:inline-block;font-size:12px;font-weight:800;border-radius:6px;padding:3px 8px;margin-top:6px;}
+.ai-badge.high{background:#DFF5E1;color:#1E7B34;}
+.ai-badge.medium{background:#FDF3E3;color:#8A6D1E;}
+.ai-badge.low{background:#FCE4E4;color:#B23A3A;}
+.ai-badge.wait{background:#E8EEF4;color:#5A7A9A;}
+.ai-notes{font-size:12px;color:#7A9AB8;margin-top:4px;line-height:1.5;}
+button.btn{width:100%;background:var(--brand-2);color:#fff;border:none;border-radius:8px;
+  padding:12px;font-size:16px;font-weight:800;cursor:pointer;margin-top:6px;}
+button.btn:disabled{background:#B7C7D8;cursor:not-allowed;}
+button.btn-ghost{background:#fff;border:1.5px solid #C8D8E8;color:#5A7A9A;}
+.help{font-size:12px;color:#7A9AB8;line-height:1.6;margin-top:4px;}
+#toast,#toastE{display:none;position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+  color:#fff;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:700;z-index:99999;
+  max-width:90%;text-align:center;}
+#toast{background:#1E7B34;}
+#toastE{background:#B23A3A;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="app-header">
+  <a class="back-btn" href="index.html">&#8592;</a>
+  <div style="min-width:0;flex:1;">
+    <div class="app-title">AI 비계 물량산출</div>
+    <div class="app-sub" id="hdrProject"></div>
+  </div>
+</div>
+
+<div class="card" style="padding:8px;">
+  <div class="menu-tabs">
+    <button type="button" class="menu-tab active" id="btnModeInstalled" onclick="setMode('installed')">설치 후 실측</button>
+    <button type="button" class="menu-tab" id="btnModePlanned" onclick="setMode('planned')">설치 예정 미리보기</button>
+  </div>
+</div>
+
+<!-- 설치 후 실측 모드 -->
+<div id="panelInstalled">
+
+  <div class="card" id="captureCard">
+    <div class="flbl">사진</div>
+    <div class="cap-row">
+      <label class="cam-box" for="scfFileInput">
+        <div class="icon">&#128247;</div><p>탭하여 촬영</p>
+      </label>
+      <label class="cam-box" for="scfGalleryInput">
+        <div class="icon">&#128193;</div><p>갤러리 선택</p>
+      </label>
+    </div>
+    <input type="file" id="scfFileInput" accept="image/*" capture="environment" style="display:none"/>
+    <input type="file" id="scfGalleryInput" accept="image/*" style="display:none"/>
+
+    <div id="scfWorkArea" class="cam-area"><img id="scfImg" alt=""/><canvas id="scfCanvas"></canvas></div>
+    <div id="scfAiStatus" style="display:none;">
+      <span class="ai-badge wait" id="scfAiBadge">분석 대기</span>
+      <div class="ai-notes" id="scfAiNotes"></div>
+    </div>
+    <button type="button" class="btn btn-ghost" id="scfRetakeBtn" style="display:none;" onclick="retakePhoto()">다시 촬영</button>
+    <div class="help">모서리 4점을 드래그해 비계 영역에 맞추고, 칸/단 경계선은 드래그로 위치 조정·빈 칸 탭으로 추가·선 탭(또는 길게 눌러)으로 삭제할 수 있습니다.</div>
+  </div>
+
+  <div class="card" id="gridCard" style="display:none;">
+    <div class="flbl">칸수 / 단수 / 폭(m)</div>
+    <div class="row3">
+      <input type="number" class="f" id="scfSpanCount" min="1" step="1"/>
+      <input type="number" class="f" id="scfLevelCount" min="1" step="1"/>
+      <input type="number" class="f" id="scfWidthM" min="0.1" step="0.1"/>
+    </div>
+    <div class="flbl">가로(m) / 높이(m) / 체적(㎥)</div>
+    <div class="row3">
+      <input type="text" class="f" id="scfLengthOut" readonly/>
+      <input type="text" class="f" id="scfHeightOut" readonly/>
+      <input type="text" class="f" id="scfVolumeOut" readonly/>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="flbl">현장명</div>
+    <input type="text" class="f" id="scfSite" placeholder="현장명"/>
+    <div class="flbl">공종</div>
+    <input type="text" class="f" id="scfWorkType" placeholder="예: 비계 설치"/>
+    <div class="flbl">위치</div>
+    <input type="text" class="f" id="scfLocation" placeholder="예: 동측 외벽"/>
+    <div class="flbl">작업자</div>
+    <input type="text" class="f" id="scfWorker" placeholder="작업자명"/>
+  </div>
+
+  <button type="button" class="btn" id="scfSaveBtn" onclick="saveRecord()" disabled>저장</button>
+</div>
+
+<!-- 설치 예정 미리보기 모드 -->
+<div id="panelPlanned" style="display:none;">
+
+  <div class="card" id="plnCaptureCard">
+    <div class="flbl">카메라</div>
+    <div id="plnCamArea" class="cam-area">
+      <video id="plnVideo" autoplay playsinline muted></video>
+      <canvas id="plnCanvas" style="display:none;"></canvas>
+      <img id="plnPreviewImg" style="display:none;" alt=""/>
+    </div>
+    <button type="button" class="btn" id="plnStartBtn" onclick="startPlannedCamera()">카메라 시작</button>
+    <button type="button" class="btn" id="plnCaptureBtn" style="display:none;" onclick="capturePlanned()">캡처</button>
+    <button type="button" class="btn btn-ghost" id="plnRetakeBtn" style="display:none;" onclick="retakePlanned()">다시 촬영</button>
+    <div class="help">카메라를 시작한 뒤 모서리를 드래그해 비계를 설치할 영역을 지정하고, 칸/단 경계선을 탭·드래그로 조정한 뒤 캡처하세요. AI 분석은 이 모드에서 사용하지 않습니다.</div>
+  </div>
+
+  <div class="card" id="plnGridCard" style="display:none;">
+    <div class="flbl">칸수 / 단수 / 폭(m)</div>
+    <div class="row3">
+      <input type="number" class="f" id="plnSpanCount" min="1" step="1"/>
+      <input type="number" class="f" id="plnLevelCount" min="1" step="1"/>
+      <input type="number" class="f" id="plnWidthM" min="0.1" step="0.1"/>
+    </div>
+    <div class="flbl">가로(m) / 높이(m) / 체적(㎥)</div>
+    <div class="row3">
+      <input type="text" class="f" id="plnLengthOut" readonly/>
+      <input type="text" class="f" id="plnHeightOut" readonly/>
+      <input type="text" class="f" id="plnVolumeOut" readonly/>
+    </div>
+  </div>
+
+  <div class="card" id="plnMetaCard" style="display:none;">
+    <div class="flbl">현장명</div>
+    <input type="text" class="f" id="plnSite" placeholder="현장명"/>
+    <div class="flbl">공종</div>
+    <input type="text" class="f" id="plnWorkType" placeholder="예: 비계 설치"/>
+    <div class="flbl">위치</div>
+    <input type="text" class="f" id="plnLocation" placeholder="예: 동측 외벽"/>
+    <div class="flbl">작업자</div>
+    <input type="text" class="f" id="plnWorker" placeholder="작업자명"/>
+  </div>
+
+  <button type="button" class="btn" id="plnSaveBtn" style="display:none;" onclick="savePlannedRecord()">저장</button>
+</div>
+
+</div>
+
+<div id="toast"></div>
+<div id="toastE"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="work-photo-scaffold.js"></script>
+<script>
+// ── 격리 원칙: 이 파일은 index.html의 코드/전역변수를 참조하지 않는다.
+// 로그인 세션 확인용 localStorage 키(member_id 등)만 다른 화면들과 공유한다(같은 앱의 공통 로그인 정보).
+
+var SUPABASE_URL=localStorage.getItem('site_supabase_url')||'';
+var SUPABASE_KEY=localStorage.getItem('site_supabase_key')||'';
+var sbClient=null;
+if(SUPABASE_URL&&SUPABASE_KEY){
+  try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }
+  catch(e){ console.error('Supabase 초기화 실패',e); }
+}
+
+(function(){
+  if(!localStorage.getItem('member_id')){ location.href='login.html'; return; }
+  var p=localStorage.getItem('member_project')||'';
+  if(p) document.getElementById('hdrProject').textContent=p;
+  var name=localStorage.getItem('member_name')||'';
+  document.getElementById('scfSite').value=p;
+  document.getElementById('scfWorker').value=name;
+  document.getElementById('plnSite').value=p;
+  document.getElementById('plnWorker').value=name;
+})();
+
+function showT(msg){ var el=document.getElementById('toast'); el.textContent=msg; el.style.display='block'; clearTimeout(el._t); el._t=setTimeout(function(){el.style.display='none';},2600); }
+function showTE(msg){ var el=document.getElementById('toastE'); el.textContent=msg; el.style.display='block'; clearTimeout(el._t); el._t=setTimeout(function(){el.style.display='none';},3600); }
+
+function setMode(mode){
+  document.getElementById('btnModeInstalled').classList.toggle('active', mode==='installed');
+  document.getElementById('btnModePlanned').classList.toggle('active', mode==='planned');
+  document.getElementById('panelInstalled').style.display = mode==='installed' ? 'block':'none';
+  document.getElementById('panelPlanned').style.display = mode==='planned' ? 'block':'none';
+  if(mode==='planned'){
+    // 다른 화면에서 넘어와 다시 켤 때(캡처 미리보기 상태가 아니면) 카메라를 이어서 켜준다.
+    if(plnActive && !plnStream && !plnCompositeDataUrl) startPlannedCamera();
+  }else{
+    stopPlannedCamera();
+  }
+}
+
+// ── 스팬/폭/단높이 프리셋 (scaffold_settings, 없으면 기본값) ──
+var presets={spanLengthM:1.8, widthM:0.4, levelHeightM:1.8};
+
+async function loadPresets(){
+  if(!sbClient) return;
+  try{
+    var res=await sbClient.from('scaffold_settings').select('*').eq('id','default').maybeSingle();
+    if(res.data){
+      presets.spanLengthM=Number(res.data.span_length_m)||presets.spanLengthM;
+      presets.widthM=Number(res.data.width_m)||presets.widthM;
+      presets.levelHeightM=Number(res.data.level_height_m)||presets.levelHeightM;
+    }
+  }catch(e){ console.error('프리셋 로드 실패(기본값 사용)',e); }
+}
+
+// ── 오버레이 컴포넌트 초기화 ──
+var overlay=ScaffoldOverlay.create({
+  canvas: document.getElementById('scfCanvas'),
+  presets: presets,
+  onChange: function(){ if(!suppressEdited) userEdited=true; },
+});
+overlay.bindInputs({
+  spanCountInput: document.getElementById('scfSpanCount'),
+  levelCountInput: document.getElementById('scfLevelCount'),
+  widthInput: document.getElementById('scfWidthM'),
+  lengthOutput: document.getElementById('scfLengthOut'),
+  heightOutput: document.getElementById('scfHeightOut'),
+  volumeOutput: document.getElementById('scfVolumeOut'),
+});
+
+var suppressEdited=false;
+var userEdited=false;
+var currentPhoto=null;   // {dataUrl, width, height, capturedAt}
+var lastAiResult=null;   // analyze-scaffold 응답 원본
+var lastGps=null;        // {lat,lng}
+
+if(navigator.geolocation){
+  navigator.geolocation.getCurrentPosition(
+    function(pos){ lastGps={lat:pos.coords.latitude,lng:pos.coords.longitude}; },
+    function(){ /* 위치 거부/실패 시 그냥 null로 둠 */ },
+    {timeout:5000}
+  );
+}
+
+function resizeImageToDataUrl(file, maxDim){
+  return new Promise(function(resolve,reject){
+    var url=URL.createObjectURL(file);
+    var img=new Image();
+    img.onload=function(){
+      URL.revokeObjectURL(url);
+      var w=img.naturalWidth, h=img.naturalHeight;
+      var scale=Math.min(1, maxDim/Math.max(w,h));
+      var tw=Math.max(1,Math.round(w*scale)), th=Math.max(1,Math.round(h*scale));
+      var c=document.createElement('canvas'); c.width=tw; c.height=th;
+      c.getContext('2d').drawImage(img,0,0,tw,th);
+      resolve({dataUrl:c.toDataURL('image/jpeg',0.85), width:tw, height:th});
+    };
+    img.onerror=function(){ URL.revokeObjectURL(url); reject(new Error('이미지를 불러올 수 없습니다')); };
+    img.src=url;
+  });
+}
+
+function dataUrlToBlob(dataUrl){
+  var parts=dataUrl.split(',');
+  var mimeMatch=/data:(.*?);base64/.exec(parts[0]);
+  var mime=mimeMatch?mimeMatch[1]:'image/jpeg';
+  var bin=atob(parts[1]);
+  var arr=new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+  return new Blob([arr],{type:mime});
+}
+
+async function handleFileInput(evt){
+  var file=evt.target.files && evt.target.files[0];
+  evt.target.value='';
+  if(!file) return;
+  try{
+    var resized=await resizeImageToDataUrl(file, 1400);
+  }catch(e){
+    showTE('사진을 불러오지 못했습니다: '+(e.message||e));
+    return;
+  }
+  currentPhoto={dataUrl:resized.dataUrl, width:resized.width, height:resized.height, capturedAt:new Date().toISOString()};
+  lastAiResult=null;
+
+  var imgEl=document.getElementById('scfImg');
+  imgEl.src=currentPhoto.dataUrl;
+  document.getElementById('scfWorkArea').style.display='block';
+  document.getElementById('scfRetakeBtn').style.display='block';
+  document.getElementById('gridCard').style.display='block';
+  document.getElementById('scfSaveBtn').disabled=false;
+
+  overlay.resize(currentPhoto.width, currentPhoto.height);
+  suppressEdited=true; overlay.reset(); suppressEdited=false;
+  userEdited=false;
+
+  var aiStatus=document.getElementById('scfAiStatus');
+  var aiBadge=document.getElementById('scfAiBadge');
+  var aiNotes=document.getElementById('scfAiNotes');
+  aiStatus.style.display='block';
+  aiBadge.className='ai-badge wait'; aiBadge.textContent='AI 분석 중...';
+  aiNotes.textContent='';
+
+  var result=await analyzeScaffold(currentPhoto.dataUrl);
+  if(result){
+    lastAiResult=result;
+    suppressEdited=true;
+    overlay.setCorners(result.corners);
+    overlay.setGrid(result.span_count, result.level_count);
+    suppressEdited=false;
+    userEdited=false;
+    var confMap={high:['high','확신 높음'],medium:['medium','확신 보통'],low:['low','확신 낮음 — 직접 확인해주세요']};
+    var conf=confMap[result.confidence]||confMap.low;
+    aiBadge.className='ai-badge '+conf[0]; aiBadge.textContent='AI 분석: '+conf[1];
+    aiNotes.textContent=result.notes||'';
+  }else{
+    aiBadge.className='ai-badge low'; aiBadge.textContent='AI 분석 실패 — 수동으로 보정해주세요';
+    aiNotes.textContent='';
+    showTE('AI 분석에 실패했거나 시간이 초과되었습니다. 격자를 직접 맞춰주세요.');
+  }
+}
+document.getElementById('scfFileInput').addEventListener('change', handleFileInput);
+document.getElementById('scfGalleryInput').addEventListener('change', handleFileInput);
+
+function retakePhoto(){
+  currentPhoto=null; lastAiResult=null; userEdited=false;
+  document.getElementById('scfWorkArea').style.display='none';
+  document.getElementById('scfRetakeBtn').style.display='none';
+  document.getElementById('gridCard').style.display='none';
+  document.getElementById('scfAiStatus').style.display='none';
+  document.getElementById('scfSaveBtn').disabled=true;
+}
+
+async function analyzeScaffold(dataUrl){
+  if(!sbClient) return null;
+  var ctrl=new AbortController();
+  var timer=setTimeout(function(){ ctrl.abort(); },5000);
+  try{
+    var resp=await fetch(SUPABASE_URL+'/functions/v1/analyze-scaffold',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY},
+      body:JSON.stringify({
+        image_base64:dataUrl,
+        span_length_m:presets.spanLengthM,
+        width_m:presets.widthM,
+        level_height_m:presets.levelHeightM,
+      }),
+      signal:ctrl.signal,
+    });
+    var data=await resp.json().catch(function(){return {};});
+    if(!resp.ok||!data.ok) throw new Error((data&&data.error)||('HTTP '+resp.status));
+    return data;
+  }catch(e){
+    console.error('analyze-scaffold 호출 실패',e);
+    return null;
+  }finally{
+    clearTimeout(timer);
+  }
+}
+
+function compositeOverlayDataUrl(){
+  var canvas=document.getElementById('scfCanvas');
+  var imgEl=document.getElementById('scfImg');
+  var c=document.createElement('canvas');
+  c.width=canvas.width; c.height=canvas.height;
+  var cx=c.getContext('2d');
+  cx.drawImage(imgEl,0,0,c.width,c.height);
+  cx.drawImage(canvas,0,0);
+  return c.toDataURL('image/jpeg',0.85);
+}
+
+function sanitizeScaffoldKey(){
+  return 'scaffold/'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+}
+
+async function saveRecord(){
+  if(!sbClient){ showTE('연결된 현장이 없어 저장할 수 없습니다.'); return; }
+  if(!currentPhoto){ showTE('먼저 사진을 촬영하거나 선택해주세요.'); return; }
+
+  var btn=document.getElementById('scfSaveBtn');
+  btn.disabled=true; var origText=btn.textContent; btn.textContent='저장 중...';
+  try{
+    var state=overlay.getState();
+    var basePath=sanitizeScaffoldKey();
+
+    var photoBlob=dataUrlToBlob(currentPhoto.dataUrl);
+    var up=await sbClient.storage.from('scaffold-photos').upload(basePath+'.jpg', photoBlob, {contentType:'image/jpeg', upsert:true});
+    if(up.error) throw new Error('[Storage] '+up.error.message);
+    var photoUrl=sbClient.storage.from('scaffold-photos').getPublicUrl(basePath+'.jpg').data.publicUrl;
+
+    var overlayUrl=null;
+    try{
+      var overlayBlob=dataUrlToBlob(compositeOverlayDataUrl());
+      var up2=await sbClient.storage.from('scaffold-photos').upload(basePath+'_overlay.jpg', overlayBlob, {contentType:'image/jpeg', upsert:true});
+      if(!up2.error) overlayUrl=sbClient.storage.from('scaffold-photos').getPublicUrl(basePath+'_overlay.jpg').data.publicUrl;
+    }catch(e){ console.error('오버레이 합성 이미지 저장 실패(본 사진은 저장됨)',e); }
+
+    var insertData={
+      status:'installed',
+      photo_url:photoUrl,
+      overlay_photo_url:overlayUrl,
+      site_name:document.getElementById('scfSite').value.trim(),
+      work_type:document.getElementById('scfWorkType').value.trim(),
+      location:document.getElementById('scfLocation').value.trim(),
+      worker:document.getElementById('scfWorker').value.trim(),
+      ai_span_count: lastAiResult ? lastAiResult.span_count : null,
+      ai_level_count: lastAiResult ? lastAiResult.level_count : null,
+      ai_confidence: lastAiResult ? lastAiResult.confidence : null,
+      ai_corners: lastAiResult ? lastAiResult.corners : null,
+      ai_notes: lastAiResult ? lastAiResult.notes : null,
+      final_span_count: state.spanCount,
+      final_level_count: state.levelCount,
+      final_corners: state.corners,
+      user_edited: userEdited || !lastAiResult,
+      span_length_m: presets.spanLengthM,
+      level_height_m: presets.levelHeightM,
+      width_m: state.widthM,
+      length_m: state.lengthM,
+      height_m: state.heightM,
+      volume_m3: state.volumeM3,
+      gps_lat: lastGps ? lastGps.lat : null,
+      gps_lng: lastGps ? lastGps.lng : null,
+      captured_at: currentPhoto.capturedAt,
+    };
+    var ins=await sbClient.from('scaffold_quantities').insert(insertData);
+    if(ins.error) throw new Error('[DB] '+ins.error.message);
+
+    showT('✅ 저장했습니다. ('+state.spanCount+'칸 × '+state.levelCount+'단, '+state.volumeM3.toFixed(2)+'㎥)');
+    retakePhoto();
+  }catch(e){
+    console.error('저장 실패',e);
+    showTE('❌ 저장 실패: '+(e.message||e)+' — SUPABASE_SCAFFOLD.sql을 대시보드에서 실행했는지 확인해주세요.');
+  }finally{
+    btn.disabled=false; btn.textContent=origText;
+  }
+}
+
+// ── 설치 예정 미리보기 모드 (getUserMedia 라이브 카메라 + 직접 격자 그리기) ──
+var plnOverlay=null;
+var plnStream=null;
+var plnActive=false;          // "카메라 시작"을 한 번이라도 눌렀는지
+var plnCompositeDataUrl=null; // 캡처된 합성(원본+격자) 이미지
+var plnRawDataUrl=null;       // 캡처된 원본(격자 없는) 이미지
+var plnFinalState=null;       // 캡처 시점의 overlay.getState()
+
+async function startPlannedCamera(){
+  try{
+    plnStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}, audio:false});
+  }catch(e){
+    showTE('카메라를 시작할 수 없습니다: '+(e.message||e));
+    return;
+  }
+  plnActive=true;
+  var video=document.getElementById('plnVideo');
+  video.srcObject=plnStream;
+  try{ await video.play(); }catch(e){}
+  await new Promise(function(resolve){
+    if(video.videoWidth) resolve();
+    else video.addEventListener('loadedmetadata', resolve, {once:true});
+  });
+
+  var canvas=document.getElementById('plnCanvas');
+  canvas.style.display='block';
+  if(!plnOverlay){
+    plnOverlay=ScaffoldOverlay.create({ canvas: canvas, presets: presets, onChange: function(){} });
+    plnOverlay.bindInputs({
+      spanCountInput: document.getElementById('plnSpanCount'),
+      levelCountInput: document.getElementById('plnLevelCount'),
+      widthInput: document.getElementById('plnWidthM'),
+      lengthOutput: document.getElementById('plnLengthOut'),
+      heightOutput: document.getElementById('plnHeightOut'),
+      volumeOutput: document.getElementById('plnVolumeOut'),
+    });
+    plnOverlay.resize(video.videoWidth, video.videoHeight);
+    plnOverlay.reset();
+  }else{
+    // 다른 탭으로 갔다가 돌아와 카메라를 재개하는 경우 — 이미 그려둔 격자를 유지한다.
+    plnOverlay.resize(video.videoWidth, video.videoHeight);
+  }
+
+  document.getElementById('plnStartBtn').style.display='none';
+  document.getElementById('plnCaptureBtn').style.display='block';
+  document.getElementById('plnGridCard').style.display='block';
+}
+
+function stopPlannedCamera(){
+  if(plnStream){ plnStream.getTracks().forEach(function(t){ t.stop(); }); plnStream=null; }
+}
+
+function capturePlanned(){
+  if(!plnOverlay) return;
+  var video=document.getElementById('plnVideo');
+  var canvas=document.getElementById('plnCanvas');
+  var w=canvas.width, h=canvas.height;
+
+  var raw=document.createElement('canvas'); raw.width=w; raw.height=h;
+  raw.getContext('2d').drawImage(video, 0, 0, w, h);
+  plnRawDataUrl=raw.toDataURL('image/jpeg', 0.85);
+
+  var comp=document.createElement('canvas'); comp.width=w; comp.height=h;
+  var cctx=comp.getContext('2d');
+  cctx.drawImage(raw, 0, 0);
+  cctx.drawImage(canvas, 0, 0);
+  plnCompositeDataUrl=comp.toDataURL('image/jpeg', 0.85);
+
+  plnFinalState=plnOverlay.getState();
+
+  var previewImg=document.getElementById('plnPreviewImg');
+  previewImg.src=plnCompositeDataUrl;
+  previewImg.style.display='block';
+  video.style.display='none';
+  canvas.style.display='none';
+  document.getElementById('plnCaptureBtn').style.display='none';
+  document.getElementById('plnRetakeBtn').style.display='block';
+  document.getElementById('plnGridCard').style.display='none';
+  document.getElementById('plnMetaCard').style.display='block';
+  document.getElementById('plnSaveBtn').style.display='block';
+}
+
+function retakePlanned(){
+  plnCompositeDataUrl=null; plnRawDataUrl=null; plnFinalState=null;
+  document.getElementById('plnPreviewImg').style.display='none';
+  document.getElementById('plnVideo').style.display='block';
+  document.getElementById('plnCanvas').style.display='block';
+  document.getElementById('plnCaptureBtn').style.display='block';
+  document.getElementById('plnRetakeBtn').style.display='none';
+  document.getElementById('plnGridCard').style.display='block';
+  document.getElementById('plnMetaCard').style.display='none';
+  document.getElementById('plnSaveBtn').style.display='none';
+  if(!plnStream) startPlannedCamera();
+  else if(plnOverlay) plnOverlay.reset();
+}
+
+async function savePlannedRecord(){
+  if(!sbClient){ showTE('연결된 현장이 없어 저장할 수 없습니다.'); return; }
+  if(!plnCompositeDataUrl || !plnFinalState){ showTE('먼저 캡처해주세요.'); return; }
+
+  var btn=document.getElementById('plnSaveBtn');
+  btn.disabled=true; var origText=btn.textContent; btn.textContent='저장 중...';
+  try{
+    var basePath=sanitizeScaffoldKey();
+
+    var rawBlob=dataUrlToBlob(plnRawDataUrl);
+    var up=await sbClient.storage.from('scaffold-photos').upload(basePath+'.jpg', rawBlob, {contentType:'image/jpeg', upsert:true});
+    if(up.error) throw new Error('[Storage] '+up.error.message);
+    var photoUrl=sbClient.storage.from('scaffold-photos').getPublicUrl(basePath+'.jpg').data.publicUrl;
+
+    var overlayUrl=null;
+    try{
+      var overlayBlob=dataUrlToBlob(plnCompositeDataUrl);
+      var up2=await sbClient.storage.from('scaffold-photos').upload(basePath+'_overlay.jpg', overlayBlob, {contentType:'image/jpeg', upsert:true});
+      if(!up2.error) overlayUrl=sbClient.storage.from('scaffold-photos').getPublicUrl(basePath+'_overlay.jpg').data.publicUrl;
+    }catch(e){ console.error('오버레이 합성 이미지 저장 실패(원본은 저장됨)',e); }
+
+    var insertData={
+      status:'planned',
+      photo_url:photoUrl,
+      overlay_photo_url:overlayUrl,
+      site_name:document.getElementById('plnSite').value.trim(),
+      work_type:document.getElementById('plnWorkType').value.trim(),
+      location:document.getElementById('plnLocation').value.trim(),
+      worker:document.getElementById('plnWorker').value.trim(),
+      ai_span_count:null, ai_level_count:null, ai_confidence:null, ai_corners:null, ai_notes:null,
+      final_span_count:plnFinalState.spanCount,
+      final_level_count:plnFinalState.levelCount,
+      final_corners:plnFinalState.corners,
+      user_edited:true,
+      span_length_m:presets.spanLengthM,
+      level_height_m:presets.levelHeightM,
+      width_m:plnFinalState.widthM,
+      length_m:plnFinalState.lengthM,
+      height_m:plnFinalState.heightM,
+      volume_m3:plnFinalState.volumeM3,
+      gps_lat: lastGps ? lastGps.lat : null,
+      gps_lng: lastGps ? lastGps.lng : null,
+      captured_at:new Date().toISOString(),
+    };
+    var ins=await sbClient.from('scaffold_quantities').insert(insertData);
+    if(ins.error) throw new Error('[DB] '+ins.error.message);
+
+    showT('✅ 저장했습니다. ('+plnFinalState.spanCount+'칸 × '+plnFinalState.levelCount+'단, '+plnFinalState.volumeM3.toFixed(2)+'㎥)');
+    retakePlanned();
+  }catch(e){
+    console.error('저장 실패',e);
+    showTE('❌ 저장 실패: '+(e.message||e)+' — SUPABASE_SCAFFOLD.sql을 대시보드에서 실행했는지 확인해주세요.');
+  }finally{
+    btn.disabled=false; btn.textContent=origText;
+  }
+}
+
+loadPresets().then(function(){
+  overlay.setPresets(presets);
+  if(plnOverlay) plnOverlay.setPresets(presets);
+});
+</script>
+</body>
+</html>
