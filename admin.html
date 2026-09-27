@@ -210,6 +210,10 @@ async function checkSiteClosed(){
 function showT(m){var t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none';},2500);}
 function showTE(m){var t=document.getElementById('toastE');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none';},6000);}
 
+// 회원가입은 로그인 없이 누구나 신청할 수 있어(members insert 정책이 with check(true))
+// 이름/회사/현장 등 모든 필드가 공격자 통제 입력일 수 있다 — innerHTML에 꽂기 전 항상 이걸 거친다.
+function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
 // ── 권한 게이트: 로그인 + role이 관리자/운영자여야 통과 ──
 // role 컬럼 도입 전 가입한 옛 계정은 role이 없을 수 있으므로, 그 경우엔
 // 예전 방식대로 category==='관리자'였는지로 대체 판정한다(하위호환).
@@ -372,27 +376,33 @@ function saveCatAreaChanges(){
 }
 
 // ── 회원 승인 대기 ──
+// 공격자가 이름/역할에 따옴표를 넣어 onclick 속성을 깨고 스크립트를 실행하는 걸 막기 위해,
+// 값 자체를 onclick 문자열에 끼워넣지 않고 배열 인덱스만 넘긴다(approveMemberAt/rejectMemberAt).
+var _pendingRows=[];
 async function renderPendingMembers(){
   if(!sbClient)return;
   var listEl=document.getElementById("pendingList");
   var countEl=document.getElementById("pendingCount");
   try{
     var res=await sbClient.from('members').select('*').eq('approved',false).order('created_at',{ascending:true});
-    if(res.error){ listEl.innerHTML='<div style="font-size:13px;color:#E74C3C;">불러오기 실패: '+res.error.message+'</div>'; return; }
+    if(res.error){ listEl.innerHTML='<div style="font-size:13px;color:#E74C3C;">불러오기 실패: '+escHtml(res.error.message)+'</div>'; return; }
     var rows=res.data||[];
+    _pendingRows=rows;
     countEl.textContent=rows.length;
     if(!rows.length){ listEl.innerHTML='<div style="font-size:13px;color:#A0BBD4;">대기 중인 가입 신청이 없습니다.</div>'; return; }
-    listEl.innerHTML=rows.map(function(m){
+    listEl.innerHTML=rows.map(function(m,i){
       return '<div class="pending-item">'
-        +'<div class="pending-name">'+m.name+' <span style="font-weight:400;color:#5A7A9A;">('+m.phone+')</span></div>'
-        +'<div class="pending-sub">'+m.company+' · '+m.project+' · '+(m.category||'-')+' · 희망 역할: '+(m.role||'근로자')+'</div>'
+        +'<div class="pending-name">'+escHtml(m.name)+' <span style="font-weight:400;color:#5A7A9A;">('+escHtml(m.phone)+')</span></div>'
+        +'<div class="pending-sub">'+escHtml(m.company)+' · '+escHtml(m.project)+' · '+escHtml(m.category||'-')+' · 희망 역할: '+escHtml(m.role||'근로자')+'</div>'
         +'<div class="pending-actions">'
-        +'<button class="btn-ok" onclick="approveMember(\''+m.id+'\',\''+m.name.replace(/'/g,"")+'\',\''+(m.role||'근로자').replace(/'/g,"")+'\')">승인</button>'
-        +'<button class="btn-no" onclick="rejectMember(\''+m.id+'\',\''+m.name.replace(/'/g,"")+'\')">거부</button>'
+        +'<button class="btn-ok" onclick="approveMemberAt('+i+')">승인</button>'
+        +'<button class="btn-no" onclick="rejectMemberAt('+i+')">거부</button>'
         +'</div></div>';
     }).join('');
   }catch(e){ listEl.innerHTML='<div style="font-size:13px;color:#E74C3C;">불러오기 실패</div>'; console.error(e); }
 }
+function approveMemberAt(i){ var m=_pendingRows[i]; if(!m)return; approveMember(m.id,m.name,m.role); }
+function rejectMemberAt(i){ var m=_pendingRows[i]; if(!m)return; rejectMember(m.id,m.name); }
 async function approveMember(id,name,role){
   // 예전엔 거부(삭제)만 확인받고 승인은 바로 처리됐다 — 대기 목록에 여러 명이
   // 쌓여있을 때 옆 사람 걸 잘못 누르면 확인 없이 바로 권한이 넘어갔다(2026-08-23
@@ -435,11 +445,11 @@ async function renderRecipients(){
     var rows=res.data||[];
     if(!rows.length){ box.innerHTML='<div style="font-size:13px;color:#A0BBD4;">등록된 수신자가 없습니다.</div>'; return; }
     box.innerHTML=rows.map(function(r){
-      var esc=String(r.name).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-      var roleEsc=r.role?(' · '+String(r.role).replace(/&/g,'&amp;').replace(/</g,'&lt;')):'';
-      var org=r.org_type||'시공사';
+      var esc=escHtml(r.name);
+      var roleEsc=r.role?(' · '+escHtml(r.role)):'';
+      var org=escHtml(r.org_type||'시공사');
       var typeLabel=r.default_type==='cc'?'참조':'수신';
-      return '<span class="chip">'+esc+roleEsc+' <span style="color:#A0BBD4;font-size:11px;">['+org+' · 기본 '+typeLabel+'] ('+r.email+')</span>'
+      return '<span class="chip">'+esc+roleEsc+' <span style="color:#A0BBD4;font-size:11px;">['+org+' · 기본 '+typeLabel+'] ('+escHtml(r.email)+')</span>'
         +'<button onclick="removeRecipient(\''+r.id+'\')" title="삭제">&#10005;</button></span>';
     }).join('');
   }catch(e){ console.error(e); box.innerHTML='<div style="font-size:13px;color:#E74C3C;">불러오기 실패</div>'; }
@@ -449,7 +459,7 @@ async function addRecipient(){
   var roleEl=document.getElementById('newRecipRole'), orgEl=document.getElementById('newRecipOrg'), typeEl=document.getElementById('newRecipType');
   var name=nameEl.value.trim(), email=emailEl.value.trim(), role=roleEl.value.trim();
   if(!name||!email){ showTE('이름과 이메일을 모두 입력해 주세요.'); return; }
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showTE('이메일 형식이 올바르지 않습니다.'); return; }
+  if(!/^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']+$/.test(email)){ showTE('이메일 형식이 올바르지 않습니다.'); return; }
   if(!sbClient)return;
   var res=await sbClient.from('share_recipients').insert({name:name,email:email,role:role||null,org_type:orgEl.value,default_type:typeEl.value});
   if(res.error){ showTE('추가 실패: '+res.error.message); return; }

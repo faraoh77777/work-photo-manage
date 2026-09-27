@@ -261,6 +261,7 @@ function toggleType(id){
   recipients=recipients.map(function(r){ return r.id===id?Object.assign({},r,{type:r.type==='cc'?'to':'cc'}):r; });
   renderRecipients();
 }
+function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function renderRecipients(){
   var listEl=document.getElementById('recipList');
   if(!recipients.length){
@@ -268,14 +269,14 @@ function renderRecipients(){
     return;
   }
   listEl.innerHTML=recipients.map(function(r){
-    var esc=String(r.name).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-    var roleEsc=r.role?(' · '+String(r.role).replace(/&/g,'&amp;').replace(/</g,'&lt;')):'';
+    var esc=escHtml(r.name);
+    var roleEsc=r.role?(' · '+escHtml(r.role)):'';
     var orgCls=ORG_CLASS[r.org_type]||'contractor';
     var typeLabel=r.type==='cc'?'참조':'수신';
     return '<div class="recip-row '+(r.selected?'sel':'')+'" onclick="toggleRecipient(\''+r.id+'\')">'
       +'<div class="recip-check">'+(r.selected?'✓':'')+'</div>'
-      +'<div style="flex:1;min-width:0;"><div class="recip-name"><span class="org-tag '+orgCls+'">'+r.org_type+'</span>'+esc+roleEsc+'</div>'
-      +'<div class="recip-email">'+r.email+'</div></div>'
+      +'<div style="flex:1;min-width:0;"><div class="recip-name"><span class="org-tag '+orgCls+'">'+escHtml(r.org_type)+'</span>'+esc+roleEsc+'</div>'
+      +'<div class="recip-email">'+escHtml(r.email)+'</div></div>'
       +(r.selected?'<button type="button" class="type-toggle'+(r.type==='cc'?' cc':'')+'" onclick="event.stopPropagation();toggleType(\''+r.id+'\')">'+typeLabel+'</button>':'')
       +'</div>';
   }).join('');

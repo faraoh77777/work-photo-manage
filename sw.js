@@ -1,6 +1,6 @@
 // 이 파일 내용이 바뀌어야 브라우저가 새 버전을 감지해 업데이트 배너를 띄운다.
 // index.html/admin.html 등을 배포할 때마다 아래 버전 문자열을 함께 올려줄 것.
-const SW_VERSION = '2026-09-16-01';
+const SW_VERSION = '2026-09-28-01';
 const CACHE_NAME = 'wp-shell-' + SW_VERSION;
 
 // 현장에서 신호가 완전히 끊긴 상태로 앱을 "새로" 열어도 흰 화면 대신 마지막으로
@@ -56,6 +56,12 @@ self.addEventListener('fetch', e => {
     );
     return;
   }
+
+  // Supabase(REST/Auth/Storage) 요청은 이 서비스워커가 손대지 않고 그대로 흘려보낸다.
+  // 예전엔 여기서도 무조건 캐싱해서, 로그인 시 GET .../members?select=* 응답(pin_hash 등
+  // 민감정보 포함)이 기기 Cache Storage에 무기한 남는 문제가 있었다(2026-09-28 수정).
+  // CDN 스크립트(cdn.jsdelivr.net 등) 같은 진짜 정적 cross-origin 리소스는 계속 캐싱한다.
+  if (/(^|\.)supabase\.co$/.test(new URL(e.request.url).hostname)) return;
 
   e.respondWith(
     fetch(e.request)
