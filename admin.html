@@ -201,7 +201,7 @@ async function checkSiteClosed(){
     var res=await closeCheckClient.from('site_registry').select('name,closed').eq('url',SUPABASE_URL).maybeSingle();
     if(res.data&&res.data.closed){
       alert((res.data.name||'이 현장')+'은 완료되어 종료(폐쇄)되었습니다.');
-      ['site_supabase_url','site_supabase_key','site_name','member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','senderName'].forEach(function(k){localStorage.removeItem(k);});
+      ['site_supabase_url','site_supabase_key','site_name','member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','senderName','custom_categories_by_menu','custom_areas','default_area'].forEach(function(k){localStorage.removeItem(k);});
       location.href='login.html';
     }
   }catch(e){console.error('현장 폐쇄 확인 실패',e);}

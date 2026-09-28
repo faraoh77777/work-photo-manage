@@ -376,7 +376,7 @@ async function checkSiteClosed(){
     var res=await closeCheckClient.from('site_registry').select('name,closed').eq('url',SUPABASE_URL).maybeSingle();
     if(res.data&&res.data.closed){
       alert((res.data.name||'이 현장')+'은 완료되어 종료(폐쇄)되었습니다.');
-      ['site_supabase_url','site_supabase_key','site_name','member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','senderName'].forEach(function(k){localStorage.removeItem(k);});
+      ['site_supabase_url','site_supabase_key','site_name','member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','senderName','custom_categories_by_menu','custom_areas','default_area'].forEach(function(k){localStorage.removeItem(k);});
       location.href='login.html';
     }
   }catch(e){console.error('현장 폐쇄 확인 실패',e);}
@@ -550,13 +550,25 @@ async function shareToKakao(){
   if(!savedPhotos.length){ showTE('전송할 사진이 없습니다.'); return; }
   var btn=document.getElementById('kakaoBtn');
 
+  // blob: URL은 원스토어 앱(WebView)에 다운로드 핸들러가 없어 <a download>가 조용히
+  // 아무 일도 안 하는 경우가 있다 — base64 data: URL로 바꾸면 그보다는 저장될 가능성이
+  // 높아 우선 시도해보고, 그래도 확실치 않으니 "저장됨" 대신 안내 문구로 톤을 낮춘다(2026-09-28).
   function fallbackDownload(){
-    savedPhotos.forEach(function(p){
-      var a=document.createElement('a');
-      a.href=p.dataUrl;a.download=p.filename;
-      document.body.appendChild(a);a.click();document.body.removeChild(a);
+    Promise.all(savedPhotos.map(function(p){
+      return new Promise(function(resolve){
+        var fr=new FileReader();
+        fr.onload=function(){resolve(fr.result);};
+        fr.onerror=function(){resolve(p.dataUrl);};
+        fr.readAsDataURL(p.blob);
+      });
+    })).then(function(dataUrls){
+      dataUrls.forEach(function(url,i){
+        var a=document.createElement('a');
+        a.href=url;a.download=savedPhotos[i].filename;
+        document.body.appendChild(a);a.click();document.body.removeChild(a);
+      });
+      showT('사진 '+savedPhotos.length+'장을 저장 시도했습니다. 갤러리/다운로드 폴더에 안 보이면 카메라 버튼 위 미리보기를 길게 눌러 저장한 뒤 카카오톡에서 전송하세요.');
     });
-    showT('사진 '+savedPhotos.length+'장 저장됨 → 카카오톡에서 직접 전송하세요');
   }
 
   // title(텍스트)을 같이 보내면 카카오톡이 "이미지 공유"가 아니라 "텍스트/링크 공유"로
@@ -1204,6 +1216,7 @@ async function openCamera(){
     sizeCamViewport();
     setupZoom();
     document.getElementById("camModal").style.display="flex";
+    if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage('modal:open');
   }finally{
     camOpening=false;
   }
@@ -1212,7 +1225,14 @@ function closeCamera(){
   if(camStream){camStream.getTracks().forEach(function(t){t.stop();});camStream=null;camTrack=null;}
   document.getElementById("camModal").style.display="none";
   document.getElementById("camVideo").style.transform="scale(1)";
+  if(window.ReactNativeWebView)window.ReactNativeWebView.postMessage('modal:close');
 }
+// 원스토어 앱(App.js)의 하드웨어 뒤로가기가 이 모달을 닫을 수 있도록 하는 훅 —
+// 카메라 모달은 실제 페이지 이동이 아니라서 WebView의 canGoBack에 안 잡힌다(2026-09-28).
+window.__closeTopOverlay=function(){
+  if(document.getElementById("camModal").style.display==="flex"){ closeCamera(); return true; }
+  return false;
+};
 
 // ── 카메라 줌 ──────────────────────────────────────────
 var zoomLevel=1, digitalZoom=true;

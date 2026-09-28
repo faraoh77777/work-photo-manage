@@ -379,7 +379,7 @@ async function generateAiDraft(){
     showT('✅ AI가 작성했습니다 — 내용을 확인하고 필요하면 고쳐서 보내주세요.');
   }catch(e){
     console.error('AI 작성 실패',e);
-    showTE('❌ AI 작성 실패: '+(e.message||e)+' — Edge Function 배포가 안 됐다면 AI_FEATURE_SETUP.md를 참고하세요.');
+    showTE('❌ AI 작성 실패: 잠시 후 다시 시도해 주세요. 계속되면 관리자에게 문의하세요.');
   }finally{
     btn.disabled=false; btn.textContent=origText;
   }
@@ -419,7 +419,7 @@ async function sendEmail(){
     logSentShare('email',selected,namesStr);
   }catch(e){
     console.error('이메일 발송 실패',e);
-    showTE('❌ 이메일 발송 실패: '+(e.message||e)+' — Edge Function 배포가 안 됐다면 SHARE_FEATURE_SETUP.md를 참고하세요.');
+    showTE('❌ 이메일 발송 실패: 잠시 후 다시 시도해 주세요. 계속되면 관리자에게 문의하세요.');
   }finally{
     btn.disabled=false; btn.textContent=origText;
   }
