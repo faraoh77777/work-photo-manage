@@ -50,15 +50,30 @@ create table if not exists sessions (
 alter table sessions enable row level security;
 
 -- ── 기존의 전면 개방 정책 제거 ──────────────────────────────
-drop policy if exists "members_select" on members;
-drop policy if exists "members_insert" on members;
-drop policy if exists "members_update" on members;
-drop policy if exists "members_delete" on members;
+-- members: 정책 이름이 현장마다 다를 수 있어(오래된 현장은 대시보드에서 손으로 만든 경우가
+-- 있음) 이름을 가리지 않고 전부 지운다. RLS가 꺼져 있던 현장이면 켜기부터 한다 — RLS가
+-- 꺼진 테이블은 정책과 무관하게 전부 열려 있다(2026-10-06).
+alter table members enable row level security;
+do $$
+declare r record;
+begin
+  for r in select policyname from pg_policies where schemaname='public' and tablename='members' loop
+    execute format('drop policy %I on public.members', r.policyname);
+  end loop;
+end $$;
 -- app_settings의 변경(insert/update)도 관리자 전용 동작이라 RPC로만 허용한다.
 -- select는 그대로 열어둔다 — 작업분류/구역 목록 자체는 민감정보가 아니고,
 -- index.html/admin.html이 실시간(Realtime) 구독으로 바로 읽어야 하기 때문.
-drop policy if exists "app_settings_insert" on app_settings;
-drop policy if exists "app_settings_update" on app_settings;
+-- 단, 판매자 기본 현장(site_registry가 있는 곳)은 건너뛴다 — 같은 DB를 쓰는 구버전
+-- work-gallery가 아직 app_settings를 직접 upsert하고 있어서, 여기를 막으면 그 앱의
+-- 작업분류/구역 저장이 깨진다. work-gallery를 RPC로 옮긴 뒤에 막을 것(2026-10-06).
+do $$
+begin
+  if to_regclass('public.site_registry') is null then
+    drop policy if exists "app_settings_insert" on app_settings;
+    drop policy if exists "app_settings_update" on app_settings;
+  end if;
+end $$;
 
 -- ── 내부 헬퍼: 세션 토큰 → member_id/role ──────────────────
 create or replace function _session_role(p_token uuid)
@@ -491,10 +506,11 @@ end $$;
 commit;
 
 -- ── 검증 ─────────────────────────────────────────────────
--- 결과 한 줄: rpc_함수수 13, members_정책수 0, 해시_정상 true 이면 정상 적용.
+-- 결과 한 줄: rpc_함수수 13, members_잠금 true, members_정책수 0, 로그인함수_동작 true 이면 정상 적용.
 select
   (select count(*) from information_schema.routines
      where routine_schema='public' and routine_name like 'rpc\_%') as "rpc_함수수(13)",
+  (select relrowsecurity from pg_class where oid='public.members'::regclass) as "members_잠금(true)",
   (select count(*) from pg_policies
      where schemaname='public' and tablename='members') as "members_정책수(0)",
   (select n.nspname from pg_extension e join pg_namespace n on n.oid=e.extnamespace
