@@ -927,7 +927,9 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
   if(chip&&(n||c)) chip.textContent='👤 '+(n||'')+(c?' · '+c:'');
 })();
 function galleryLogout(){
-  ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','senderName'].forEach(k=>localStorage.removeItem(k));
+  const token=localStorage.getItem('member_session_token');
+  if(token&&sbClient){ sbClient.rpc('rpc_logout',{p_token:token}).catch(()=>{}); }
+  ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','senderName','member_session_token'].forEach(k=>localStorage.removeItem(k));
   location.href='../login.html';
 }
 
@@ -1005,13 +1007,17 @@ function startSyncFromModal(){
 }
 
 // ── 작업분류/구역 설정을 index.html·admin.html과 공유(app_settings) ──
+// app_settings 변경은 관리자 전용 RPC로만 허용된다(QA-AUDIT.md §11-2).
 async function pushSettingsToSupabase(){
   if(!sbClient)return;
+  const token=localStorage.getItem('member_session_token');
+  if(!token)return;
   try{
-    const res=await sbClient.from('app_settings').upsert({
-      id:'global', cats_by_menu:catsByMenu, areas, updated_at:new Date().toISOString()
+    const res=await sbClient.rpc('rpc_update_app_settings',{
+      p_token:token, p_cats_by_menu:catsByMenu, p_areas:areas, p_default_area:null
     });
     if(res.error) console.error("설정 클라우드 동기화 실패",res.error.message);
+    else if(res.data&&res.data.error) console.error("설정 클라우드 동기화 실패",res.data.error);
   }catch(e){console.error("설정 클라우드 동기화 실패",e);}
 }
 function applyRemoteSettings(data){
@@ -1054,12 +1060,25 @@ async function syncFromSupabase(opts){
   const btn=document.getElementById('syncBtn');
   btn.disabled=true; btn.textContent='⏳ 동기화 중...';
   try {
-    let q=sbClient.from('work_photos').select('*').order('date',{ascending:false});
-    if(opts.startDate) q=q.gte('date',opts.startDate);
-    if(opts.endDate)   q=q.lte('date',opts.endDate);
-    if(opts.cat)        q=q.eq('cat',opts.cat);
-    const {data:records,error}=await q;
-    if(error) throw error;
+    // 2026-10-01 발견: Supabase REST는 한 번 요청에 최대 1000행만 돌려준다(프로젝트 기본 설정) —
+    // .limit()을 안 걸어도 서버가 조용히 1000개에서 잘라서 돌려준다. 전체 동기화(기간/구분 필터
+    // 없이) 시 오래된 사진이 목록에서 통째로 빠지는 문제가 있었다. .range()로 1000행씩 끊어
+    // 전부 모은다(date가 같은 행이 많아 id를 2차 정렬 키로 더해 페이지 경계 중복/누락 방지).
+    const PAGE_SIZE=1000;
+    let records=[];
+    let from=0;
+    for(;;){
+      let q=sbClient.from('work_photos').select('*').order('date',{ascending:false}).order('id',{ascending:false}).range(from,from+PAGE_SIZE-1);
+      if(opts.startDate) q=q.gte('date',opts.startDate);
+      if(opts.endDate)   q=q.lte('date',opts.endDate);
+      if(opts.cat)        q=q.eq('cat',opts.cat);
+      const {data,error}=await q;
+      if(error) throw error;
+      records=records.concat(data||[]);
+      if(!data||data.length<PAGE_SIZE) break;
+      from+=PAGE_SIZE;
+      btn.textContent=`⏳ 동기화 중... (${records.length}장)`;
+    }
     if(!records||records.length===0){ alert('클라우드에 사진이 없습니다.'); return; }
 
     // 이미 로컬에 있는 사진도 클라우드 값 기준으로 맞춘다 — 다른 사람이 gallery에서
@@ -1185,16 +1204,25 @@ async function syncFromSupabase(opts){
 // 갱신한다. daesun gallery(work-gallery-daesun)의 syncEditToCloud를 참고했으나, 파일명이
 // 메타데이터와 안 맞아지더라도 스토리지 파일을 옮기는(rename) 위험한 동작은 하지 않고
 // 데이터 컬럼만 갱신한다 — 실패해도 파일명 불일치만 남을 뿐 사진 손실 위험이 없다.
+// 2026-09-29: work_photos에는 애초에 update 정책이 없어서(select/insert만 존재),
+// 이 함수의 직접 update가 에러도 없이 조용히 0행 영향으로 끝나고 있었다(검증 세션에서
+// 발견) — 관리자 전용 RPC(rpc_update_work_photo_by_id/_url)로 전환.
 async function syncMetaToCloud(p){
   if(!p.cloud_url||!sbClient) return;
+  const token=localStorage.getItem('member_session_token');
+  if(!token){ console.warn('[클라우드 동기화] 로그인 세션이 없어 반영하지 못했습니다.'); return; }
   try{
-    const match = p.cloud_id!=null ? {column:'id',value:p.cloud_id} : {column:'photo_url',value:p.cloud_url};
-    const {error}=await sbClient.from('work_photos').update({
-      date:p.date||'', time:p.time||'', tag:p.tag||'',
-      cat:p.cat||'', loc:p.area||'', work_type:p.wt||'',
-      note:p.note||'', sender:p.team||'', menu:p.menu||activeMenu
-    }).eq(match.column,match.value);
-    if(error) console.warn('[클라우드 동기화] 메타데이터 반영 실패:',error.message);
+    const args={
+      p_token:token,
+      p_date:p.date||'', p_time:p.time||'', p_tag:p.tag||'',
+      p_cat:p.cat||'', p_loc:p.area||'', p_work_type:p.wt||'',
+      p_note:p.note||'', p_sender:p.team||'', p_menu:p.menu||activeMenu
+    };
+    const res = p.cloud_id!=null
+      ? await sbClient.rpc('rpc_update_work_photo_by_id',{...args,p_id:p.cloud_id})
+      : await sbClient.rpc('rpc_update_work_photo_by_url',{...args,p_photo_url:p.cloud_url});
+    if(res.error) console.warn('[클라우드 동기화] 메타데이터 반영 실패:',res.error.message);
+    else if(res.data&&res.data.error) console.warn('[클라우드 동기화] 메타데이터 반영 실패:',res.data.error);
   }catch(e){ console.warn('[클라우드 동기화] 예외:',e); }
 }
 
@@ -1888,12 +1916,14 @@ async function dedupePhotosOnLoad(list){
   });
   if (toDelete.length === 0) return list;
   let cloudDeleted = 0;
+  const _dupToken=localStorage.getItem('member_session_token');
   for (const p of toDelete) {
     await deletePhotoDB(p.id);
-    if (p.cloud_id != null && sbClient) {
+    if (p.cloud_id != null && sbClient && _dupToken) {
       try {
-        const {error} = await sbClient.from('work_photos').delete().eq('id', p.cloud_id);
-        if (error) console.warn('[중복 정리] 클라우드 중복 행 삭제 실패:', error.message);
+        const res = await sbClient.rpc('rpc_delete_work_photo',{p_token:_dupToken,p_id:p.cloud_id});
+        if (res.error) console.warn('[중복 정리] 클라우드 중복 행 삭제 실패:', res.error.message);
+        else if (res.data&&res.data.error) console.warn('[중복 정리] 클라우드 중복 행 삭제 실패:', res.data.error);
         else cloudDeleted++;
       } catch(e) { console.warn('[중복 정리] 클라우드 삭제 예외:', e); }
     }
@@ -1935,11 +1965,16 @@ function deletePhotoDB(id) { return new Promise((res,rej)=>{ const req=txStore('
 // 정확히 지정해서 클라우드에서도 같이 삭제한다 — 사진 파일(Storage)은 다른 행이 같은
 // 파일을 참조하고 있을 수 있어(중복 업로드 사례 있었음) 건드리지 않고 DB 행만 지운다.
 // 실패해도(연결 안 됨/네트워크 오류 등) 로컬 삭제 자체는 막지 않는다.
+// 2026-09-29: work_photos에 delete 정책이 아예 없어서(검증 세션에서 발견) 이 직접
+// delete도 에러 없이 조용히 실패하고 있었다 — 관리자 전용 RPC로 전환.
 async function deletePhotoCloudRow(p){
   if(!p || p.cloud_id==null || !sbClient) return;
+  const token=localStorage.getItem('member_session_token');
+  if(!token){ console.warn('[삭제] 로그인 세션이 없어 클라우드에서 지우지 못했습니다.'); return; }
   try{
-    const {error} = await sbClient.from('work_photos').delete().eq('id', p.cloud_id);
-    if(error) console.warn('[삭제] 클라우드 행 삭제 실패:', error.message);
+    const res = await sbClient.rpc('rpc_delete_work_photo',{p_token:token,p_id:p.cloud_id});
+    if(res.error) console.warn('[삭제] 클라우드 행 삭제 실패:', res.error.message);
+    else if(res.data&&res.data.error) console.warn('[삭제] 클라우드 행 삭제 실패:', res.data.error);
   }catch(e){ console.warn('[삭제] 클라우드 삭제 예외:', e); }
 }
 

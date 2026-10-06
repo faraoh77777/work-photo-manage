@@ -1,26 +1,38 @@
 import io
 import json
 import os
+import sys
 import tempfile
 import uuid
 
-from flask import Flask, jsonify, request, send_file, render_template, send_from_directory
+from flask import Flask, jsonify, request, send_file, render_template
 
 import excel_builder
+import license_check
 import pdf_export
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# PyInstaller(--onefile)로 얼렸을 때 __file__은 매 실행마다 새로 풀리는 임시 폴더(_MEIPASS)를
+# 가리켜서, 거기에 settings.json/license.key를 두면 프로그램을 껐다 켤 때마다 사라진다.
+# 그래서 "실행파일 자체가 있는 폴더"를 따로 계산해 설정/라이선스는 거기에 저장·조회한다.
+if getattr(sys, "frozen", False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SETTINGS_PATH = os.path.join(BASE_DIR, "settings.json")
-# 이 폴더(photo-sheet)는 work-photo-manage 저장소 안의 하위 폴더로 산다 — 그래서 REPO_DIR은
-# 곧 work-photo-manage 루트(index.html/login.html 등이 있는 곳)이고, 그 안의 gallery/가 갤러리다.
-# 현장 와이파이 등 오프라인/저속 네트워크에서도 이 PC의 LAN 주소로 작업사진 앱 화면을 그대로
-# 열 수 있도록 함께 서빙한다(공용 GitHub Pages 접속이 안 될 때의 대비용).
-REPO_DIR = os.path.dirname(BASE_DIR)
-GALLERY_DIR = os.path.join(REPO_DIR, "gallery")
-APP_DIR = REPO_DIR
 
 app = Flask(__name__)
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0  # 개발 중인 작업사진 앱/갤러리가 모바일에 캐시돼 옛 버전이 보이는 문제 방지
+
+LICENSE_OK, LICENSE_INFO, LICENSE_ERROR = license_check.load_and_verify(BASE_DIR)
+
+
+@app.before_request
+def _require_license():
+    if LICENSE_OK:
+        return None
+    if request.path.startswith("/static/"):
+        return None
+    return render_template("license_error.html", error=LICENSE_ERROR), 403
 
 
 @app.after_request
@@ -46,24 +58,9 @@ def index():
     return render_template("index.html")
 
 
-@app.route("/gallery/")
-def gallery_index():
-    return send_from_directory(GALLERY_DIR, "index.html")
-
-
-@app.route("/gallery/<path:filename>")
-def gallery_static(filename):
-    return send_from_directory(GALLERY_DIR, filename)
-
-
-@app.route("/app/")
-def app_index():
-    return send_from_directory(APP_DIR, "index.html")
-
-
-@app.route("/app/<path:filename>")
-def app_static(filename):
-    return send_from_directory(APP_DIR, filename)
+@app.route("/api/license", methods=["GET"])
+def get_license():
+    return jsonify({"ok": LICENSE_OK, "info": LICENSE_INFO, "error": LICENSE_ERROR})
 
 
 @app.route("/api/settings", methods=["GET"])
@@ -78,8 +75,8 @@ def post_settings():
         "project_name": (data.get("project_name") or "").strip(),
         "company_name": (data.get("company_name") or "").strip(),
         "work_title": (data.get("work_title") or "").strip(),
-        # 비워두면 프론트엔드(app.js)가 work-photo-manage 기본 현장으로 접속한다.
-        # 다른 회사 현장의 사진을 불러오려면 그 현장의 Supabase URL/key를 여기 저장해둔다.
+        # 갤러리 불러오기를 쓰려면 반드시 채워야 한다(비워두면 연결 안 됨) — 사용 중인
+        # 현장의 Supabase URL/key를 여기 저장해둔다.
         "supabase_url": (data.get("supabase_url") or "").strip(),
         "supabase_key": (data.get("supabase_key") or "").strip(),
     }
@@ -157,5 +154,24 @@ def generate():
 
 
 if __name__ == "__main__":
+    if not LICENSE_OK:
+        print("=" * 60)
+        print("[라이선스 오류]", LICENSE_ERROR)
+        print("=" * 60)
+    else:
+        print(f"라이선스 확인됨: {LICENSE_INFO['customer']} ({LICENSE_INFO['expires']}까지)")
+
+    print("서버를 시작합니다... http://127.0.0.1:5183/")
+
+    # exe로 실행될 때만 브라우저를 자동으로 띄운다(python app.py로 개발할 땐 필요 없음 — 매번
+    # 코드 고치고 재시작할 때마다 탭이 새로 열리면 번거롭다).
+    if getattr(sys, "frozen", False):
+        import threading
+        import webbrowser
+
+        threading.Timer(1.2, lambda: webbrowser.open("http://127.0.0.1:5183/")).start()
+
     # 0.0.0.0: 같은 네트워크(사무실 와이파이 등)의 다른 PC에서도 이 PC의 LAN IP로 접속 가능
-    app.run(host="0.0.0.0", port=5183, debug=True)
+    # debug=True로 0.0.0.0에 띄우면 같은 네트워크의 누구나 Werkzeug 디버거(임의 코드 실행)에
+    # 접근할 수 있어 보안 위험이 크다 — 반드시 False로 배포한다(2026-09-28 수정).
+    app.run(host="0.0.0.0", port=5183, debug=False)

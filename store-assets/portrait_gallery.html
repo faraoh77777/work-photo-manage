@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:900px;height:1600px;overflow:hidden;font-family:'Malgun Gothic',Arial,sans-serif;}
+  .canvas{
+    width:900px;height:1600px;position:relative;
+    background:linear-gradient(160deg,#122A45 0%,#1E3A5F 40%,#2E5F9E 100%);
+    display:flex;flex-direction:column;align-items:center;
+    padding-top:90px;
+  }
+  .title{color:#fff;font-size:44px;font-weight:800;text-align:center;letter-spacing:-1px;}
+  .subtitle{color:#BFD6EE;font-size:22px;font-weight:700;margin-top:16px;text-align:center;line-height:1.5;}
+  .browser{
+    margin-top:56px;width:820px;
+    background:#0B1C2E;border-radius:20px;padding:14px 14px 0 14px;
+    box-shadow:0 30px 70px rgba(0,0,0,0.45);
+  }
+  .dots{display:flex;gap:8px;padding:0 4px 12px 4px;}
+  .dot{width:12px;height:12px;border-radius:50%;}
+  .d1{background:#FF5F57;} .d2{background:#FEBC2E;} .d3{background:#28C840;}
+  .shot{width:100%;display:block;border-radius:8px 8px 0 0;}
+  .badges{display:flex;gap:10px;margin-top:44px;}
+  .badge{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);color:#fff;
+    font-size:16px;font-weight:700;padding:10px 18px;border-radius:22px;}
+</style>
+</head>
+<body>
+  <div class="canvas">
+    <div class="title">PC 웹으로도 한눈에</div>
+    <div class="subtitle">전체 현장 사진을 조회·필터·정리<br>중복 사진도 자동으로 찾아 정리합니다</div>
+    <div class="browser">
+      <div class="dots"><div class="dot d1"></div><div class="dot d2"></div><div class="dot d3"></div></div>
+      <img class="shot" src="raw/gallery_pc.jpg">
+    </div>
+    <div class="badges">
+      <div class="badge">🗂️ 자동 분류</div>
+      <div class="badge">🔍 통합 검색</div>
+    </div>
+  </div>
+</body>
+</html>

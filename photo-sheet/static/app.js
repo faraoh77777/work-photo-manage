@@ -1,3 +1,19 @@
+(async function showLicenseFooter() {
+  const el = document.getElementById("licenseFooter");
+  if (!el) return;
+  try {
+    const res = await fetch("/api/license");
+    const data = await res.json();
+    if (data.ok && data.info) {
+      el.textContent = `라이선스: ${data.info.customer} · ${data.info.expires}까지`;
+    } else {
+      el.textContent = "";
+    }
+  } catch (e) {
+    el.textContent = "";
+  }
+})();
+
 let pageSeq = 0;
 const pages = []; // { id, layout, sets: [{dwg,location,content,date,photo:File|null}, ...] }
 
@@ -216,18 +232,18 @@ document.getElementById("addPage").addEventListener("click", () => {
 });
 
 // ── work-photo-manage(Supabase) 연동 ──────────────────────
-// 기본값: work-photo-manage(gallery/index.html)의 기본 현장과 동일한 프로젝트(publishable key,
-// 공개 anon key라 비밀값 아님). 설정 패널에서 다른 현장의 URL/key를 입력해두면 그쪽으로 접속한다
-// (updateSupabaseClient가 loadSettings 이후 다시 만들어준다).
-// (예전엔 workreportdaesun 소유의 다른 생태계(work-gallery) 프로젝트를 하드코딩해서 보고 있어서,
-// 이 사진대지생성기가 work-photo-manage 사진을 전혀 못 찾는 상태였다 — 2026-08-30 이 앱 전용으로
-// 독립시키며 교체)
-const DEFAULT_SUPABASE_URL = "https://dteljgmdbfyxubtpogcj.supabase.co";
-const DEFAULT_SUPABASE_KEY = "sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc";
+// 설정 패널에서 연결할 현장의 Supabase URL/key를 입력해야 갤러리 불러오기가 동작한다.
+// 예전엔 여기 기본값으로 개발사 자체 프로젝트가 하드코딩돼 있어서, 설정을 안 채운 고객이
+// 의도치 않게 개발사의 실제 현장 사진 DB에 연결될 수 있었다 — 외부 배포 전 반드시 제거
+// (2026-09-28). 이제 설정이 비어 있으면 sbClient를 만들지 않고 안내만 띄운다.
 let sbClient = null;
 function updateSupabaseClient(url, key) {
-  const u = (url || "").trim() || DEFAULT_SUPABASE_URL;
-  const k = (key || "").trim() || DEFAULT_SUPABASE_KEY;
+  const u = (url || "").trim();
+  const k = (key || "").trim();
+  if (!u || !k) {
+    sbClient = null;
+    return;
+  }
   try {
     sbClient = supabase.createClient(u, k);
   } catch (e) {
@@ -475,18 +491,33 @@ function renderCloudList() {
 
 async function loadCloudRecords() {
   if (!sbClient) {
-    cloudStatus.textContent = "Supabase 연결 실패";
+    cloudStatus.textContent = "설정에서 연결할 현장의 Supabase URL/key를 먼저 입력해 주세요.";
     return;
   }
   cloudStatus.textContent = "불러오는 중...";
   try {
-    const { data, error } = await sbClient
-      .from("work_photos")
-      .select("*")
-      .order("date", { ascending: false })
-      .limit(5000);
-    if (error) throw error;
-    cloudRecords = (data || []).filter((r) => r.photo_url);
+    // 2026-10-01 발견: Supabase REST는 한 번 요청에 최대 1000행만 돌려준다(프로젝트 기본 설정) —
+    // .limit(5000)을 요청해도 실제로는 1000개에서 그대로 잘렸다. 전체 1,372장 중 오래된 사진
+    // 372장이 목록에 아예 안 들어와서, 그 사진들은 어떤 필터·검색을 해도 찾을 수 없었다(예:
+    // "2128" 검색 시 7월 사진이 안 보이던 문제). .range()로 1000행씩 끊어 전부 모은다 — date가
+    // 같은 행이 많아서 id를 2차 정렬 키로 더해 페이지 경계에서 행이 중복/누락되지 않게 한다.
+    const PAGE_SIZE = 1000;
+    let all = [];
+    let from = 0;
+    for (;;) {
+      const { data, error } = await sbClient
+        .from("work_photos")
+        .select("*")
+        .order("date", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) throw error;
+      all = all.concat(data || []);
+      if (!data || data.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+      cloudStatus.textContent = `불러오는 중... (${all.length}장)`;
+    }
+    cloudRecords = all.filter((r) => r.photo_url);
     cloudStatus.textContent = `총 ${cloudRecords.length}장`;
     updateCloudMenuNotice();
     populateCloudWorkTypeFilter();

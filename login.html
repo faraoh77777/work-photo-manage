@@ -212,7 +212,7 @@ function registerSite(url,key,name){
       // 초대 링크로 들어온 사람은 그 현장을 만든 사람이 아니라 초대받은 직원이므로,
       // site_setup_creator(운영자 자동승격 표시)가 남아있더라도 여기서 반드시 지운다.
       // 작업분류/구역도 이전 현장 것이 남아있으면 새 현장에 잘못 뜨거나 덮어써질 수 있다(2026-09-28 수정).
-      ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','site_setup_creator','senderName','custom_categories_by_menu','custom_areas','default_area'].forEach(function(k){localStorage.removeItem(k);});
+      ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','site_setup_creator','senderName','member_session_token','custom_categories_by_menu','custom_areas','default_area'].forEach(function(k){localStorage.removeItem(k);});
       localStorage.setItem('site_supabase_url',cfg.u);
       localStorage.setItem('site_supabase_key',cfg.k);
       if(cfg.n)localStorage.setItem('site_name',cfg.n);
@@ -247,7 +247,7 @@ async function renderSiteSelector(){
   var closedEntry=serverList.find(function(s){return s.url===SUPABASE_URL&&s.closed;});
   if(closedEntry){
     showTE((closedEntry.name||'이 현장')+'은 완료되어 종료(폐쇄)되었습니다.');
-    ['site_supabase_url','site_supabase_key','site_name','member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','senderName','custom_categories_by_menu','custom_areas','default_area'].forEach(function(k){localStorage.removeItem(k);});
+    ['site_supabase_url','site_supabase_key','site_name','member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','senderName','member_session_token','custom_categories_by_menu','custom_areas','default_area'].forEach(function(k){localStorage.removeItem(k);});
     setTimeout(function(){location.reload();},2600);
     return;
   }
@@ -307,7 +307,7 @@ async function onSiteSelectChange(){
 
   // 다른 현장으로 전환하는 것이므로 이전 현장 로그인 세션은 지운다(초대 링크와 동일 처리).
   // 작업분류/구역도 이전 현장 것이 남아있으면 새 현장에 잘못 뜨거나 덮어써질 수 있다(2026-09-28 수정).
-  ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','site_setup_creator','senderName','custom_categories_by_menu','custom_areas','default_area'].forEach(function(k){localStorage.removeItem(k);});
+  ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','site_setup_creator','senderName','member_session_token','custom_categories_by_menu','custom_areas','default_area'].forEach(function(k){localStorage.removeItem(k);});
   if(picked.url===LEGACY_DEFAULT_URL){
     localStorage.removeItem('site_supabase_url');
     localStorage.removeItem('site_supabase_key');
@@ -320,23 +320,7 @@ async function onSiteSelectChange(){
   location.reload();
 }
 
-// ── 회원가입 요청 텔레그램 알림: 대선이엔씨(레거시 기본) 현장에서만 우리 봇으로 보낸다.
-// 다른 회사가 만든 현장은 site_telegram_bot_token/chat_id를 직접 설정하지 않는 한 알림을 보내지 않는다
-// (설정 안 하면 우리 관리자에게 남의 회사 가입 요청이 새어가는 사고를 막기 위함).
 var IS_DEFAULT_SITE=(SUPABASE_URL===LEGACY_DEFAULT_URL);
-var DEFAULT_TELEGRAM_BOT_TOKEN='8756089521:AAElBPIMFSjedbiEskuDcv5xdbpVuYEyVcA';
-var DEFAULT_TELEGRAM_CHAT_ID='8958841524';
-var TELEGRAM_BOT_TOKEN=localStorage.getItem('site_telegram_bot_token')||(IS_DEFAULT_SITE?DEFAULT_TELEGRAM_BOT_TOKEN:'');
-var TELEGRAM_CHAT_ID=localStorage.getItem('site_telegram_chat_id')||(IS_DEFAULT_SITE?DEFAULT_TELEGRAM_CHAT_ID:'');
-function notifyTelegramSignup(m){
-  if(!TELEGRAM_BOT_TOKEN||!TELEGRAM_CHAT_ID)return;
-  var text=['🔔 회원가입 승인 요청','회사: '+m.company,'현장: '+m.project,'이름: '+m.name,'전화: '+m.phone,'구분: '+(m.category||'-')].join('\n');
-  fetch('https://api.telegram.org/bot'+TELEGRAM_BOT_TOKEN+'/sendMessage',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({chat_id:TELEGRAM_CHAT_ID,text:text})
-  }).catch(function(e){console.error('텔레그램 알림 실패',e);});
-}
 
 // 대선이엔씨(레거시 기본) 현장에서만 회사명/프로젝트명을 미리 채워준다.
 // 다른 회사가 새로 만든 현장에는 이 값이 섞여 들어가면 안 되므로 반드시 직접 입력하게 비워둔다.
@@ -368,6 +352,9 @@ function mostCommon(arr){
   return Object.keys(counts).reduce(function(a,b){return counts[a]>=counts[b]?a:b;});
 }
 
+// 2026-09-28: members 직접 select가 막혀서(RLS 잠금, QA-AUDIT.md §11-1) 이 자동완성은
+// 이제 항상 빈 목록만 돌려받는다 — 보안 우선순위상 이 편의기능은 손대지 않고 그대로 두되,
+// 회원가입 자체(doSignup)는 영향 없음을 분명히 해둔다.
 async function loadSignupOptions(){
   try{
     var res=await sbClient.from('members').select('company,project');
@@ -442,12 +429,6 @@ document.addEventListener('animationend',function(e){
 
 function normPhone(v){return v.replace(/\D/g,'');}
 
-async function sha256Hex(str){
-  var enc=new TextEncoder().encode(str);
-  var buf=await crypto.subtle.digest('SHA-256',enc);
-  return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
-}
-
 function showPinSetupUI(show){
   document.getElementById('loginPinConfirmLbl').style.display=show?'':'none';
   document.getElementById('loginPinConfirm').style.display=show?'':'none';
@@ -490,6 +471,9 @@ function clearLoginAttempts(phone){
   if(map[phone]){ delete map[phone]; saveLockMap(map); }
 }
 
+// 2026-09-28: members 테이블을 클라이언트가 직접 select/update할 수 없게 막아서
+// (pin_hash가 그대로 노출되던 문제, QA-AUDIT.md §11-1/3), 로그인/PIN설정을 전부
+// rpc_login으로 옮겼다 — PIN 대조·해시 저장이 전부 서버(Postgres 함수) 안에서 끝난다.
 async function doLogin(){
   var phone=normPhone(document.getElementById('loginPhone').value.trim());
   var pin=document.getElementById('loginPin').value.trim();
@@ -499,46 +483,49 @@ async function doLogin(){
   var lockedSec=checkLoginLock(phone);
   if(lockedSec>0){ showTE('비밀번호를 여러 번 틀려 '+lockedSec+'초 후 다시 시도할 수 있습니다.'); return; }
   showT('확인 중...');
-  var res=await sbClient.from('members').select('*').eq('phone',phone).single();
-  if(res.error||!res.data){showTE('등록된 번호가 없습니다. 회원가입 해주세요.');return;}
-  var m=res.data;
 
-  if(!m.pin_hash){
-    // 비밀번호가 아직 없는 기존 회원 → 최초 로그인 시 직접 설정
-    var confirmEl=document.getElementById('loginPinConfirm');
-    if(confirmEl.style.display==='none'){
-      showPinSetupUI(true);
-      showT('비밀번호 확인란에 같은 4자리를 한 번 더 입력하고 로그인을 눌러주세요.');
-      return;
-    }
-    var confirmPin=confirmEl.value.trim();
-    if(pin!==confirmPin){showTE('비밀번호가 서로 다릅니다. 다시 입력해 주세요.');return;}
-    var hash=await sha256Hex(pin);
-    var upd=await sbClient.from('members').update({pin_hash:hash}).eq('id',m.id).select().single();
-    if(upd.error||!upd.data){showTE('비밀번호 설정 실패: '+(upd.error&&upd.error.message||''));return;}
-    m=upd.data;
-    showPinSetupUI(false);
-  }else{
-    var hash2=await sha256Hex(pin);
-    if(hash2!==m.pin_hash){
-      var newLockUntil=recordFailedLogin(phone);
-      if(newLockUntil>Date.now()){
-        showTE('비밀번호를 여러 번 틀렸습니다. '+Math.ceil((newLockUntil-Date.now())/1000)+'초 후 다시 시도해 주세요.');
-      }else{
-        showTE('비밀번호가 올바르지 않습니다.');
-      }
-      return;
-    }
+  var confirmEl=document.getElementById('loginPinConfirm');
+  var pinConfirm=confirmEl.style.display==='none'?null:confirmEl.value.trim();
+
+  var res;
+  try{
+    res=await sbClient.rpc('rpc_login',{p_phone:phone,p_pin:pin,p_pin_confirm:pinConfirm});
+  }catch(e){ showTE('로그인 실패: 네트워크 오류'); return; }
+  if(res.error){ showTE('로그인 실패: '+res.error.message); return; }
+  var data=res.data||{};
+
+  if(data.error==='not_found'){ showTE('등록된 번호가 없습니다. 회원가입 해주세요.'); return; }
+  if(data.error==='needs_pin_setup'){
+    showPinSetupUI(true);
+    showT('비밀번호 확인란에 같은 4자리를 한 번 더 입력하고 로그인을 눌러주세요.');
+    return;
   }
-
-  clearLoginAttempts(phone);
-  if(!m.approved){
+  if(data.error==='pin_mismatch'){ showTE('비밀번호가 서로 다릅니다. 다시 입력해 주세요.'); return; }
+  // 서버(rpc_login)가 직접 거는 잠금 — 위의 브라우저 잠금과 달리 다른 기기·직접 호출에도 적용된다.
+  if(data.error==='locked'){
+    showTE('비밀번호를 여러 번 틀려 잠겼습니다. '+Math.ceil((data.retry_after||60)/60)+'분 후 다시 시도해 주세요.');
+    return;
+  }
+  if(data.error==='wrong_pin'){
+    var newLockUntil=recordFailedLogin(phone);
+    if(newLockUntil>Date.now()){
+      showTE('비밀번호를 여러 번 틀렸습니다. '+Math.ceil((newLockUntil-Date.now())/1000)+'초 후 다시 시도해 주세요.');
+    }else{
+      showTE('비밀번호가 올바르지 않습니다.');
+    }
+    return;
+  }
+  if(data.error==='not_approved'){
     document.getElementById('approvalNotice').style.display='';
     showTE('관리자 승인 대기 중입니다. 승인 후 다시 로그인해 주세요.');
     return;
   }
-  saveSession(m);
-  showT('안녕하세요, '+m.name+'님!');
+  if(data.error){ showTE('로그인 실패: '+data.error); return; }
+
+  clearLoginAttempts(phone);
+  showPinSetupUI(false);
+  saveSession(data.member,data.token);
+  showT('안녕하세요, '+data.member.name+'님!');
   setTimeout(function(){location.href='index.html';},900);
 }
 
@@ -557,51 +544,36 @@ async function doSignup(){
   if(pin!==pinConfirm){showTE('비밀번호가 서로 다릅니다.');return;}
   if(!document.getElementById('regAgree').checked){showTE('개인정보 수집·이용에 동의해 주세요.');return;}
   showT('가입 중...');
-  var pinHash=await sha256Hex(pin);
 
-  // 운영자 자동승격 대상 판단.
-  // ① site-setup.html에서 "비어있는 새 현장"을 방금 연결한 사람 (site_setup_creator 표시)
-  // ② 그 표시가 없는 상태에서도 members 테이블이 실제로 비어있는 경우
-  //    (기본 공유 현장이 완전히 초기화된 경우 등, 잠금 방지용 안전장치)
-  // 둘 다 아니면 본인이 무엇을 선택했든 role은 참고용일 뿐, 반드시 운영자 승인을 거친다.
+  // 운영자 자동승격 여부(현장 개설자인지)는 rpc_signup 안에서 다시 한번 실제
+  // members 행 개수로도 확인한다 — 여기서는 site-setup.html이 남긴 표시만 넘긴다.
   var isSiteCreator=localStorage.getItem('site_setup_creator')==='1';
-  var existingCheck=await sbClient.from('members').select('id').limit(1);
-  var isEmptyTable=!existingCheck.error && (!existingCheck.data || existingCheck.data.length===0);
-  var autoPromote=isSiteCreator||isEmptyTable;
-  var finalRole=autoPromote?'운영자':wantedRole;
 
-  var insertData={company:company,project:project,name:name,phone:phone,category:category,main_menu:mainMenu,role:finalRole,pin_hash:pinHash,approved:autoPromote};
-  var res=await sbClient.from('members').insert(insertData).select().single();
-  if(res.error){
-    var msg=res.error.message||'';
-    if(msg.toLowerCase().includes('category')||msg.toLowerCase().includes('role')||msg.toLowerCase().includes('main_menu')){
-      var d2=Object.assign({},insertData);
-      if(msg.toLowerCase().includes('category'))delete d2.category;
-      if(msg.toLowerCase().includes('role'))delete d2.role;
-      if(msg.toLowerCase().includes('main_menu'))delete d2.main_menu;
-      res=await sbClient.from('members').insert(d2).select().single();
-      if(res.data){ res.data.category=category; res.data.role=finalRole; res.data.main_menu=mainMenu; }
-    }
-    if(res.error){
-      var msg2=res.error.message||'';
-      if(msg2.includes('unique')||msg2.includes('duplicate')){showTE('이미 등록된 전화번호입니다.');}
-      else{showTE('가입 실패: '+msg2);}
-      return;
-    }
-  }
+  var res;
+  try{
+    res=await sbClient.rpc('rpc_signup',{
+      p_company:company,p_project:project,p_name:name,p_phone:phone,
+      p_pin:pin,p_pin_confirm:pinConfirm,p_category:category,p_main_menu:mainMenu,
+      p_role:wantedRole,p_is_site_creator:isSiteCreator
+    });
+  }catch(e){ showTE('가입 실패: 네트워크 오류'); return; }
+  if(res.error){ showTE('가입 실패: '+res.error.message); return; }
+  var data=res.data||{};
+  if(data.error==='duplicate_phone'){ showTE('이미 등록된 전화번호입니다.'); return; }
+  if(data.error){ showTE('가입 실패: '+data.error); return; }
+
   if(isSiteCreator)localStorage.removeItem('site_setup_creator');
   // 승인 대기라 아직 로그인은 안 시키더라도, 이 사람의 이름/전화번호는 기억해서
   // 다음에 다른 현장에 또 가입할 때 매번 새로 치지 않아도 되게 한다.
   try{ localStorage.setItem('remembered_name',name); localStorage.setItem('remembered_phone',phone); }catch(e){}
-  if(autoPromote){
+  if(data.token){
     // 현장 개설자(또는 완전히 빈 현장의 첫 가입자)는 바로 로그인까지 시켜준다.
-    saveSession(res.data);
-    showT('가입 완료! 이 현장의 운영자로 자동 등록되었습니다. 환영합니다, '+res.data.name+'님!');
+    saveSession(data.member,data.token);
+    showT('가입 완료! 이 현장의 운영자로 자동 등록되었습니다. 환영합니다, '+data.member.name+'님!');
     setTimeout(function(){location.href='index.html';},1200);
     return;
   }
   // 가입 즉시 로그인시키지 않고 승인 대기 안내 후 로그인 탭으로 전환
-  notifyTelegramSignup(res.data);
   showT('가입 완료! 운영자 승인 후 이용 가능합니다.');
   setTimeout(function(){
     switchTab('login');
@@ -609,7 +581,7 @@ async function doSignup(){
   },1200);
 }
 
-function saveSession(m){
+function saveSession(m,token){
   localStorage.setItem('member_id',m.id);
   localStorage.setItem('member_name',m.name);
   localStorage.setItem('member_company',m.company);
@@ -619,6 +591,9 @@ function saveSession(m){
   if(m.category) localStorage.setItem('member_category',m.category);
   localStorage.setItem('member_role',m.role||'근로자');
   localStorage.setItem('member_main_menu',m.main_menu||'시공');
+  // rpc_login/rpc_signup이 발급한 세션 토큰 — 승인/거부/설정변경 같은 관리자 전용
+  // RPC를 부를 때 이 토큰으로 서버가 role을 다시 확인한다(admin.html 등).
+  if(token) localStorage.setItem('member_session_token',token);
   try{ localStorage.setItem('remembered_name',m.name); localStorage.setItem('remembered_phone',m.phone); }catch(e){}
 }
 

@@ -19,7 +19,10 @@ def xlsx_to_pdf(xlsx_path, pdf_path):
     with _lock:
         pythoncom.CoInitialize()
         try:
-            excel = win32.gencache.EnsureDispatch("Excel.Application")
+            # gencache.EnsureDispatch는 처음 실행 시 win32com 캐시(gen_py)를 만드는데,
+            # PyInstaller로 얼린 exe에서는 이 캐시 폴더에 쓸 수 없어 실패한다.
+            # Dispatch(late binding)는 캐시가 필요 없어 얼린 상태에서도 그대로 동작한다.
+            excel = win32.Dispatch("Excel.Application")
             excel.Visible = False
             excel.DisplayAlerts = False
             try:

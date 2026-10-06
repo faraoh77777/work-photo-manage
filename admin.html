@@ -201,7 +201,7 @@ async function checkSiteClosed(){
     var res=await closeCheckClient.from('site_registry').select('name,closed').eq('url',SUPABASE_URL).maybeSingle();
     if(res.data&&res.data.closed){
       alert((res.data.name||'이 현장')+'은 완료되어 종료(폐쇄)되었습니다.');
-      ['site_supabase_url','site_supabase_key','site_name','member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','senderName','custom_categories_by_menu','custom_areas','default_area'].forEach(function(k){localStorage.removeItem(k);});
+      ['site_supabase_url','site_supabase_key','site_name','member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','senderName','member_session_token','custom_categories_by_menu','custom_areas','default_area'].forEach(function(k){localStorage.removeItem(k);});
       location.href='login.html';
     }
   }catch(e){console.error('현장 폐쇄 확인 실패',e);}
@@ -210,13 +210,16 @@ async function checkSiteClosed(){
 function showT(m){var t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none';},2500);}
 function showTE(m){var t=document.getElementById('toastE');t.textContent=m;t.style.display='block';setTimeout(function(){t.style.display='none';},6000);}
 
-// 회원가입은 로그인 없이 누구나 신청할 수 있어(members insert 정책이 with check(true))
+// 회원가입은 로그인 없이 누구나 신청할 수 있어(rpc_signup이 익명 호출 가능)
 // 이름/회사/현장 등 모든 필드가 공격자 통제 입력일 수 있다 — innerHTML에 꽂기 전 항상 이걸 거친다.
 function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
 // ── 권한 게이트: 로그인 + role이 관리자/운영자여야 통과 ──
 // role 컬럼 도입 전 가입한 옛 계정은 role이 없을 수 있으므로, 그 경우엔
 // 예전 방식대로 category==='관리자'였는지로 대체 판정한다(하위호환).
+// 2026-09-28: 이 체크는 어디까지나 화면을 안 보여주기 위한 UX 편의일 뿐이다 — 실제
+// 승인/거부/설정변경 같은 위험한 동작은 이 값과 무관하게 rpc_* 함수 안에서 서버가
+// member_session_token으로 role을 다시 확인한다(QA-AUDIT.md §11-2, 콘솔 조작 방지).
 (function(){
   var memberId=localStorage.getItem('member_id');
   if(!memberId){ location.href='login.html'; return; }
@@ -278,14 +281,21 @@ function restageCatArea(){
   tempDefaultArea=defaultArea;
 }
 
+// app_settings 변경은 관리자 전용 RPC로만 허용된다(QA-AUDIT.md §11-2) — 서버가
+// member_session_token으로 role을 다시 확인하고 나서야 실제로 저장된다.
+// 반환값: 성공하면 null, 실패하면 사용자에게 보여줄 에러 메시지 문자열.
 async function pushSettingsToSupabase(){
-  if(!sbClient)return;
+  if(!sbClient)return "서버에 연결되어 있지 않습니다";
+  var token=localStorage.getItem('member_session_token');
+  if(!token) return "로그인 세션이 없습니다";
   try{
-    var res=await sbClient.from('app_settings').upsert({
-      id:'global', cats_by_menu:catsByMenu, areas:customAreas, default_area:defaultArea||null, updated_at:new Date().toISOString()
+    var res=await sbClient.rpc('rpc_update_app_settings',{
+      p_token:token, p_cats_by_menu:catsByMenu, p_areas:customAreas, p_default_area:defaultArea||null
     });
-    if(res.error) console.error("설정 클라우드 동기화 실패",res.error.message);
-  }catch(e){console.error("설정 클라우드 동기화 실패",e);}
+    if(res.error){ console.error("설정 클라우드 동기화 실패",res.error.message); return res.error.message; }
+    if(res.data&&res.data.error){ console.error("설정 클라우드 동기화 실패",res.data.error); return res.data.error; }
+    return null;
+  }catch(e){console.error("설정 클라우드 동기화 실패",e); return String(e&&e.message||e);}
 }
 async function fetchSettingsFromSupabase(){
   if(sbClient){
@@ -363,7 +373,7 @@ function removeArea(i){
   tempAreas.splice(i,1);
   renderAreaChips();
 }
-function saveCatAreaChanges(){
+async function saveCatAreaChanges(){
   if(!tempCatsByMenu||!tempAreas)return;
   catsByMenu=JSON.parse(JSON.stringify(tempCatsByMenu));
   saveCatsByMenu();
@@ -371,22 +381,31 @@ function saveCatAreaChanges(){
   saveList("custom_areas",customAreas);
   defaultArea=(tempDefaultArea&&customAreas.indexOf(tempDefaultArea)!==-1)?tempDefaultArea:(customAreas[0]||"");
   localStorage.setItem("default_area",defaultArea);
-  showT("설정이 저장되었습니다");
-  pushSettingsToSupabase();
+  // 2026-09-29: 클라우드 반영이 실패해도(세션 만료 등) 이 로컬 저장은 그대로 두고
+  // 사용자에게만 알려준다 — 이 기기에서는 어차피 방금 고친 값이 바로 적용되니까.
+  var pushErr=await pushSettingsToSupabase();
+  if(pushErr) showTE("이 기기에는 저장됐지만 클라우드 동기화에 실패했습니다: "+pushErr+" (다시 로그인 후 저장해 주세요)");
+  else showT("설정이 저장되었습니다");
 }
 
 // ── 회원 승인 대기 ──
 // 공격자가 이름/역할에 따옴표를 넣어 onclick 속성을 깨고 스크립트를 실행하는 걸 막기 위해,
 // 값 자체를 onclick 문자열에 끼워넣지 않고 배열 인덱스만 넘긴다(approveMemberAt/rejectMemberAt).
 var _pendingRows=[];
+// 2026-09-28: members를 클라이언트가 직접 select할 수 없게 막아서(pin_hash 노출 방지,
+// QA-AUDIT.md §11-1) rpc_list_pending_members로 옮겼다 — 이 함수 자체도 서버에서
+// role이 관리자/운영자인지 다시 확인한 뒤에만 목록을 내려준다.
 async function renderPendingMembers(){
   if(!sbClient)return;
   var listEl=document.getElementById("pendingList");
   var countEl=document.getElementById("pendingCount");
+  var token=localStorage.getItem('member_session_token');
+  if(!token){ listEl.innerHTML='<div style="font-size:13px;color:#E74C3C;">로그인 세션이 없습니다. 다시 로그인해 주세요.</div>'; return; }
   try{
-    var res=await sbClient.from('members').select('*').eq('approved',false).order('created_at',{ascending:true});
+    var res=await sbClient.rpc('rpc_list_pending_members',{p_token:token});
     if(res.error){ listEl.innerHTML='<div style="font-size:13px;color:#E74C3C;">불러오기 실패: '+escHtml(res.error.message)+'</div>'; return; }
-    var rows=res.data||[];
+    if(res.data&&res.data.error){ listEl.innerHTML='<div style="font-size:13px;color:#E74C3C;">불러오기 실패: '+escHtml(res.data.error)+'</div>'; return; }
+    var rows=(res.data&&res.data.data)||[];
     _pendingRows=rows;
     countEl.textContent=rows.length;
     if(!rows.length){ listEl.innerHTML='<div style="font-size:13px;color:#A0BBD4;">대기 중인 가입 신청이 없습니다.</div>'; return; }
@@ -413,14 +432,18 @@ async function approveMember(id,name,role){
     ? name+'님을 "'+role+'" 권한으로 승인합니다.\nadmin.html·사진관리 화면까지 전체 접근 권한이 부여됩니다. 승인할까요?'
     : name+'님의 가입을 승인할까요?';
   if(!confirm(msg))return;
-  var res=await sbClient.from('members').update({approved:true}).eq('id',id);
+  var token=localStorage.getItem('member_session_token');
+  var res=await sbClient.rpc('rpc_approve_member',{p_token:token,p_member_id:id});
   if(res.error){ showTE('승인 실패: '+res.error.message); return; }
+  if(res.data&&res.data.error){ showTE('승인 실패: '+res.data.error); return; }
   showT('승인했습니다'); renderPendingMembers();
 }
 async function rejectMember(id,name){
   if(!confirm(name+' 가입 신청을 거부하고 삭제할까요?'))return;
-  var res=await sbClient.from('members').delete().eq('id',id);
+  var token=localStorage.getItem('member_session_token');
+  var res=await sbClient.rpc('rpc_reject_member',{p_token:token,p_member_id:id});
   if(res.error){ showTE('거부 실패: '+res.error.message); return; }
+  if(res.data&&res.data.error){ showTE('거부 실패: '+res.data.error); return; }
   showT('거부했습니다'); renderPendingMembers();
 }
 

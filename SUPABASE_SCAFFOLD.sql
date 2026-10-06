@@ -44,8 +44,18 @@ insert into scaffold_settings (id) values ('default') on conflict (id) do nothin
 insert into storage.buckets (id, name, public) values ('scaffold-photos', 'scaffold-photos', true)
   on conflict (id) do nothing;
 create policy "scaffold-photos storage select" on storage.objects for select using (bucket_id = 'scaffold-photos');
-create policy "scaffold-photos storage insert" on storage.objects for insert with check (bucket_id = 'scaffold-photos');
-create policy "scaffold-photos storage update" on storage.objects for update using (bucket_id = 'scaffold-photos');
+-- 사진(이미지)만 다루는 버킷이라, 인증 없이도 이미지가 아니거나 너무 큰 업로드만 최소한 막는다
+-- (2026-09-29, QA-AUDIT.md §11-4 — work-photo 버킷과 동일한 조치).
+create policy "scaffold-photos storage insert" on storage.objects for insert with check (
+  bucket_id = 'scaffold-photos'
+  and coalesce(metadata->>'mimetype','') like 'image/%'
+  and coalesce((metadata->>'size')::bigint, 0) < 20971520
+);
+create policy "scaffold-photos storage update" on storage.objects for update using (bucket_id = 'scaffold-photos') with check (
+  bucket_id = 'scaffold-photos'
+  and coalesce(metadata->>'mimetype','') like 'image/%'
+  and coalesce((metadata->>'size')::bigint, 0) < 20971520
+);
 
 -- 검증
 select count(*) as scaffold_quantities_count from scaffold_quantities;

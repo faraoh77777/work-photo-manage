@@ -21,11 +21,35 @@ import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import Anthropic from "npm:@anthropic-ai/sdk";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// 이 함수는 무인증이라 anon key만 있으면 앱을 거치지 않고도 누구나 직접 호출해 Claude Vision
+// 비용을 무제한으로 유발할 수 있었다(QA-AUDIT.md §11-5). 로그인된 사람만 쓰도록 확인한다.
+async function verifySession(token: unknown): Promise<boolean> {
+  if (!token || typeof token !== "string" || !SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rpc_verify_session`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({ p_token: token }),
+    });
+    if (!resp.ok) return false;
+    const data = await resp.json();
+    return !!data?.valid;
+  } catch {
+    return false;
+  }
+}
 
 function buildSystemPrompt(spanLengthM: number, widthM: number, levelHeightM: number): string {
   return `당신은 건설 현장에 설치된 강관 비계(scaffolding) 사진을 보고 물량을 추정하는 보조원입니다.
@@ -71,6 +95,12 @@ serve(async (req: Request) => {
     }
 
     const body = await req.json();
+    if (!(await verifySession(body?.token))) {
+      return new Response(
+        JSON.stringify({ ok: false, error: "로그인이 필요합니다" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
     const imageInput = body?.image_base64;
     if (!imageInput || typeof imageInput !== "string") {
       throw new Error("사진 데이터(image_base64)가 없습니다");

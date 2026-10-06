@@ -6,6 +6,20 @@ dist/
 __pycache__/
 *.pyc
 
+# PyInstaller 빌드 산출물(용량 크고 매번 재생성 가능) — 사진대지생성기 exe 패키징용
+photo-sheet/build/
+*.spec
+
+# 고객에게 발급한 라이선스 키가 실수로라도 저장소에 안 남게
+photo-sheet/license.key
+
+# 라이선스 서명 비밀키가 들어 있는 파일 — 이 저장소는 공개(public)라 올리면 누구나 라이선스를 만들 수 있다
+photo-sheet/license_check.py
+photo-sheet/generate_license.py
+
+# 취약점 위치를 파일·줄 번호까지 적은 내부 점검 문서 — 공개 저장소에 올리지 않는다
+QA-AUDIT.md
+
 # 서명 키스토어와 비밀번호는 절대 커밋하지 않는다
 credentials.json
 *.keystore

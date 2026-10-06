@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  @font-face { font-family: 'sys'; src: local('Malgun Gothic'); }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:1024px;height:578px;overflow:hidden;font-family:'Malgun Gothic',Arial,sans-serif;}
+  .canvas{
+    width:1024px;height:578px;position:relative;
+    background:linear-gradient(135deg,#122A45 0%,#1E3A5F 45%,#2E5F9E 100%);
+  }
+  .deco-circle{position:absolute;border-radius:50%;background:rgba(255,255,255,0.05);}
+  .c1{width:420px;height:420px;top:-160px;left:-120px;}
+  .c2{width:260px;height:260px;bottom:-100px;left:520px;background:rgba(255,255,255,0.04);}
+  .left{position:absolute;left:64px;top:0;bottom:0;width:460px;display:flex;flex-direction:column;justify-content:center;}
+  .icon{width:76px;height:76px;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,0.35);}
+  .title{color:#fff;font-size:52px;font-weight:800;margin-top:24px;letter-spacing:-1px;}
+  .subtitle{color:#BFD6EE;font-size:21px;font-weight:700;margin-top:14px;line-height:1.55;}
+  .badges{display:flex;gap:10px;margin-top:30px;}
+  .badge{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);color:#fff;
+    font-size:14px;font-weight:700;padding:8px 14px;border-radius:20px;}
+  .phone-wrap{position:absolute;right:70px;top:38px;width:360px;height:502px;
+    transform:rotate(3.5deg);}
+  .phone{width:100%;height:100%;background:#0B1C2E;border-radius:38px;padding:10px;
+    box-shadow:0 30px 60px rgba(0,0,0,0.45),0 8px 20px rgba(0,0,0,0.3);}
+  .screen{width:100%;height:100%;border-radius:28px;overflow:hidden;background:#F0F4F8;position:relative;}
+  .screen img{width:100%;height:auto;display:block;}
+  .notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:90px;height:18px;
+    background:#0B1C2E;border-radius:10px;z-index:5;}
+</style>
+</head>
+<body>
+  <div class="canvas">
+    <div class="deco-circle c1"></div>
+    <div class="deco-circle c2"></div>
+    <div class="left">
+      <img class="icon" src="icon.png">
+      <div class="title">작업 사진</div>
+      <div class="subtitle">현장 작업사진에 TAG·날짜·구역을<br>자동으로 기록하는 계장/전기 공사 전용 앱</div>
+      <div class="badges">
+        <div class="badge">📷 원터치 촬영</div>
+        <div class="badge">🗂️ 자동 분류</div>
+        <div class="badge">💬 카카오 공유</div>
+      </div>
+    </div>
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <img src="screenshots/01_main.png">
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

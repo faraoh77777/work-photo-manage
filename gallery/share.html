@@ -369,7 +369,8 @@ async function generateAiDraft(){
         hint:hint,
         project:localStorage.getItem('member_project')||'',
         company:localStorage.getItem('member_company')||'',
-        photoCount:photos.length
+        photoCount:photos.length,
+        token:localStorage.getItem('member_session_token')||''
       }),
     });
     var data=await resp.json().catch(function(){return {};});
@@ -405,6 +406,7 @@ async function sendEmail(){
       text:document.getElementById('inContent').value.trim()||'첨부된 작업지시서 PDF를 확인해 주세요.',
       pdfBase64:pdf.base64,
       filename:pdf.filename,
+      token:localStorage.getItem('member_session_token')||'',
     };
     if(ccSel.length) body.cc=ccSel.map(function(r){return r.email;});
     var resp=await fetch(SUPABASE_URL+'/functions/v1/send-instruction-email',{

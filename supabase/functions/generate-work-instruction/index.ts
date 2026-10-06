@@ -20,11 +20,39 @@ import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import Anthropic from "npm:@anthropic-ai/sdk";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+// 이 프로젝트(현장) 자체의 URL/anon key — Edge Function 배포 시 Supabase가 자동으로
+// 넣어주는 환경변수라 별도 secrets set이 필요 없다.
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// 이 함수는 무인증이라 anon key만 있으면 앱을 거치지 않고도 누구나 직접 호출해 Claude API
+// 비용을 무제한으로 유발할 수 있었다(QA-AUDIT.md §11-5). 로그인된 사람만 쓰도록,
+// 클라이언트가 같이 보낸 세션 토큰을 rpc_verify_session으로 확인한다(관리자 전용까지는
+// 아니고 유효한 로그인 세션이면 충분 — share.html은 일반 근로자도 쓰도록 설계됨).
+async function verifySession(token: unknown): Promise<boolean> {
+  if (!token || typeof token !== "string" || !SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rpc_verify_session`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({ p_token: token }),
+    });
+    if (!resp.ok) return false;
+    const data = await resp.json();
+    return !!data?.valid;
+  } catch {
+    return false;
+  }
+}
 
 const SYSTEM_PROMPT = `당신은 건설 현장 작업지시서를 작성하는 보조원입니다. 사용자가 대충 적은 메모를 바탕으로
 현장에서 실제로 쓸 수 있는 정식 작업지시서의 "제목"과 "내용"을 작성합니다.
@@ -44,7 +72,13 @@ serve(async (req: Request) => {
       throw new Error("ANTHROPIC_API_KEY가 설정되지 않았습니다 (supabase secrets set ANTHROPIC_API_KEY=...)");
     }
 
-    const { hint, project, company, photoCount } = await req.json();
+    const { hint, project, company, photoCount, token } = await req.json();
+    if (!(await verifySession(token))) {
+      return new Response(
+        JSON.stringify({ ok: false, error: "로그인이 필요합니다" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
     if (!hint || !String(hint).trim()) throw new Error("메모(hint)가 없습니다");
 
     const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY });

@@ -21,11 +21,36 @@ import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const RESEND_FROM = Deno.env.get("RESEND_FROM") || "onboarding@resend.dev";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// 이 함수는 무인증이라 anon key만 있으면 앱을 거치지 않고도 누구나 직접 호출해 임의 주소로
+// 메일을 보내거나(스팸/피싱 릴레이) Resend 비용을 유발할 수 있었다(QA-AUDIT.md §11-5).
+// 로그인된 사람만 쓰도록 세션 토큰을 확인한다.
+async function verifySession(token: unknown): Promise<boolean> {
+  if (!token || typeof token !== "string" || !SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rpc_verify_session`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({ p_token: token }),
+    });
+    if (!resp.ok) return false;
+    const data = await resp.json();
+    return !!data?.valid;
+  } catch {
+    return false;
+  }
+}
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -37,7 +62,13 @@ serve(async (req: Request) => {
       throw new Error("RESEND_API_KEY가 설정되지 않았습니다 (supabase secrets set RESEND_API_KEY=...)");
     }
 
-    const { to, cc, subject, text, pdfBase64, filename } = await req.json();
+    const { to, cc, subject, text, pdfBase64, filename, token } = await req.json();
+    if (!(await verifySession(token))) {
+      return new Response(
+        JSON.stringify({ ok: false, error: "로그인이 필요합니다" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     if (!Array.isArray(to) || !to.length) throw new Error("받는사람(to)이 없습니다");
     if (!pdfBase64) throw new Error("PDF 데이터(pdfBase64)가 없습니다");
