@@ -19,6 +19,7 @@ photo-sheet/generate_license.py
 
 # 취약점 위치를 파일·줄 번호까지 적은 내부 점검 문서 — 공개 저장소에 올리지 않는다
 QA-AUDIT.md
+HANDOFF_*.md
 
 # 서명 키스토어와 비밀번호는 절대 커밋하지 않는다
 credentials.json
