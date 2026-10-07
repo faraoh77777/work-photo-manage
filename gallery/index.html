@@ -670,6 +670,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
         <button class="btn btn-ghost" onclick="navigateDetail(-1)" title="이전 사진">◀ 이전</button>
         <button class="btn btn-ghost" onclick="navigateDetail(1)" title="다음 사진">다음 ▶</button>
         <button class="btn btn-ghost" onclick="openDetailEdit()">수정</button>
+        <button class="btn btn-ghost" onclick="openWmEdit()">워터마크 수정</button>
         <button class="btn btn-ghost" onclick="downloadPhoto()">다운로드</button>
         <button class="btn btn-ghost" onclick="closeDetail()">닫기</button>
       </div>
@@ -678,6 +679,42 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
       <div class="act-grp">
         <button class="btn btn-ghost" onclick="cancelDetailEdit()">취소</button>
         <button class="btn btn-primary" onclick="saveDetailEdit()">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 워터마크 수정 모달 — 사진 아래 검정 띠에 워터마크를 다시 그려 이 기기(갤러리)의 사진에 적용한다.
+     클라우드(Supabase) 원본 이미지는 바꾸지 않고, 첫 수정 때 원본을 blob_orig로 보관해 복원할 수 있다. -->
+<div class="overlay" id="wmOverlay">
+  <div class="modal" style="width:560px;max-width:96vw;max-height:94vh;overflow-y:auto;">
+    <div class="det-header">
+      <div class="det-header-title">워터마크 수정</div>
+      <button class="m-close" onclick="closeWmEdit()">✕</button>
+    </div>
+    <div style="padding:12px;">
+      <canvas id="wmCv" width="600" height="400" style="width:100%;height:auto;border-radius:8px;background:#222;display:block;"></canvas>
+      <div style="font-size:12px;color:#7A9AB8;margin:6px 0;">이전 방식(사진 위 반투명 박스) 사진은 박스를 지울 수 없어 아래에 새 띠가 덧붙습니다. 검정 띠가 이미 붙은 사진은 "기존 띠 잘라내기"로 먼저 잘라내세요.</div>
+      <div class="fg-grid">
+        <div class="fg"><label>작업구분·분류</label><input type="text" id="wmCat"></div>
+        <div class="fg"><label>기기번호</label><input type="text" id="wmTag"></div>
+        <div class="fg"><label>작업구역</label><input type="text" id="wmArea"></div>
+        <div class="fg"><label>촬영자(팀명)</label><input type="text" id="wmTeam"></div>
+        <div class="fg"><label>날짜</label><input type="text" id="wmDate"></div>
+        <div class="fg"><label>시간</label><input type="text" id="wmTime"></div>
+        <div class="fg fg-span2"><label>특이사항</label><input type="text" id="wmNote"></div>
+        <div class="fg"><label>정렬</label><select id="wmAlign"><option value="left">좌측</option><option value="right">우측</option></select></div>
+        <div class="fg"><label>배치</label><select id="wmLayout"><option value="one">한 줄(넘치면 줄바꿈)</option><option value="multi">항목별 여러 줄</option></select></div>
+        <div class="fg"><label>글자 크기 <span id="wmSizeVal">100</span>%</label><input type="range" id="wmSize" min="60" max="160" step="5" value="100"></div>
+        <div class="fg"><label>기존 띠 잘라내기 <span id="wmCutVal">0</span>%</label><input type="range" id="wmCut" min="0" max="30" step="0.5" value="0"></div>
+      </div>
+    </div>
+    <div class="det-footer" style="justify-content:flex-end;">
+      <div class="act-grp">
+        <button class="btn btn-ghost" id="wmRestoreBtn" onclick="restoreWmOriginal()" style="display:none;">원본 복원</button>
+        <button class="btn btn-ghost" onclick="downloadWmEdit()">다운로드</button>
+        <button class="btn btn-ghost" onclick="closeWmEdit()">취소</button>
+        <button class="btn btn-primary" onclick="applyWmEdit()">적용</button>
       </div>
     </div>
   </div>
@@ -3394,6 +3431,143 @@ async function saveDetailEdit() {
   cancelDetailEdit();
   openDetail(String(p.id));
   renderSidebar(); renderPhotos();
+}
+
+// ── 워터마크 수정 ─────────────────────────────────────
+// 원본(blob_orig, 없으면 현재 blob)에서 매번 다시 그리므로 여러 번 고쳐도 띠가 쌓이지 않는다.
+// 적용하면 이 기기의 사진(blob)만 교체한다 — 클라우드 이미지는 그대로.
+let wmSrcImg=null;
+function wmEl(id){return document.getElementById(id);}
+function wmSourceUrl(p){
+  if(p.blob_orig) return URL.createObjectURL(p.blob_orig);
+  if(p.blob) return URL.createObjectURL(p.blob);
+  return p.dataUrl||"";
+}
+function openWmEdit(){
+  const p=photos.find(x=>x.id===currentDetailId); if(!p) return;
+  const url=wmSourceUrl(p); if(!url){ alert("이 사진은 이 기기에 이미지가 없어 수정할 수 없습니다."); return; }
+  const im=new Image();
+  im.onload=()=>{
+    if(url.startsWith("blob:")) URL.revokeObjectURL(url);
+    wmSrcImg=im;
+    const label=p.wt&&p.wt!=="신규"?`[${p.wt}] ${p.cat||""}`:(p.cat||"");
+    wmEl("wmCat").value=label.trim();
+    wmEl("wmTag").value=p.tag||"";
+    wmEl("wmArea").value=p.area||"";
+    wmEl("wmTeam").value=p.team||"";
+    wmEl("wmDate").value=p.date||"";
+    wmEl("wmTime").value=p.time||"";
+    wmEl("wmNote").value=p.note||"";
+    wmEl("wmCut").value=0; wmEl("wmSize").value=100;
+    wmEl("wmRestoreBtn").style.display=p.blob_orig?"":"none";
+    wmEl("wmOverlay").classList.add("show");
+    renderWm();
+  };
+  im.onerror=()=>alert("사진을 불러오지 못했습니다.");
+  im.src=url;
+}
+function closeWmEdit(){ wmEl("wmOverlay").classList.remove("show"); wmSrcImg=null; }
+["wmCat","wmTag","wmArea","wmTeam","wmDate","wmTime","wmNote","wmAlign","wmLayout","wmSize","wmCut"]
+  .forEach(id=>wmEl(id).addEventListener("input",renderWm));
+function renderWm(){
+  if(!wmSrcImg) return;
+  wmEl("wmCutVal").textContent=wmEl("wmCut").value;
+  wmEl("wmSizeVal").textContent=wmEl("wmSize").value;
+  const cv=wmEl("wmCv");
+  const sW=wmSrcImg.naturalWidth, sH=wmSrcImg.naturalHeight;
+  const W=sW, H=sH-Math.round(sH*parseFloat(wmEl("wmCut").value)/100);
+  const lines=[wmEl("wmCat").value,wmEl("wmTag").value,wmEl("wmArea").value,wmEl("wmTeam").value]
+    .map(v=>v.trim()).filter(Boolean);
+  const dt=(wmEl("wmDate").value.trim()+"  "+wmEl("wmTime").value.trim()).trim();
+  if(dt) lines.push(dt);
+  const note=wmEl("wmNote").value.trim(); if(note) lines.push(note);
+  const scale=parseInt(wmEl("wmSize").value,10)/100;
+  let fs=Math.max(20,Math.round(H*0.031*scale));
+  const padX=Math.round(W*0.022), maxW=W-padX*2, SEP="  |  ";
+  const fontOf=n=>`bold ${n}px Arial,"Malgun Gothic",sans-serif`;
+  const m=document.createElement("canvas").getContext("2d");
+  const wid=t=>m.measureText(t).width;
+  m.font=fontOf(fs);
+  let rows=[];
+  if(wmEl("wmLayout").value==="multi"){
+    while(fs>14&&Math.max(0,...lines.map(wid))>maxW){fs--;m.font=fontOf(fs);}
+    rows=lines.slice();
+  }else{
+    const minFs=Math.max(14,Math.round(H*0.019*scale));
+    while(fs>minFs&&wid(lines.join(SEP))>maxW){fs--;m.font=fontOf(fs);}
+    if(wid(lines.join(SEP))<=maxW){ rows=lines.length?[lines.join(SEP)]:[]; }
+    else{
+      let cur="";
+      lines.forEach(l=>{ const t=cur?cur+SEP+l:l; if(cur&&wid(t)>maxW){rows.push(cur);cur=l;}else cur=t; });
+      if(cur) rows.push(cur);
+    }
+  }
+  const lh=Math.round(fs*1.3), padY=Math.round(fs*0.55);
+  const boxH=rows.length?rows.length*lh+padY*2:0;
+  cv.width=W; cv.height=H+boxH;
+  const ctx=cv.getContext("2d");
+  ctx.drawImage(wmSrcImg,0,0,sW,H,0,0,W,H);
+  if(boxH){
+    ctx.fillStyle="#000"; ctx.fillRect(0,H,W,boxH);
+    ctx.fillStyle="#fff"; ctx.font=fontOf(fs); ctx.textBaseline="top";
+    const right=wmEl("wmAlign").value==="right";
+    ctx.textAlign=right?"right":"left";
+    rows.forEach((r,i)=>ctx.fillText(r,right?W-padX:padX,H+padY+i*lh));
+  }
+}
+function wmToBlob(){ return new Promise(res=>wmEl("wmCv").toBlob(res,"image/jpeg",0.92)); }
+async function downloadWmEdit(){
+  const p=photos.find(x=>x.id===currentDetailId); if(!p||!wmSrcImg) return;
+  const b=await wmToBlob(); if(!b){ alert("이미지를 만들지 못했습니다."); return; }
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(b);
+  a.download=(p.name||("WORK_"+(p.date||"nodate"))).replace(/\.[^.]+$/,"")+"_wm.jpg";
+  a.style.display="none"; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+async function applyWmEdit(){
+  const p=photos.find(x=>x.id===currentDetailId); if(!p||!wmSrcImg) return;
+  if(!confirm("이 기기의 사진에 수정한 워터마크를 적용합니다.\n(클라우드에 올라간 이미지는 바뀌지 않으며, 원본은 보관되어 '원본 복원'으로 되돌릴 수 있습니다.)")) return;
+  const b=await wmToBlob(); if(!b){ alert("이미지를 만들지 못했습니다."); return; }
+  const hadOrig=Object.prototype.hasOwnProperty.call(p,"blob_orig");
+  const prev={blob:p.blob,blob_orig:p.blob_orig,dataUrl:p.dataUrl,
+    date:p.date,time:p.time,tag:p.tag,area:p.area,team:p.team,note:p.note,cat:p.cat,wt:p.wt};
+  // 워터마크 내용을 사진 정보에도 같이 반영한다("[작업구분] 분류" 형식이면 둘로 나눔).
+  const cm=wmEl("wmCat").value.trim().match(/^\[(.+?)\]\s*(.*)$/);
+  if(cm){ p.wt=cm[1]; p.cat=cm[2]; } else { p.wt="신규"; p.cat=wmEl("wmCat").value.trim(); }
+  p.tag=wmEl("wmTag").value.trim(); p.area=wmEl("wmArea").value.trim(); p.team=wmEl("wmTeam").value.trim();
+  p.date=wmEl("wmDate").value.trim(); p.time=wmEl("wmTime").value.trim(); p.note=wmEl("wmNote").value.trim();
+  if(!p.blob_orig){
+    if(p.blob) p.blob_orig=p.blob;
+    else if(p.dataUrl) p.blob_orig=await (await fetch(p.dataUrl)).blob();
+  }
+  p.blob=b; delete p.dataUrl;
+  try{ await savePhotoToDB(p); }
+  catch(e){
+    p.blob=prev.blob; p.dataUrl=prev.dataUrl;
+    ["date","time","tag","area","team","note","cat","wt"].forEach(k=>{p[k]=prev[k];});
+    if(hadOrig) p.blob_orig=prev.blob_orig; else delete p.blob_orig;
+    console.error("[워터마크 저장 실패]",e);
+    alert("저장하지 못했습니다. 다시 시도해 주세요."+(e&&e.message?"\n"+e.message:"")); return;
+  }
+  if(p.cloud_url) syncMetaToCloud(p);
+  photos.sort((x,y)=>(y.date+y.created).localeCompare(x.date+x.created));
+  revokePhotoUrl(p.id);
+  closeWmEdit();
+  openDetail(String(p.id));
+  renderSidebar(); renderPhotos();
+}
+async function restoreWmOriginal(){
+  const p=photos.find(x=>x.id===currentDetailId); if(!p||!p.blob_orig) return;
+  if(!confirm("워터마크 수정을 취소하고 원본 사진으로 되돌립니다.")) return;
+  const prev={blob:p.blob,blob_orig:p.blob_orig};
+  p.blob=p.blob_orig; delete p.blob_orig;
+  try{ await savePhotoToDB(p); }
+  catch(e){ p.blob=prev.blob; p.blob_orig=prev.blob_orig; alert("복원하지 못했습니다."+(e&&e.message?"\n"+e.message:"")); return; }
+  revokePhotoUrl(p.id);
+  closeWmEdit();
+  openDetail(String(p.id));
+  renderPhotos();
 }
 
 function applyEditNotePreset(sel) {

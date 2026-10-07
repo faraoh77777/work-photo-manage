@@ -1659,9 +1659,7 @@ async function processGalleryFrame(file,rawDataUrl,autoDate,autoTime){
 function renderCanvas(loadedImg){
   var cv=document.createElement("canvas");
   var W=loadedImg._w,H=loadedImg._h;
-  cv.width=W;cv.height=H;
   var ctx=cv.getContext("2d");
-  ctx.drawImage(loadedImg,0,0);
 
   var memberName=localStorage.getItem("member_name")||"";
   var lines=[];
@@ -1678,30 +1676,40 @@ function renderCanvas(loadedImg){
   lines.push(lockedInfo.date+"  "+lockedInfo.time);
   if(lockedInfo.note&&lockedInfo.note!=="-") lines.push(lockedInfo.note);
 
+  // 하단 검정 띠에 좌측부터 한 줄로 표기한다. 한 줄에 안 들어가면 글자를 줄이다가,
+  // 최소 크기에서도 넘치면 항목 단위로 다음 줄로 넘긴다.
+  var SEP="  |  ";
   var fs=Math.max(20,Math.round(H*0.031));
-  var padX=Math.round(W*0.022), padY=Math.round(fs*0.55);
-  ctx.font="bold "+fs+"px Arial,sans-serif";
-  var maxTxtW=0;
-  lines.forEach(function(l){maxTxtW=Math.max(maxTxtW,ctx.measureText(l).width);});
-  while(fs>16&&maxTxtW>W*0.75){
-    fs--;ctx.font="bold "+fs+"px Arial,sans-serif";maxTxtW=0;
-    lines.forEach(function(l){maxTxtW=Math.max(maxTxtW,ctx.measureText(l).width);});
+  var minFs=Math.max(14,Math.round(H*0.019));
+  var padX=Math.round(W*0.022);
+  var maxW=W-padX*2;
+  function fontOf(n){return "bold "+n+"px Arial,sans-serif";}
+  function wid(t){return ctx.measureText(t).width;}
+  ctx.font=fontOf(fs);
+  while(fs>minFs&&wid(lines.join(SEP))>maxW){fs--;ctx.font=fontOf(fs);}
+  var rows=[];
+  if(wid(lines.join(SEP))<=maxW){rows=[lines.join(SEP)];}
+  else{
+    var cur="";
+    lines.forEach(function(l){
+      var t=cur?cur+SEP+l:l;
+      if(cur&&wid(t)>maxW){rows.push(cur);cur=l;}else cur=t;
+    });
+    if(cur)rows.push(cur);
   }
-  var lh=Math.round(fs*1.3);
-  padX=Math.round(W*0.022);padY=Math.round(fs*0.55);
-  var boxW=maxTxtW+padX*2,boxH=lines.length*lh+padY*2;
-  ctx.fillStyle="rgba(0,0,0,0.6)";
-  ctx.fillRect(W-boxW,H-boxH,boxW,boxH);
-  ctx.textBaseline="top";ctx.textAlign="right";
-  ctx.font="bold "+fs+"px Arial,sans-serif";
-  ctx.lineJoin="round";ctx.miterLimit=2;
-  ctx.lineWidth=Math.max(2,Math.round(fs*0.12));
-  ctx.strokeStyle="#000000";
+  var lh=Math.round(fs*1.3), padY=Math.round(fs*0.55);
+  var boxH=rows.length*lh+padY*2;
+  // 워터마크는 사진 아래에 붙이는 검정 띠(사진 위를 가리지 않음) — 띠 높이 = boxH
+  cv.width=W;cv.height=H+boxH;
+  ctx=cv.getContext("2d");
+  ctx.drawImage(loadedImg,0,0);
+  ctx.fillStyle="#000000";
+  ctx.fillRect(0,H,W,boxH);
+  ctx.textBaseline="top";ctx.textAlign="left";
+  ctx.font=fontOf(fs);
   ctx.fillStyle="#FFFFFF";
-  lines.forEach(function(line,i){
-    var x=W-padX,y=(H-boxH)+padY+i*lh;
-    ctx.strokeText(line,x,y);
-    ctx.fillText(line,x,y);
+  rows.forEach(function(row,i){
+    ctx.fillText(row,padX,H+padY+i*lh);
   });
   return cv;
 }

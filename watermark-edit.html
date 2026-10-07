@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>워터마크 수정</title>
+<style>
+*{box-sizing:border-box;}
+body{margin:0;background:#F0F4F9;font-family:-apple-system,'Malgun Gothic',sans-serif;color:#1A2332;}
+.wrap{max-width:460px;margin:0 auto;padding:12px;}
+h1{font-size:18px;margin:6px 0 10px;}
+.card{background:#fff;border-radius:12px;padding:12px;margin-bottom:10px;border:1px solid #D8E2EC;}
+.lbl{font-size:12px;font-weight:700;color:#5A7A9A;margin:8px 0 4px;}
+input[type=text],select{width:100%;padding:9px;border:1.5px solid #C8D8E8;border-radius:8px;font-size:15px;background:#F7FAFC;}
+.row{display:flex;gap:8px;}
+.row>div{flex:1;min-width:0;}
+.btn{width:100%;padding:12px;border:none;border-radius:8px;font-size:15px;font-weight:800;cursor:pointer;background:#2E5F9E;color:#fff;margin-top:8px;}
+.btn.sub{background:#fff;color:#2E5F9E;border:1.5px solid #C8D8E8;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+canvas{width:100%;height:auto;border-radius:8px;display:block;background:#222;}
+.hint{font-size:12px;color:#7A9AB8;line-height:1.5;}
+input[type=range]{width:100%;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>워터마크 수정 <span class="hint">(별도 도구 · 서버 연결 없음)</span></h1>
+
+  <div class="card">
+    <div class="lbl" style="margin-top:0">사진 선택</div>
+    <input type="file" id="file" accept="image/*"/>
+    <div class="hint" style="margin-top:6px;">원본은 그대로 두고, 수정본을 새 파일로 저장합니다. 이전 방식(사진 위 반투명 박스) 사진은 박스를 지울 수 없어 그 아래에 새 띠가 덧붙습니다. 검정 띠가 이미 붙은 사진은 아래 "기존 띠 잘라내기"로 띠를 먼저 잘라내세요.</div>
+    <div class="lbl">기존 띠 잘라내기 (사진 아래에서 <span id="cutVal">0</span>%)</div>
+    <input type="range" id="cut" min="0" max="30" step="0.5" value="0"/>
+  </div>
+
+  <div class="card">
+    <div class="lbl" style="margin-top:0">워터마크 내용 (비운 칸은 표시 안 함)</div>
+    <div class="row">
+      <div><div class="lbl">작업구분·분류</div><input type="text" id="fCat" placeholder="[진행중] 배관"/></div>
+      <div><div class="lbl">기기번호</div><input type="text" id="fTag" placeholder="2121-UV-3203"/></div>
+    </div>
+    <div class="row">
+      <div><div class="lbl">작업구역</div><input type="text" id="fLoc"/></div>
+      <div><div class="lbl">촬영자</div><input type="text" id="fName"/></div>
+    </div>
+    <div class="row">
+      <div><div class="lbl">날짜</div><input type="text" id="fDate" placeholder="2026-10-07"/></div>
+      <div><div class="lbl">시간</div><input type="text" id="fTime" placeholder="09:13"/></div>
+    </div>
+    <div class="lbl">특이사항</div>
+    <input type="text" id="fNote"/>
+  </div>
+
+  <div class="card">
+    <div class="lbl" style="margin-top:0">서식</div>
+    <div class="row">
+      <div><div class="lbl">정렬</div>
+        <select id="sAlign"><option value="left">좌측</option><option value="right">우측</option></select></div>
+      <div><div class="lbl">배치</div>
+        <select id="sLayout"><option value="one">한 줄(넘치면 줄바꿈)</option><option value="multi">항목별 여러 줄</option></select></div>
+    </div>
+    <div class="lbl">글자 크기 <span id="sizeVal">100</span>%</div>
+    <input type="range" id="sSize" min="60" max="160" step="5" value="100"/>
+  </div>
+
+  <div class="card">
+    <canvas id="cv" width="600" height="400"></canvas>
+    <button class="btn" id="saveBtn" disabled>수정본 저장</button>
+  </div>
+</div>
+
+<script>
+var $=function(id){return document.getElementById(id);};
+var srcImg=null, srcName='photo';
+var ids=['fCat','fTag','fLoc','fName','fDate','fTime','fNote','sAlign','sLayout','sSize','cut'];
+
+$('file').addEventListener('change',function(e){
+  var f=e.target.files[0]; if(!f) return;
+  srcName=f.name.replace(/\.[^.]+$/,'');
+  var url=URL.createObjectURL(f), im=new Image();
+  im.onload=function(){
+    srcImg=im; URL.revokeObjectURL(url);
+    $('saveBtn').disabled=false;
+    // 파일명 규칙(날짜_시간…)이 아니라 입력 편의용으로 오늘 날짜만 채운다.
+    var d=new Date(), p=function(n){return String(n).padStart(2,'0');};
+    if(!$('fDate').value) $('fDate').value=d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+    if(!$('fTime').value) $('fTime').value=p(d.getHours())+':'+p(d.getMinutes());
+    render();
+  };
+  im.src=url;
+});
+ids.forEach(function(id){$(id).addEventListener('input',render);});
+
+function render(){
+  $('cutVal').textContent=$('cut').value;
+  $('sizeVal').textContent=$('sSize').value;
+  var cv=$('cv');
+  if(!srcImg) return;
+  var sW=srcImg.naturalWidth, sH=srcImg.naturalHeight;
+  var cutPx=Math.round(sH*parseFloat($('cut').value)/100);
+  var W=sW, H=sH-cutPx;
+
+  var lines=[];
+  [$('fCat').value,$('fTag').value,$('fLoc').value,$('fName').value].forEach(function(v){
+    v=v.trim(); if(v) lines.push(v);
+  });
+  var dt=($('fDate').value.trim()+'  '+$('fTime').value.trim()).trim();
+  if(dt) lines.push(dt);
+  var note=$('fNote').value.trim();
+  if(note) lines.push(note);
+
+  var ctx=cv.getContext('2d');
+  var scale=parseInt($('sSize').value,10)/100;
+  var fs=Math.max(20,Math.round(H*0.031*scale));
+  var padX=Math.round(W*0.022), maxW=W-padX*2;
+  var SEP='  |  ';
+  function fontOf(n){return 'bold '+n+'px Arial,"Malgun Gothic",sans-serif';}
+  // 측정용 컨텍스트 (캔버스 크기 변경 전)
+  var m=document.createElement('canvas').getContext('2d');
+  function wid(t){return m.measureText(t).width;}
+  m.font=fontOf(fs);
+  var rows=[];
+  if($('sLayout').value==='multi'){
+    while(fs>14&&Math.max.apply(null,lines.map(wid))>maxW){fs--;m.font=fontOf(fs);}
+    rows=lines.slice();
+  }else{
+    var minFs=Math.max(14,Math.round(H*0.019*scale));
+    while(fs>minFs&&wid(lines.join(SEP))>maxW){fs--;m.font=fontOf(fs);}
+    if(wid(lines.join(SEP))<=maxW){ rows=[lines.join(SEP)]; }
+    else{
+      var cur='';
+      lines.forEach(function(l){
+        var t=cur?cur+SEP+l:l;
+        if(cur&&wid(t)>maxW){rows.push(cur);cur=l;}else cur=t;
+      });
+      if(cur) rows.push(cur);
+    }
+  }
+  var lh=Math.round(fs*1.3), padY=Math.round(fs*0.55);
+  var boxH=rows.length?rows.length*lh+padY*2:0;
+
+  cv.width=W; cv.height=H+boxH;
+  ctx=cv.getContext('2d');
+  ctx.drawImage(srcImg,0,0,sW,H,0,0,W,H);
+  if(boxH){
+    ctx.fillStyle='#000'; ctx.fillRect(0,H,W,boxH);
+    ctx.fillStyle='#fff'; ctx.font=fontOf(fs); ctx.textBaseline='top';
+    var right=$('sAlign').value==='right';
+    ctx.textAlign=right?'right':'left';
+    rows.forEach(function(r,i){ctx.fillText(r,right?W-padX:padX,H+padY+i*lh);});
+  }
+}
+
+$('saveBtn').addEventListener('click',function(){
+  if(!srcImg) return;
+  $('cv').toBlob(function(b){
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(b);
+    a.download=srcName+'_wm.jpg';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+  },'image/jpeg',0.92);
+});
+</script>
+</body>
+</html>
