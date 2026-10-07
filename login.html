@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<script>/* 앱(Android WebView)에서는 상태바(시간·배터리)가 화면 위에 겹쳐 그려져 헤더 윗부분을 가린다 — 헤더에 여백을 준다 */try{if(/; wv\)/.test(navigator.userAgent))document.documentElement.classList.add("in-app");}catch(e){}</script>
 <title>로그인 — 작업 사진</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -11,6 +12,7 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
 .wrap{max-width:420px;margin:0 auto;}
 .app-header{background:linear-gradient(135deg,#1E3A5F,#2E5F9E);border-radius:12px;
   padding:14px 18px;margin-bottom:16px;color:#fff;}
+html.in-app .app-header{padding-top:34px;}
 .app-title{font-size:28px;font-weight:800;letter-spacing:1px;display:flex;align-items:center;gap:8px;}
 .app-title img{width:52px;height:52px;border-radius:8px;}
 .app-sub{font-size:11px;opacity:0.75;margin-top:2px;}
