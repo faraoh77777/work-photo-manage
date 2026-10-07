@@ -177,10 +177,9 @@ textarea.f{resize:none;height:48px;}
 <!-- 연결된 현장이 없는 기기에서만 보이는 안내 배너 (enterLocalOnlyMode가 표시) -->
 <div class="card" id="localOnlyBanner" style="display:none;background:#FDF3E3;border-color:#F0C36D;">
   <div style="font-size:13px;font-weight:700;color:#8A6D1E;line-height:1.6;">
-    🔌 연결된 현장이 없습니다. 사진은 이 기기에만 저장되고, <b>카카오톡 전송</b>만 가능합니다.
+    🔌 연결된 현장이 없습니다. 사진은 이 기기에만 저장되고, <b>카카오톡 전송</b>으로 보내세요(서버 전송은 불가).
   </div>
   <div style="display:flex;gap:6px;margin-top:8px;">
-    <a href="site-setup.html" style="flex:1;text-align:center;background:#2E5F9E;color:#fff;border-radius:8px;padding:9px;font-size:13px;font-weight:800;text-decoration:none;">현장 개설하기</a>
     <a href="login.html" style="flex:1;text-align:center;background:#fff;border:1.5px solid #C8D8E8;color:#2E5F9E;border-radius:8px;padding:9px;font-size:13px;font-weight:800;text-decoration:none;">초대받았어요</a>
   </div>
   <a href="install-guide.html" style="display:block;text-align:center;margin-top:6px;font-size:12px;color:#8A6D1E;text-decoration:underline;">📲 앱 설치 방법 보기</a>
@@ -274,10 +273,6 @@ textarea.f{resize:none;height:48px;}
         <select id="inLoc" class="f"></select>
       </div>
     </div>
-  </div>
-
-  <div id="localModeHint" class="hint" style="display:none;margin-bottom:8px;">
-    💡 기기번호·작업분류·구역별로 자동 정리하려면 현장을 개설하세요 — 지금은 사진+메모만 워터마크로 남아 카카오톡으로 전송됩니다.
   </div>
 
   <div class="flbl">특이사항</div>
@@ -436,17 +431,8 @@ function enterLocalOnlyMode(){
   if(acct) acct.style.display='none';
   var sendBtn=document.getElementById('sendBtn');
   if(sendBtn) sendBtn.style.display='none';
-  // 시공/품질/자재/안전/화기유도 메뉴탭도 로컬 전용 모드에선 숨긴다 — 운영자가 현장을
-  // 개설하고 로그인하면(=이 함수를 안 타는 정상 분기) 예전처럼 다시 보인다.
-  var tabsCard=document.getElementById('menuTabsCard');
-  if(tabsCard) tabsCard.style.display='none';
-  var siteFields=document.getElementById('siteFieldsWrap');
-  if(siteFields) siteFields.style.display='none';
-  var hint=document.getElementById('localModeHint');
-  if(hint) hint.style.display='block';
-  // "분류·구역 설정" 로컬 편집 버튼도 지금은 의미 없는 체계라 같이 숨긴다.
-  var localSettingsBtn=document.querySelector('#localOnlyBanner button[onclick="openLocalSettings()"]');
-  if(localSettingsBtn) localSettingsBtn.style.display='none';
+  // 2026-10-07: 촬영 화면 기능(메뉴탭·기기번호·작업구분·분류·구역·워터마크)과 분류·구역 설정은
+  // 로컬 모드에서도 전부 쓴다. 막는 것은 서버 전송(sendBtn)뿐.
 }
 function toggleAccountMenu(e){
   if(e) e.stopPropagation();
@@ -900,13 +886,10 @@ function populateAreaSelect(preserve){
 // 없는 로컬 전용 모드에서만 이 화면으로 같은 값을 이 기기 안에서 직접 바꿀 수 있게 한다.
 var lsEditMenu=activeMenu, lsTempCatsByMenu=null, lsTempAreas=null;
 function openLocalSettings(){
-  // 로컬 전용 모드에선 상단 메뉴탭 자체가 숨어있어(enterLocalOnlyMode) 항상 "시공" 메뉴만
-  // 쓰인다 — 여기서도 메뉴 전환 탭 없이 "시공" 분류만 바로 편집하게 한다.
-  lsEditMenu='시공';
+  lsEditMenu=activeMenu;
   lsTempCatsByMenu=JSON.parse(JSON.stringify(catsByMenu));
   lsTempAreas=customAreas.slice();
-  var tabsEl=document.getElementById('lsMenuTabs');
-  if(tabsEl) tabsEl.style.display='none';
+  renderLsMenuTabs();
   renderLsCatChips();
   renderLsAreaChips();
   document.getElementById('localSettingsModal').style.display='flex';
@@ -1602,16 +1585,6 @@ async function loadImgsFromGallery(e){
 }
 
 function currentFormInfo(autoDate,autoTime){
-  // 로컬 전용 모드(현장 없음)는 siteFieldsWrap 자체를 숨겨서 사용자가 값을 넣을 수 없으니,
-  // 화면에 안 보이는 기본값(예: 카테고리 목록 0번)이 워터마크에 찍혀 나가지 않도록 비워서 반환한다.
-  if(isLocalOnlyMode){
-    return {
-      date:autoDate, time:autoTime,
-      tag:"", cat:"", loc:"",
-      note:document.getElementById("inNote").value.trim(),
-      wt:"", menu:activeMenu
-    };
-  }
   var catEl=document.getElementById("inCat");
   return {
     date:autoDate, time:autoTime,
