@@ -3527,7 +3527,7 @@ async function downloadWmEdit(){
 }
 async function applyWmEdit(){
   const p=photos.find(x=>x.id===currentDetailId); if(!p||!wmSrcImg) return;
-  if(!confirm("이 기기의 사진에 수정한 워터마크를 적용합니다.\n(클라우드에 올라간 이미지는 바뀌지 않으며, 원본은 보관되어 '원본 복원'으로 되돌릴 수 있습니다.)")) return;
+  if(!confirm("이 기기의 사진에 수정한 워터마크를 적용하고 사진 정보(분류·기기번호 등)도 같이 바꿉니다.\n(클라우드에 올라간 이미지는 바뀌지 않으며, 원본은 보관되어 '원본 복원'으로 되돌릴 수 있습니다.)")) return;
   const b=await wmToBlob(); if(!b){ alert("이미지를 만들지 못했습니다."); return; }
   const hadOrig=Object.prototype.hasOwnProperty.call(p,"blob_orig");
   const prev={blob:p.blob,blob_orig:p.blob_orig,dataUrl:p.dataUrl,
