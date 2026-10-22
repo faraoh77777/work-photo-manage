@@ -454,7 +454,8 @@ function logout(){
   // 전송할 위험이 있었다(2026-08-23 발견) — 경고 없이 바로 로그아웃되지 않게 확인을 넣는다.
   if(savedPhotos.length && !confirm('아직 전송하지 않은 사진이 '+savedPhotos.length+'장 있습니다.\n그래도 로그아웃하시겠습니까? (사진은 남아있지만, 다음에 로그인하는 사람 화면에 보일 수 있습니다)')) return;
   var token=localStorage.getItem('member_session_token');
-  if(token&&sbClient){ sbClient.rpc('rpc_logout',{p_token:token}).catch(function(){}); }
+  // supabase-js 최신판은 rpc() 결과에 .catch가 없어 TypeError로 로그아웃이 통째로 멈췄다(2026-10-22) — then(null,…)+try로 감쌈.
+  if(token&&sbClient){ try{ sbClient.rpc('rpc_logout',{p_token:token}).then(null,function(){}); }catch(e){} }
   ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','senderName','member_session_token'].forEach(function(k){localStorage.removeItem(k);});
   location.href='login.html';
 }

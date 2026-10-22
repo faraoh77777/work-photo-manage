@@ -965,7 +965,8 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 })();
 function galleryLogout(){
   const token=localStorage.getItem('member_session_token');
-  if(token&&sbClient){ sbClient.rpc('rpc_logout',{p_token:token}).catch(()=>{}); }
+  // supabase-js 최신판은 rpc() 결과에 .catch가 없어 TypeError로 로그아웃이 멈췄다(2026-10-22).
+  if(token&&sbClient){ try{ sbClient.rpc('rpc_logout',{p_token:token}).then(null,()=>{}); }catch(e){} }
   ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','senderName','member_session_token'].forEach(k=>localStorage.removeItem(k));
   location.href='../login.html';
 }
