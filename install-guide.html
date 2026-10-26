@@ -89,6 +89,11 @@ img,svg{display:block;}
   color:#fff;
 }
 .hero-inner{max-width:760px; margin:0 auto;}
+.hero-back{
+  display:inline-block; margin-bottom:16px; padding:6px 12px;
+  background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.4); border-radius:8px;
+  color:#fff; font-size:13px; font-weight:700; text-decoration:none;
+}
 .hero-eyebrow{
   font-size:12.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
   opacity:.78; margin-bottom:10px;
@@ -223,6 +228,7 @@ footer{
 
 <div class="hero">
   <div class="hero-inner">
+    <a href="index.html" class="hero-back" onclick="return goBack();">← 돌아가기</a>
     <div class="hero-eyebrow">작업사진 · WORK PHOTO</div>
     <h1>처음 시작하는 분들을 위한 안내</h1>
     <p>앱을 아직 안 깔았다면 <b style="color:#fff;">① 앱 설치</b>부터, 현장 관리자는 <b style="color:#fff;">② 새 현장 만들기</b>부터, 직원은 <b style="color:#fff;">③ 사용 방법</b>부터 보시면 됩니다.</p>
@@ -615,6 +621,13 @@ footer{
 </div>
 
 <script>
+// 앱(홈 화면 설치)으로 열면 브라우저 뒤로가기 버튼이 없어서 직접 돌아가는 버튼을 둔다.
+// 같은 사이트에서 넘어왔으면 이전 화면으로, 새 탭으로 열렸으면 앱 첫 화면으로.
+function goBack(){
+  var sameOrigin = document.referrer && document.referrer.indexOf(location.origin) === 0;
+  if (sameOrigin && history.length > 1) { history.back(); return false; }
+  return true;
+}
 (function(){
   var tabs = document.querySelectorAll('.tabbar button');
   var panes = {
