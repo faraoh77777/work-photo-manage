@@ -261,6 +261,16 @@ async function renderSiteSelector(){
     if(idx>=0)merged[idx]=s; else merged.push(s);
   });
   saveSiteList(merged); // 오프라인일 때도 마지막으로 합쳐진 목록이 남아있도록 로컬에도 반영
+  // 기존에 개설된 현장인데 이 기기에 site_name이 없으면(이름 저장 전에 연결한 기기 등)
+  // 현장 목록(서버 site_registry/로컬)에 등록된 이름으로 보충하고, 가입폼 프로젝트명도 채운다(2026-11-02).
+  if(SUPABASE_URL!==LEGACY_DEFAULT_URL){
+    var curEntry=merged.find(function(s){return s.url===SUPABASE_URL;});
+    if(curEntry&&curEntry.name){
+      try{ if(!localStorage.getItem('site_name'))localStorage.setItem('site_name',curEntry.name); }catch(e){}
+      var projEl=document.getElementById('regProject');
+      if(projEl&&!projEl.value)projEl.value=curEntry.name;
+    }
+  }
   // 폐쇄된 현장은 선택 목록에서 제외한다.
   var visible=merged.filter(function(s){return !s.closed;});
   var all=[{url:LEGACY_DEFAULT_URL,key:LEGACY_DEFAULT_KEY,name:'대선이엔씨(주) 기본현장'}].concat(visible);
