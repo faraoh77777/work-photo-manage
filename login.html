@@ -329,6 +329,14 @@ var IS_DEFAULT_SITE=(SUPABASE_URL===LEGACY_DEFAULT_URL);
 if(IS_DEFAULT_SITE){
   document.getElementById('regCompany').value='대선이엔씨(주)';
   document.getElementById('regProject').value='S-OIL SHAHEEN Project 계장공사 3공구(PKG-1)';
+}else{
+  // 커스텀 현장: 운영자가 현장을 개설할 때(site-setup.html) 적은 "현장 이름"을 프로젝트명 기본값으로 채운다.
+  // site_name은 개설·현장 선택·초대 링크 진입 때 모두 저장되므로, 운영자와 직원이 같은 이름으로 가입된다.
+  // 직접 고쳐 쓸 수 있도록 값만 채운다(2026-11-02).
+  try{
+    var sn=localStorage.getItem('site_name');
+    if(sn)document.getElementById('regProject').value=sn;
+  }catch(e){}
 }
 
 // 이 기기에서 쓰던 사람의 이름/전화번호를 기억해뒀다가 새 현장 가입폼에 채워준다.
