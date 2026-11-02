@@ -81,8 +81,13 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
       새로 만들어 이 앱에 연결하세요. 그 순간부터 데이터는 그 현장만의 것이 됩니다.
     </div>
 
-    <div class="flbl">현장 이름 (구분용, 아무 값이나 가능)</div>
+    <div class="flbl">회사명</div>
+    <input type="text" id="siteCompany" class="f" placeholder="예: (주)OO건설"/>
+    <div class="flbl">프로젝트명</div>
+    <input type="text" id="siteProject" class="f" placeholder="예: OO 플랜트 신축공사 계장공사"/>
+    <div class="flbl">현장 이름 (현장 선택 목록에 보이는 이름)</div>
     <input type="text" id="siteName" class="f" placeholder="예: OO건설 XX현장"/>
+    <div class="hint" style="margin-top:4px;">회사명·프로젝트명·현장 이름은 운영자 가입과 직원 초대 링크에 자동으로 들어갑니다. 직원은 프로젝트명만 확인하고 이름·전화번호·비밀번호만 입력하면 됩니다.</div>
 
     <div class="flbl">Supabase 프로젝트 URL</div>
     <input type="text" id="siteUrl" class="f" placeholder="https://xxxxxxxx.supabase.co" oninput="onUrlInput()"/>
@@ -598,6 +603,8 @@ function showStatus(type,msg){
 
 async function testAndSave(){
   var name=document.getElementById('siteName').value.trim();
+  var siteCompany=document.getElementById('siteCompany').value.trim();
+  var siteProject=document.getElementById('siteProject').value.trim();
   var url=document.getElementById('siteUrl').value.trim();
   var key=document.getElementById('siteKey').value.trim();
   if(!url||!key){showStatus('err','Supabase URL과 key를 모두 입력해 주세요.');return;}
@@ -633,10 +640,13 @@ async function testAndSave(){
     // 작업분류/구역(custom_categories_by_menu/custom_areas/default_area)도 이전 현장 것이
     // 그대로 남아있으면, 새 현장이 아직 app_settings에 값이 없을 때 이전 현장 설정이
     // 마치 새 현장 것인 양 화면에 뜨고, 그대로 "저장"을 누르면 새 현장에 잘못 덮어써진다(2026-09-28 수정).
-    ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','site_company','senderName','member_session_token','custom_categories_by_menu','custom_areas','default_area'].forEach(function(k){localStorage.removeItem(k);});
+    ['member_id','member_name','member_company','member_project','member_phone','member_category','member_role','member_main_menu','site_company','site_project','senderName','member_session_token','custom_categories_by_menu','custom_areas','default_area'].forEach(function(k){localStorage.removeItem(k);});
     localStorage.setItem('site_supabase_url',url);
     localStorage.setItem('site_supabase_key',key);
     if(name)localStorage.setItem('site_name',name);
+    // 개설 시 입력한 회사명·프로젝트명 — 운영자 가입폼과 초대 링크에 자동으로 쓰인다(2026-11-02).
+    if(siteCompany)localStorage.setItem('site_company',siteCompany); else localStorage.removeItem('site_company');
+    if(siteProject)localStorage.setItem('site_project',siteProject); else localStorage.removeItem('site_project');
     await registerSiteInList(url,key,name);
     if(isEmptySite){
       localStorage.setItem('site_setup_creator','1');
@@ -665,9 +675,11 @@ function generateInvite(){
   var name=localStorage.getItem('site_name')||'';
   // 운영자가 가입할 때 입력한 회사명을 초대 링크에 같이 담아, 직원 가입폼 회사명에 자동으로 채운다(2026-11-02).
   var company=localStorage.getItem('site_company')||localStorage.getItem('member_company')||'';
+  var project=localStorage.getItem('site_project')||localStorage.getItem('member_project')||'';
   if(!url||!key){alert('먼저 새 현장을 만들어 주세요.');return;}
   var cfgObj={u:url,k:key,n:name};
   if(company)cfgObj.c=company;
+  if(project)cfgObj.p=project;
   var payload=b64urlEncode(JSON.stringify(cfgObj));
   var base=location.href.replace(/site-setup\.html.*$/,'');
   currentInviteLink=base+'login.html?site='+payload;
