@@ -751,9 +751,36 @@ async function loadSettings() {
   workTitleInput.value = data.work_title || "";
   supabaseUrlInput.value = data.supabase_url || "";
   supabaseKeyInput.value = data.supabase_key || "";
-  updateSupabaseClient(data.supabase_url, data.supabase_key);
+  const applied = applySiteFromHash(data);
+  updateSupabaseClient(supabaseUrlInput.value, supabaseKeyInput.value);
   updateHdrProjectCompany();
   refreshDefaultFileName();
+  if (applied) await saveSettings();
+}
+
+// 작업사진 갤러리의 "사진대지" 버튼이 주소 #site= 에 현재 현장 정보를 담아 연다(2026-11-03).
+// 다른 현장으로 바뀌었으면 URL/key와 공사명·회사명을 그 현장 값으로 바꾸고,
+// 같은 현장이면 key만 맞추고 공사명·회사명은 비어 있을 때만 채운다(직접 고친 값 보존).
+function applySiteFromHash(saved) {
+  const m = (location.hash || "").match(/[#&]site=([^&]+)/);
+  if (!m) return false;
+  history.replaceState(null, "", location.pathname + location.search);
+  let cfg;
+  try {
+    let b64 = m[1].replace(/-/g, "+").replace(/_/g, "/");
+    while (b64.length % 4) b64 += "=";
+    cfg = JSON.parse(decodeURIComponent(escape(atob(b64))));
+  } catch (e) {
+    console.error("현장 정보 읽기 실패", e);
+    return false;
+  }
+  if (!cfg || !cfg.u || !cfg.k) return false;
+  const siteChanged = (saved.supabase_url || "").trim() !== cfg.u;
+  supabaseUrlInput.value = cfg.u;
+  supabaseKeyInput.value = cfg.k;
+  if (cfg.p && (siteChanged || !projectNameInput.value)) projectNameInput.value = cfg.p;
+  if (cfg.c && (siteChanged || !companyNameInput.value)) companyNameInput.value = cfg.c;
+  return true;
 }
 
 async function saveSettings() {
