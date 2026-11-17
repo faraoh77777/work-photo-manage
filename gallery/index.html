@@ -230,7 +230,8 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
 .auto-badge { font-size: 0.6rem; padding: 1px 5px; border-radius: 8px; background: rgba(47,129,247,0.15); color: var(--ac2); border: 1px solid rgba(47,129,247,0.3); font-weight: 600; vertical-align: middle; }
 
 /* 작업 구분 라디오 */
-.wt-radios { display: flex; gap: 6px; }
+.wt-radios { display: flex; flex-wrap: wrap; gap: 6px; }
+.wt-radios label { min-width: 64px; }
 .wt-radios label { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; border: 1px solid var(--bd); border-radius: 6px; padding: 6px 8px; cursor: pointer; font-size: 0.75rem; color: var(--tx2); transition: .12s; }
 .wt-radios label:has(input:checked) { border-color: var(--ac); color: var(--ac2); background: rgba(47,129,247,0.08); }
 .wt-radios input[type="radio"] { display: none; }
@@ -413,7 +414,7 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
       </select>
 <select id="fWt" onchange="renderPhotos()">
         <option value="">전체 구분</option>
-        <option>신규</option><option>진행중</option><option>완료</option><option>변경전</option><option>변경후</option>
+        <option>신규</option><option>진행중</option><option>완료</option><option>작업전</option><option>작업후</option><option>수정전</option><option>수정후</option><option>변경전</option><option>변경후</option>
       </select>
       <div class="f-sep"></div>
       <button class="f-reset" onclick="resetFilter()" title="이 기기의 로컬 사진 캐시를 지웁니다 — 클라우드에 올라간 사진은 &quot;동기화&quot;로 다시 받아야 보입니다">초기화</button>
@@ -505,6 +506,10 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
               <label><input type="radio" name="upWt" value="신규" checked><span>신규</span></label>
               <label><input type="radio" name="upWt" value="진행중"><span>진행중</span></label>
               <label><input type="radio" name="upWt" value="완료"><span>완료</span></label>
+              <label><input type="radio" name="upWt" value="작업전"><span>작업전</span></label>
+              <label><input type="radio" name="upWt" value="작업후"><span>작업후</span></label>
+              <label><input type="radio" name="upWt" value="수정전"><span>수정전</span></label>
+              <label><input type="radio" name="upWt" value="수정후"><span>수정후</span></label>
               <label><input type="radio" name="upWt" value="변경전"><span>변경전</span></label>
               <label><input type="radio" name="upWt" value="변경후"><span>변경후</span></label>
             </div>
@@ -562,6 +567,10 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
         <option value="신규">신규</option>
         <option value="진행중">진행중</option>
         <option value="완료">완료</option>
+        <option value="작업전">작업전</option>
+        <option value="작업후">작업후</option>
+        <option value="수정전">수정전</option>
+        <option value="수정후">수정후</option>
         <option value="변경전">변경전</option>
         <option value="변경후">변경후</option>
       </select>
@@ -646,7 +655,11 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
                 <label><input type="radio" name="eWt" value="신규" checked><span>신규</span></label>
                 <label><input type="radio" name="eWt" value="진행중"><span>진행중</span></label>
                 <label><input type="radio" name="eWt" value="완료"><span>완료</span></label>
-                <label><input type="radio" name="eWt" value="변경전"><span>변경전</span></label>
+                <label><input type="radio" name="eWt" value="작업전"><span>작업전</span></label>
+              <label><input type="radio" name="eWt" value="작업후"><span>작업후</span></label>
+              <label><input type="radio" name="eWt" value="수정전"><span>수정전</span></label>
+              <label><input type="radio" name="eWt" value="수정후"><span>수정후</span></label>
+              <label><input type="radio" name="eWt" value="변경전"><span>변경전</span></label>
                 <label><input type="radio" name="eWt" value="변경후"><span>변경후</span></label>
               </div>
             </div>
@@ -794,7 +807,11 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
                 <label><input type="radio" name="bWt" value="신규"><span>신규</span></label>
                 <label><input type="radio" name="bWt" value="진행중"><span>진행중</span></label>
                 <label><input type="radio" name="bWt" value="완료"><span>완료</span></label>
-                <label><input type="radio" name="bWt" value="변경전"><span>변경전</span></label>
+                <label><input type="radio" name="bWt" value="작업전"><span>작업전</span></label>
+              <label><input type="radio" name="bWt" value="작업후"><span>작업후</span></label>
+              <label><input type="radio" name="bWt" value="수정전"><span>수정전</span></label>
+              <label><input type="radio" name="bWt" value="수정후"><span>수정후</span></label>
+              <label><input type="radio" name="bWt" value="변경전"><span>변경전</span></label>
                 <label><input type="radio" name="bWt" value="변경후"><span>변경후</span></label>
               </div>
             </div>
@@ -1432,9 +1449,9 @@ function parseWorkFilename(name) {
   // 작업구분 — 실제 파일명 토큰은 index.html의 WT_EN 매핑(소문자, done/in-progress/
   // mod-before/mod-after)이다. 예전엔 대문자 NEW/EDIT-BEFORE/EDIT-AFTER를 찾아서
   // 실제 파일명과 하나도 안 맞았다(2026-09-03 발견).
-  const wtM = name.match(/WORK_\d+_\d+_(new|done|in-progress|mod-before|mod-after)_/i);
+  const wtM = name.match(/WORK_\d+_\d+_(new|done|in-progress|mod-before|mod-after|work-before|work-after|fix-before|fix-after)_/i);
   if (wtM) {
-    const wmap = { new:'신규', done:'완료', 'in-progress':'진행중', 'mod-before':'변경전', 'mod-after':'변경후' };
+    const wmap = { new:'신규', done:'완료', 'in-progress':'진행중', 'mod-before':'변경전', 'mod-after':'변경후', 'work-before':'작업전', 'work-after':'작업후', 'fix-before':'수정전', 'fix-after':'수정후' };
     r.wt = wmap[wtM[1].toLowerCase()] || '';
   }
   // 기기번호 — parseOCRText와 같은 이유로 3단("2121-UV-3203") 패턴을 먼저 찾는다.
@@ -1600,7 +1617,9 @@ const CAT_ICON = new Proxy({}, { get: () => '📁' });
 // 항목이 없어 배지가 스타일 없이 밋밋하게 나오고, 수정창에서도 해당 값이 라디오에
 // 없어 저장하면 "신규"로 조용히 덮어써질 위험이 있었음). 작업전/작업후는 실제 데이터에
 // 하나도 없지만 옛 데이터 호환을 위해 남겨둔다.
-const WT_ORDER = ['신규','진행중','완료','변경전','변경후','작업전','작업후'];
+// 2026-11-18: 촬영앱 작업구분이 신규(진행중/완료)·작업전후(작업전/작업후)·수정작업(수정전/수정후)
+// 3가지로 바뀌었다. 작업전/작업후는 이제 "작업전후" 그룹의 실제 값이고, 변경전/변경후는 예전 사진용으로 남긴다.
+const WT_ORDER = ['신규','진행중','완료','작업전','작업후','수정전','수정후','변경전','변경후'];
 const WT_META  = {
   '신규':   { icon:'', ptCls:'pt-new',  bCls:'b-wt-new'  },
   '진행중': { icon:'', ptCls:'pt-pre',  bCls:'b-wt-pre'  },
@@ -1609,6 +1628,8 @@ const WT_META  = {
   '변경후': { icon:'', ptCls:'pt-post', bCls:'b-wt-post' },
   '작업전': { icon:'', ptCls:'pt-pre',  bCls:'b-wt-pre'  },
   '작업후': { icon:'', ptCls:'pt-post', bCls:'b-wt-post' },
+  '수정전': { icon:'', ptCls:'pt-pre',  bCls:'b-wt-pre'  },
+  '수정후': { icon:'', ptCls:'pt-post', bCls:'b-wt-post' },
 };
 
 // ── 전체 자동 분류 — 미리보기 확대/이동 (상세·업로드 모달과 같은 방식) ──
@@ -2151,20 +2172,22 @@ function workTypeFolderName(wt){
   // 신규/수정 그 자체가 아니라 하위 단계(변경전/변경후, 진행중/완료)다. 예전엔
   // 옛 값(작업전/작업후/신규) 기준으로만 매칭해서 요즘 사진은 전부 "기타"로
   // 떨어졌다(2026-08-24 발견 — 동기화해도 분류가 안 되는 것처럼 보이던 원인).
-  if(wt==='변경전'||wt==='변경후'||wt==='작업전'||wt==='작업후') return '수정';
+  // 2026-11-18: 사이드바 폴더 = 신규/작업전후/수정작업. 예전 변경전/변경후·"수정"은 수정작업으로.
+  if(wt==='수정전'||wt==='수정후'||wt==='변경전'||wt==='변경후'||wt==='수정') return '수정작업';
+  if(wt==='작업전'||wt==='작업후') return '작업전후';
   if(wt==='신규'||wt==='진행중'||wt==='완료') return '신규';
   return wt||'기타';
 }
 function isOtherFolder(p){
   const f=workTypeFolderName(p.wt);
-  return f!=='신규' && f!=='수정';
+  return f!=='신규' && f!=='작업전후' && f!=='수정작업';
 }
 function renderSidebar() {
   document.getElementById('sbAll').classList.toggle('sel', selCat===null && selWt===null && !selOtherFolder);
   const menuPhotos = photos.filter(p => (p.menu||'시공')===activeMenu);
   document.getElementById('sbAllCnt').textContent = menuPhotos.length;
 
-  const wtFolders = ['신규','수정'];
+  const wtFolders = ['신규','작업전후','수정작업'];
   const enabledList = cats.filter(c => enabledCats.has(c));
   const otherCount = menuPhotos.filter(isOtherFolder).length;
 
@@ -2564,7 +2587,9 @@ function parseOCRText(text) {
   if(timeM) r.time=`${timeM[1].padStart(2,'0')}:${timeM[2]}`;
   // 워터마크는 "작업전/작업후"가 아니라 "[변경전]/[변경후]/[진행중]"으로 찍힌다
   // (index.html LABELS_BY_MENU 참고) — 옛 패턴은 실제 데이터와 안 맞아 계속 폴백으로만 남겨둔다.
-  if(/변경\s*후/.test(t)) r.wt='변경후';
+  if(/수정\s*후/.test(t)) r.wt='수정후';
+  else if(/수정\s*전/.test(t)) r.wt='수정전';
+  else if(/변경\s*후/.test(t)) r.wt='변경후';
   else if(/변경\s*전/.test(t)) r.wt='변경전';
   else if(/진행\s*중/.test(t)) r.wt='진행중';
   else if(/완료/.test(t)) r.wt='완료';

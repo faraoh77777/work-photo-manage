@@ -246,7 +246,11 @@ textarea.f{resize:none;height:48px;}
     </div>
 
     <div class="flbl" id="lblWorkType">작업 구분</div>
-    <div style="display:flex;gap:8px;margin-bottom:4px;">
+    <!-- 2026-11-18: 시공/품질은 작업구분을 드롭다운(신규/작업전후/수정작업)으로 고른다 —
+         applyMenuLabels()가 메뉴에 wtGroups가 있으면 아래 라디오 줄을 숨기고 이 드롭다운을 보여준다.
+         자재/안전/화기유도는 지금처럼 라디오 2개(도급/사급 등) 그대로. -->
+    <select id="inWorkType" class="f" style="display:none;margin-bottom:4px;"></select>
+    <div id="wtRadioRow" style="display:flex;gap:8px;margin-bottom:4px;">
       <label style="flex:1;min-width:80px;display:flex;align-items:center;gap:6px;background:#F7FAFC;
         border:1.5px solid #C8D8E8;border-radius:8px;padding:9px 10px;cursor:pointer;
         font-size:17px;font-weight:700;color:var(--brand-2);">
@@ -809,15 +813,28 @@ var customCats=catsByMenu[activeMenu];
 var customAreas=loadList("custom_areas",DEFAULT_AREAS);
 saveCatsByMenu();
 
+// 2026-11-18: 시공/품질 작업구분 = 드롭다운 3가지, 각각 하위 단계 버튼 2개.
+// 예전 값 변경전/변경후는 더 이상 새로 저장되지 않고, 폴더는 수정작업으로 묶인다(workTypeFolderName).
+var WT_3GROUPS=[
+  {name:"신규",phases:["진행중","완료"]},
+  {name:"작업전후",phases:["작업전","작업후"]},
+  {name:"수정작업",phases:["수정전","수정후"]}
+];
 var LABELS_BY_MENU={
-  "시공":{modPhases:["변경전","변경후"],newPhases:["진행중","완료"]},
-  "품질":{tagPh:"검사번호",modPhases:["변경전","변경후"]},
+  "시공":{wtGroups:WT_3GROUPS},
+  "품질":{tagPh:"검사번호",wtGroups:WT_3GROUPS},
   "자재":{tag:"검수번호/Packing NO.",tagPh:"검수번호",cat:"자재품명",workType:"자재구분",wtNew:"도급",wtMod:"사급",loc:"자재보관장소"},
   "안전":{tag:"사진제목",tagPh:"사진제목",cat:"사진내용",workType:"현장안전점검",wtNew:"현장안전점검",wtMod:"안전용품",loc:"장소"},
   "화기/유도":{tag:"화기/유도원 이름",tagPh:"이름",wtNew:"화기감시자",wtMod:"유도원"}
 };
-// radioValue(신규/수정 라디오의 실제 value)에 해당하는 하위 단계 목록을 반환 (없으면 null)
+// radioValue(작업구분 드롭다운 값 또는 신규/수정 라디오의 실제 value)에 해당하는 하위 단계 목록을 반환 (없으면 null)
 function wtPhasesFor(radioValue, d){
+  if(d&&d.wtGroups){
+    for(var gi=0;gi<d.wtGroups.length;gi++){
+      if(d.wtGroups[gi].name===radioValue) return d.wtGroups[gi].phases||null;
+    }
+    return null;
+  }
   var newVal=(d&&d.wtNew)||"신규", modVal=(d&&d.wtMod)||"수정";
   if(radioValue===newVal) return (d&&d.newPhases)||null;
   if(radioValue===modVal) return (d&&d.modPhases)||null;
@@ -834,6 +851,30 @@ function applyMenuLabels(menu){
   document.getElementById("lblLoc").textContent=d.loc||"작업 구역";
   document.getElementById("wtNew").value=d.wtNew||"신규";
   document.getElementById("wtMod").value=d.wtMod||"수정";
+  // 시공/품질: 드롭다운을 보이고 라디오 줄을 숨긴다. 메뉴를 오가도 고른 값이 목록에 있으면 유지.
+  var sel=document.getElementById("inWorkType");
+  var radioRow=document.getElementById("wtRadioRow");
+  if(d.wtGroups){
+    var prev=sel.value;
+    sel.innerHTML=d.wtGroups.map(function(g){return optionHtml(g.name);}).join("");
+    var names=d.wtGroups.map(function(g){return g.name;});
+    sel.value=names.indexOf(prev)!==-1?prev:names[0];
+    sel.style.display="";
+    radioRow.style.display="none";
+  }else{
+    sel.style.display="none";
+    radioRow.style.display="flex";
+  }
+}
+// 현재 고른 작업구분(드롭다운 또는 라디오) 값
+function currentWorkTypeValue(){
+  var d=LABELS_BY_MENU[activeMenu];
+  if(d&&d.wtGroups){
+    var sel=document.getElementById("inWorkType");
+    return sel.value||d.wtGroups[0].name;
+  }
+  var wt=document.querySelector('input[name="workType"]:checked');
+  return wt?wt.value:null;
 }
 function setActiveMenu(menu){
   if(MENUS.indexOf(menu)===-1)return;
@@ -1469,8 +1510,7 @@ document.addEventListener("click",function(e){
 });
 
 function getWorkLabel(){
-  var wt=document.querySelector('input[name="workType"]:checked');
-  var v=wt?wt.value:'신규';
+  var v=currentWorkTypeValue()||'신규';
   var d=LABELS_BY_MENU[activeMenu];
   var phases=wtPhasesFor(v,d);
   if(phases){
@@ -1491,9 +1531,9 @@ function phaseBoxHtml(label,idx){
     +'<span>'+esc+'</span></label>';
 }
 function togglePhaseSelect(){
-  var checked=document.querySelector('input[name="workType"]:checked');
+  var cur=currentWorkTypeValue();
   var d=LABELS_BY_MENU[activeMenu];
-  var phases=checked?wtPhasesFor(checked.value,d):null;
+  var phases=cur?wtPhasesFor(cur,d):null;
   var wrap=document.getElementById('inPhaseWrap');
   if(phases){
     wrap.innerHTML=phases.map(phaseBoxHtml).join('');
@@ -1506,6 +1546,7 @@ function togglePhaseSelect(){
 document.querySelectorAll('input[name="workType"]').forEach(function(r){
   r.addEventListener('change',togglePhaseSelect);
 });
+document.getElementById('inWorkType').addEventListener('change',togglePhaseSelect);
 
 var CROP_TARGET_W=1600;
 function crop34(img){
@@ -1754,15 +1795,17 @@ function sanitizeFolderName(name){
   var cleaned=String(name==null?"":name).replace(/[\\/:*?"<>|]/g,"_").trim();
   return cleaned||"Others";
 }
-// 시공/품질은 수정 선택 시 변경전/변경후로, 시공은 신규 선택 시 진행중/완료로 세분화되지만
-// 폴더는 각각 "수정"/"신규" 하나로 묶음
+// 시공/품질은 신규(진행중/완료)·작업전후(작업전/작업후)·수정작업(수정전/수정후)으로 세분화되지만
+// 폴더는 신규/작업전후/수정작업 하나씩으로 묶음
 function workTypeFolderName(wt){
-  if(wt==="변경전"||wt==="변경후")return "수정";
+  // 2026-11-18: 수정전/수정후(새 값)와 변경전/변경후(예전 값)는 "수정작업", 작업전/작업후는 "작업전후"
+  if(wt==="수정전"||wt==="수정후"||wt==="변경전"||wt==="변경후")return "수정작업";
+  if(wt==="작업전"||wt==="작업후")return "작업전후";
   if(wt==="진행중"||wt==="완료")return "신규";
   return wt||"기타";
 }
 
-var WT_EN={'신규':'new','진행중':'in-progress','완료':'done','변경전':'mod-before','변경후':'mod-after','도급':'contract','사급':'owner-supply','현장안전점검':'safety-check','안전용품':'safety-gear','화기감시자':'fire-watch','유도원':'guide'};
+var WT_EN={'신규':'new','진행중':'in-progress','완료':'done','변경전':'mod-before','변경후':'mod-after','작업전':'work-before','작업후':'work-after','수정전':'fix-before','수정후':'fix-after','도급':'contract','사급':'owner-supply','현장안전점검':'safety-check','안전용품':'safety-gear','화기감시자':'fire-watch','유도원':'guide'};
 
 function buildFileName(idx){
   // cat/tag/loc은 안전·화기유도 메뉴처럼 한글 값("개인보호구" 등)일 수 있어서,

@@ -330,22 +330,30 @@ function populateSelectOptions(selectEl, values) {
   if (values.includes(current)) selectEl.value = current;
 }
 
-// work-gallery(work-gallery/index.html WT_LABELS_BY_MENU)와 동일한 메뉴별 작업구분 단계.
-// 시공/품질은 신규가 "진행중/완료", 수정이 "변경전/변경후"로 세분화되고,
+// 촬영앱(index.html WT_GROUPS)과 동일한 메뉴별 작업구분 단계.
+// 2026-11-18: 시공/품질은 신규(진행중/완료)·작업전후(작업전/작업후)·수정작업(수정전/수정후) 3가지로 나뉜다.
+// 예전 사진의 "변경전/변경후"는 수정작업의 세부단계로 계속 보이도록 phases에 함께 둔다.
 // 자재/안전/화기유도는 하위 단계 없이 도급-사급 등 값 자체가 구분이다.
+const WT_3GROUPS = [
+  { name: "신규", phases: ["진행중", "완료"] },
+  { name: "작업전후", phases: ["작업전", "작업후"] },
+  { name: "수정작업", phases: ["수정전", "수정후", "변경전", "변경후"] },
+];
 const WT_LABELS_BY_MENU = {
-  "시공": { new: "신규", mod: "수정", newPhases: ["진행중", "완료"], modPhases: ["변경전", "변경후"] },
-  "품질": { new: "신규", mod: "수정", modPhases: ["변경전", "변경후"] },
-  "자재": { new: "도급", mod: "사급" },
-  "안전": { new: "현장안전점검", mod: "안전용품" },
-  "화기/유도": { new: "화기감시자", mod: "유도원" },
+  "시공": { groups: WT_3GROUPS },
+  "품질": { groups: WT_3GROUPS },
+  "자재": { groups: [{ name: "도급" }, { name: "사급" }] },
+  "안전": { groups: [{ name: "현장안전점검" }, { name: "안전용품" }] },
+  "화기/유도": { groups: [{ name: "화기감시자" }, { name: "유도원" }] },
 };
 
-// work-gallery(work-gallery/index.html workTypeFolderName)와 동일한 폴더 묶음 규칙.
-// 시공/품질은 "진행중/완료"→신규, "변경전/변경후/수정-작업전/수정-작업후"(구버전 표기 포함)→수정으로 묶이고,
-// 그 외 값(자재의 도급/사급 등, 혹은 이미 "신규"/"수정" 그 자체로 저장된 값)은 원래 값을 폴더명으로 그대로 쓴다.
+// 촬영앱·갤러리 workTypeFolderName과 동일한 폴더 묶음 규칙.
+// 시공/품질은 "진행중/완료"→신규, "작업전/작업후"→작업전후,
+// "수정전/수정후/변경전/변경후/수정-작업전/수정-작업후"(구버전 표기 포함)와 옛 "수정"→수정작업으로 묶이고,
+// 그 외 값(자재의 도급/사급 등, 혹은 이미 "신규" 그 자체로 저장된 값)은 원래 값을 폴더명으로 그대로 쓴다.
 function workTypeFolderName(wt) {
-  if (wt === "변경전" || wt === "변경후" || wt === "수정-작업전" || wt === "수정-작업후") return "수정";
+  if (wt === "수정전" || wt === "수정후" || wt === "변경전" || wt === "변경후" || wt === "수정-작업전" || wt === "수정-작업후" || wt === "수정") return "수정작업";
+  if (wt === "작업전" || wt === "작업후") return "작업전후";
   if (wt === "진행중" || wt === "완료") return "신규";
   return wt || "기타";
 }
@@ -364,7 +372,7 @@ function populateCloudWorkTypeFilter() {
   const menu = workTitleInput.value;
   const current = cloudWorkTypeFilter.value;
   const w = WT_LABELS_BY_MENU[menu];
-  const values = w ? [w.new, w.mod, "기타"] : [...new Set(menuFilteredRecords().map((r) => workTypeFolderName(r.work_type)))].sort();
+  const values = w ? w.groups.map((g) => g.name).concat("기타") : [...new Set(menuFilteredRecords().map((r) => workTypeFolderName(r.work_type)))].sort();
   populateSelectOptions(cloudWorkTypeFilter, values);
   if (values.includes(current)) cloudWorkTypeFilter.value = current;
 }
@@ -376,8 +384,8 @@ function populateCloudPhaseFilter() {
   const w = WT_LABELS_BY_MENU[menu];
   const folder = cloudWorkTypeFilter.value;
   let phases = null;
-  if (w && folder === w.new) phases = w.newPhases || null;
-  if (w && folder === w.mod) phases = w.modPhases || null;
+  const g = w ? w.groups.find((x) => x.name === folder) : null;
+  if (g) phases = g.phases || null;
   if (!phases) {
     cloudPhaseFilter.value = "";
     cloudPhaseFilterWrap.style.display = "none";
