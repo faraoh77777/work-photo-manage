@@ -233,7 +233,7 @@ textarea.f{resize:none;height:48px;}
        숨긴다(enterLocalOnlyMode) — 기기번호/작업구분/작업분류/작업구역은 현장 단위 기능이라서.
        특이사항은 사진 한 장에 메모를 남기는 용도라 로컬 모드에서도 남겨둔다. -->
   <div id="siteFieldsWrap">
-    <div class="flbl" id="lblTag">기기번호</div>
+    <div class="flbl" id="lblTag">기기번호/표기번호</div>
     <div class="mic-row" style="position:relative;">
       <input type="text" id="inTag" class="f" placeholder="PT-2101, EQ-001 등" autocomplete="off"
         oninput="normalizeTagInput(this);updateTagSuggest();" onfocus="updateTagSuggest();"/>
@@ -842,7 +842,7 @@ function wtPhasesFor(radioValue, d){
 }
 function applyMenuLabels(menu){
   var d=LABELS_BY_MENU[menu]||{};
-  document.getElementById("lblTag").textContent=d.tag||"기기번호";
+  document.getElementById("lblTag").textContent=d.tag||"기기번호/표기번호";
   document.getElementById("inTag").placeholder=d.tagPh||"PT-2101, EQ-001 등";
   document.getElementById("lblCat").textContent=d.cat||"작업 분류";
   document.getElementById("lblWorkType").textContent=d.workType||"작업 구분";
