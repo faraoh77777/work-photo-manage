@@ -520,7 +520,9 @@ async function registerSiteInList(url,key,name){
     localStorage.setItem('site_list',JSON.stringify(list));
   }catch(e){}
   if(registryClient){
-    try{ await registryClient.from('site_registry').upsert({url:url,key:key,name:name||null},{onConflict:'url'}); }
+    // 2026-11-18: 접속키는 더 이상 공용 목록에 올리지 않는다(빈 값으로 덮어써 예전 값도 지움).
+    // 폐쇄 확인(closed)용으로 url·이름만 남긴다.
+    try{ await registryClient.from('site_registry').upsert({url:url,key:'',name:name||null},{onConflict:'url'}); }
     catch(e){console.error('현장 레지스트리 등록 실패',e);}
   }
 }
