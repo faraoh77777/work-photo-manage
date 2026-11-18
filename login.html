@@ -63,7 +63,7 @@ html.in-app .app-header{padding-top:34px;}
       <span style="color:#5D7A93;">이미 가입한 회원은 전화번호와 비밀번호로 바로 로그인하면 됩니다.</span>
     </div>
     <div id="siteSelectWrap" style="display:none;margin-bottom:14px;">
-      <div class="flbl" style="margin-top:0;">현장 선택</div>
+      <div class="flbl" style="margin-top:0;">현장(프로젝트) 선택</div>
       <select id="siteSelect" class="f" onchange="onSiteSelectChange()"></select>
     </div>
     <div class="tab-bar">
@@ -178,6 +178,8 @@ html.in-app .app-header{padding-top:34px;}
 
 <script>
 var LEGACY_DEFAULT_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
+var DEFAULT_COMPANY='대선이엔씨(주)';
+var DEFAULT_PROJECT='S-OIL SHAHEEN Project 계장공사 3공구(PKG-1)';
 var LEGACY_DEFAULT_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
 
 // ── 이 기기가 지금까지 연결해본 현장 목록(운영자 선택 로그인용) ──────────────
@@ -200,11 +202,14 @@ async function fetchSiteClosed(url){
     return (res.error||!res.data)?null:res.data;
   }catch(e){return null;}
 }
-function registerSite(url,key,name){
+function registerSite(url,key,name,company,project){
   if(!url||!key||url===LEGACY_DEFAULT_URL)return;
   var list=loadSiteList();
   var idx=list.findIndex(function(s){return s.url===url;});
-  var entry={url:url,key:key,name:name||''};
+  var old=idx>=0?list[idx]:{};
+  // 회사명·프로젝트명도 같이 기억해 둬야 현장 선택 목록에 프로젝트명이 보이고,
+  // 다른 현장에 갔다 돌아와도 회원가입 화면에 프로젝트명이 다시 채워진다(2026-11-18).
+  var entry={url:url,key:key,name:name||old.name||'',company:company||old.company||'',project:project||old.project||''};
   if(idx>=0)list[idx]=entry; else list.push(entry);
   saveSiteList(list);
 }
@@ -244,7 +249,7 @@ function registerSite(url,key,name){
       if(cfg.p)localStorage.setItem('site_project',cfg.p); else localStorage.removeItem('site_project');
       // 첫 접속 때 서비스워커 설치로 페이지가 한 번 새로고침돼도 유지되도록 sessionStorage에 둔다.
       try{sessionStorage.setItem('invite_arrived','1');}catch(e){}
-      registerSite(cfg.u,cfg.k,cfg.n);
+      registerSite(cfg.u,cfg.k,cfg.n,cfg.c,cfg.p);
     }
   }catch(e){console.error('초대 링크 처리 실패',e);}
   history.replaceState(null,'',location.pathname);
@@ -263,8 +268,15 @@ try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }catch(e){consol
 
 // 이 기기의 현재 활성 현장이 커스텀 현장인데 목록에 아직 없으면(이 기능이 생기기
 // 전에 이미 연결해둔 경우 등) 지금 등록해서 선택 목록에 뒤늦게라도 나타나게 한다.
-registerSite(SUPABASE_URL,SUPABASE_KEY,localStorage.getItem('site_name'));
+registerSite(SUPABASE_URL,SUPABASE_KEY,localStorage.getItem('site_name'),localStorage.getItem('site_company'),localStorage.getItem('site_project'));
 
+// 현장 선택에는 프로젝트명을 보여준다(없으면 현장 이름). 회사명이 있으면 뒤에 붙인다(2026-11-18).
+function siteLabel(s){
+  var proj=s.project||(s.url===SUPABASE_URL?localStorage.getItem('site_project'):'')||s.name||s.url;
+  var comp=s.company||(s.url===SUPABASE_URL?localStorage.getItem('site_company'):'');
+  return comp&&proj.indexOf(comp)<0?proj+' ('+comp+')':proj;
+}
+function escOpt(t){return String(t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 async function renderSiteSelector(){
   var wrap=document.getElementById('siteSelectWrap');
   var localList=loadSiteList();
@@ -296,10 +308,10 @@ async function renderSiteSelector(){
   }
   // 폐쇄된 현장은 선택 목록에서 제외한다.
   var visible=merged.filter(function(s){return !s.closed;});
-  var all=[{url:LEGACY_DEFAULT_URL,key:LEGACY_DEFAULT_KEY,name:'대선이엔씨(주) 기본현장'}].concat(visible);
+  var all=[{url:LEGACY_DEFAULT_URL,key:LEGACY_DEFAULT_KEY,name:'대선이엔씨(주) 기본현장',company:DEFAULT_COMPANY,project:DEFAULT_PROJECT}].concat(visible);
   // 현장이 하나뿐이어도 어느 현장에 로그인하는지 보이도록 항상 표시한다(2026-11-18).
   var sel=document.getElementById('siteSelect');
-  sel.innerHTML=all.map(function(s,i){return '<option value="'+i+'">'+(s.name||s.url)+'</option>';}).join('');
+  sel.innerHTML=all.map(function(s,i){return '<option value="'+i+'">'+escOpt(siteLabel(s))+'</option>';}).join('');
   var curIdx=all.findIndex(function(s){return s.url===SUPABASE_URL;});
   sel.value=String(curIdx>=0?curIdx:0);
   sel.dataset.sites=JSON.stringify(all);
@@ -349,6 +361,8 @@ async function onSiteSelectChange(){
     localStorage.setItem('site_supabase_url',picked.url);
     localStorage.setItem('site_supabase_key',picked.key);
     if(picked.name)localStorage.setItem('site_name',picked.name); else localStorage.removeItem('site_name');
+    if(picked.company)localStorage.setItem('site_company',picked.company);
+    if(picked.project)localStorage.setItem('site_project',picked.project);
   }
   location.reload();
 }
@@ -362,10 +376,15 @@ var IS_DEFAULT_SITE=(SUPABASE_URL===LEGACY_DEFAULT_URL);
 // (휴대폰을 바꾼 기존 회원이 전화번호+비밀번호로 계속 들어올 수 있게).
 var KNOWN_DEVICE=!!(localStorage.getItem('member_id')||localStorage.getItem('remembered_phone'));
 if(IS_DEFAULT_SITE){
-  if(KNOWN_DEVICE){
-    document.getElementById('regCompany').value='대선이엔씨(주)';
-    document.getElementById('regProject').value='S-OIL SHAHEEN Project 계장공사 3공구(PKG-1)';
-  }else{
+  // 2026-11-18 수정: 처음 연 기기도 회사명·프로젝트명을 채운다(대선이엔씨 신규 직원이 직접 치다 틀리는 문제).
+  // 가입은 운영자 승인을 거치므로 다른 회사 사람이 잘못 가입해도 승인되지 않는다.
+  document.getElementById('regCompany').value=DEFAULT_COMPANY;
+  document.getElementById('regProject').value=DEFAULT_PROJECT;
+  document.getElementById('regOrgConfirmProject').textContent=DEFAULT_PROJECT;
+  document.getElementById('regOrgConfirmCompany').textContent=DEFAULT_COMPANY;
+  document.getElementById('regOrgConfirm').style.display='';
+  document.getElementById('regOrgFields').style.display='none';
+  if(!KNOWN_DEVICE){
     var fn=document.getElementById('freshDeviceNotice');
     if(fn)fn.style.display='';
   }
