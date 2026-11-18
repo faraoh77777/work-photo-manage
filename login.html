@@ -297,7 +297,7 @@ async function renderSiteSelector(){
   // 폐쇄된 현장은 선택 목록에서 제외한다.
   var visible=merged.filter(function(s){return !s.closed;});
   var all=[{url:LEGACY_DEFAULT_URL,key:LEGACY_DEFAULT_KEY,name:'대선이엔씨(주) 기본현장'}].concat(visible);
-  if(all.length<2){wrap.style.display='none';return;}
+  // 현장이 하나뿐이어도 어느 현장에 로그인하는지 보이도록 항상 표시한다(2026-11-18).
   var sel=document.getElementById('siteSelect');
   sel.innerHTML=all.map(function(s,i){return '<option value="'+i+'">'+(s.name||s.url)+'</option>';}).join('');
   var curIdx=all.findIndex(function(s){return s.url===SUPABASE_URL;});
