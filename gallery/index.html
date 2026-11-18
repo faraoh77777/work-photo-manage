@@ -378,7 +378,8 @@ body { font-family: 'Malgun Gothic', 'Segoe UI', sans-serif; background: var(--b
   <button class="btn btn-ghost" id="folderBtn" onclick="loadFromFolder()" title="PC 폴더에서 사진 불러오기" style="display:none">폴더</button>
   <button class="btn btn-ghost" id="syncBtn" onclick="openSyncModal()" title="클라우드에서 사진 가져오기">동기화</button>
   <button class="btn btn-ghost" onclick="openBatch()" title="OCR로 전체 자동 분류">자동 분류</button>
-  <button class="btn btn-ghost" id="photoSheetBtn" onclick="openPhotoSheet()" title="이 PC에서 사진대지생성기(photo-sheet 폴더)가 실행 중이어야 열립니다">사진대지</button>
+  <button class="btn btn-ghost" id="photoSheetBtn" onclick="openPhotoSheet()" title="이 PC에서 사진대지생성기가 실행 중이어야 열립니다(없으면 옆의 '사진대지 프로그램 받기')">사진대지</button>
+  <a class="btn btn-ghost" id="photoSheetDlBtn" href="https://github.com/faraoh77777/work-photo-manage/releases/latest/download/photo-sheet-generator.zip" title="PC용 사진대지생성기 다운로드(zip). 압축을 풀고 license.key를 같은 폴더에 넣은 뒤 실행" style="text-decoration:none;">사진대지 프로그램 받기</a>
   <button class="btn btn-ghost" id="dupFilterBtn" onclick="toggleDupFilter()" title="같은 기기번호가 여러 장인 사진만 모아보기" style="display:none;color:var(--orange);border-color:rgba(240,136,62,.4);"></button>
   <button class="btn btn-ghost" id="dupCleanBtn" onclick="cleanupExactDuplicates()" title="파일 내용이 완전히 같은 사진(같은 걸 여러 번 올린 경우)을 찾아 로컬+클라우드에서 같이 정리">중복 사진 정리</button>
   <button class="btn btn-ghost" id="incompleteFilterBtn" onclick="toggleIncompleteFilter()" title="작업분류·기기번호·작업구역·팀명 중 하나라도 비어있는 사진만 모아보기" style="display:none;color:var(--orange);border-color:rgba(240,136,62,.4);"></button>
@@ -2006,6 +2007,8 @@ function isMobileDevice(){
   if(!isMobileDevice())return;
   var b=document.getElementById('photoSheetBtn');
   if(b)b.style.display='none';
+  var d=document.getElementById('photoSheetDlBtn');
+  if(d)d.style.display='none';
 })();
 // 지금 연결된 현장 정보(URL/key/회사명/프로젝트명)를 주소의 #site= 에 담아 넘겨서,
 // 사진대지생성기 설정에 Supabase 정보를 직접 넣지 않아도 바로 이 현장 사진을 불러오게 한다(2026-11-03).
