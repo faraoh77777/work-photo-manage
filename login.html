@@ -65,6 +65,10 @@ html.in-app .app-header{padding-top:34px;}
     <div id="siteSelectWrap" style="display:none;margin-bottom:14px;">
       <div class="flbl" style="margin-top:0;">현장(프로젝트) 선택</div>
       <select id="siteSelect" class="f" onchange="onSiteSelectChange()"></select>
+      <div id="siteInfo" style="display:none;margin-top:8px;font-size:13px;color:#2E4053;line-height:1.6;word-break:keep-all;">
+        <div><span style="color:#5D7A93;">회사명</span> <b id="siteInfoCompany"></b></div>
+        <div><span style="color:#5D7A93;">프로젝트명</span> <b id="siteInfoProject"></b></div>
+      </div>
     </div>
     <div class="tab-bar">
       <button class="tab-btn active" id="tabLogin" onclick="try{sessionStorage.removeItem('invite_arrived')}catch(e){};switchTab('login')">로그인</button>
@@ -270,11 +274,22 @@ try{ sbClient=supabase.createClient(SUPABASE_URL,SUPABASE_KEY); }catch(e){consol
 // 전에 이미 연결해둔 경우 등) 지금 등록해서 선택 목록에 뒤늦게라도 나타나게 한다.
 registerSite(SUPABASE_URL,SUPABASE_KEY,localStorage.getItem('site_name'),localStorage.getItem('site_company'),localStorage.getItem('site_project'));
 
-// 현장 선택에는 프로젝트명을 보여준다(없으면 현장 이름). 회사명이 있으면 뒤에 붙인다(2026-11-18).
-function siteLabel(s){
+// 현장 선택에는 "회사명 · 프로젝트명"을 보여주고, 아래에 회사·프로젝트를 한 줄씩 크게 보여준다(2026-11-18).
+function siteParts(s){
   var proj=s.project||(s.url===SUPABASE_URL?localStorage.getItem('site_project'):'')||s.name||s.url;
-  var comp=s.company||(s.url===SUPABASE_URL?localStorage.getItem('site_company'):'');
-  return comp&&proj.indexOf(comp)<0?proj+' ('+comp+')':proj;
+  var comp=s.company||(s.url===SUPABASE_URL?localStorage.getItem('site_company'):'')||'';
+  return {company:comp,project:proj};
+}
+function siteLabel(s){
+  var p=siteParts(s);
+  return p.company?p.company+' · '+p.project:p.project;
+}
+function showSiteInfo(s){
+  var box=document.getElementById('siteInfo'); if(!box)return;
+  var p=siteParts(s||{});
+  document.getElementById('siteInfoCompany').textContent=p.company||'-';
+  document.getElementById('siteInfoProject').textContent=p.project||'-';
+  box.style.display='';
 }
 function escOpt(t){return String(t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 async function renderSiteSelector(){
@@ -315,6 +330,7 @@ async function renderSiteSelector(){
   var curIdx=all.findIndex(function(s){return s.url===SUPABASE_URL;});
   sel.value=String(curIdx>=0?curIdx:0);
   sel.dataset.sites=JSON.stringify(all);
+  showSiteInfo(all[curIdx>=0?curIdx:0]);
   wrap.style.display='';
 }
 renderSiteSelector();
