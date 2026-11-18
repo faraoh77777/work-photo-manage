@@ -1,6 +1,6 @@
 {
-  "name": "작업사진",
-  "short_name": "작업사진",
+  "name": "건설현장 작업사진",
+  "short_name": "건설현장 작업사진",
   "description": "현장 작업 사진 관리",
   "start_url": "/work-photo-manage/index.html",
   "scope": "/work-photo-manage/",

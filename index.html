@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <script>/* 앱(Android WebView)에서는 상태바(시간·배터리)가 화면 위에 겹쳐 그려져 헤더 윗부분을 가린다 — 헤더에 여백을 준다 */try{if(/; wv\)/.test(navigator.userAgent))document.documentElement.classList.add("in-app");}catch(e){}</script>
-<title>작업 사진</title>
+<title>건설현장 작업사진</title>
 <link rel="manifest" href="Work%20photo_icon/manifest.json"/>
 <meta name="theme-color" content="#1E3A5F"/>
 <link rel="icon" type="image/png" sizes="192x192" href="Work%20photo_icon/icon-192.png"/>
@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="Work%20photo_icon/icon-192.png"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="작업사진"/>
+<meta name="apple-mobile-web-app-title" content="건설현장 작업사진"/>
 <style>
 :root{--brand-1:#1E3A5F;--brand-2:#2E5F9E;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -141,7 +141,7 @@ textarea.f{resize:none;height:48px;}
 <div class="app-header">
   <div style="display:flex;justify-content:space-between;align-items:center;">
     <div style="min-width:0;flex:1;">
-      <div class="app-title"><span class="icon-wrap" onclick="fireIconEffect(this)"><img src="Work%20photo_icon/icon-192.png" alt=""/></span> 작업 사진</div>
+      <div class="app-title"><span class="icon-wrap" onclick="fireIconEffect(this)"><img src="Work%20photo_icon/icon-192.png" alt=""/></span> 건설현장 작업사진</div>
       <div class="app-sub" id="hdrProject" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">계장 &amp; 전기 공사</div>
       <div class="app-sub" id="hdrCompany" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
     </div>
@@ -1282,7 +1282,7 @@ async function openCamera(){
           // 그대로 폴백하면 탭해도 아무 반응이 없어 보여서, 원스토어에 반려됐던
           // "사진 촬영 버튼 선택 시 반응 없음"과 똑같은 증상이 된다. 안내를 띄운다.
           if(e3&&(e3.name==="NotAllowedError"||e3.name==="SecurityError")){
-            showTE("카메라 권한이 거부되어 촬영할 수 없습니다. 설정 > 애플리케이션 > 작업사진 > 권한에서 카메라를 허용해 주세요.");
+            showTE("카메라 권한이 거부되어 촬영할 수 없습니다. 설정 > 애플리케이션 > 건설현장 작업사진 > 권한에서 카메라를 허용해 주세요.");
             return;
           }
           document.getElementById("fileInput").click();

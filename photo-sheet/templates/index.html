@@ -12,7 +12,7 @@
 <div class="wrap">
   <h1><img src="/static/icon.png" alt="" class="app-icon">사진대지생성기</h1>
   <div class="brand-banner" id="hdrProjectCompany" style="display:none;"></div>
-  <div class="brand-banner">📱 작업사진 앱·갤러리와 동일한 구분·분류 체계를 사용합니다</div>
+  <div class="brand-banner">📱 건설현장 작업사진 앱·갤러리와 동일한 구분·분류 체계를 사용합니다</div>
 
   <section class="panel" id="settingsPanel">
     <h2>설정 <button type="button" id="toggleSettings" class="link-btn">접기/펼치기</button></h2>
@@ -34,18 +34,18 @@
         </select>
       </label>
       <label>연결할 현장 (Supabase) — 갤러리 불러오기를 쓰려면 반드시 입력해야 합니다
-        <input type="text" id="supabaseUrl" placeholder="https://xxxxxxxx.supabase.co (작업사진 앱 site-setup.html에서 확인)">
+        <input type="text" id="supabaseUrl" placeholder="https://xxxxxxxx.supabase.co (건설현장 작업사진 앱 site-setup.html에서 확인)">
       </label>
       <label>Supabase anon(publishable) key
         <input type="text" id="supabaseKey" placeholder="sb_publishable_...">
       </label>
-      <p class="hint">설정 값은 자동으로 저장되어 다음에 열 때도 유지됩니다. 작업사진 앱(work-photo-manage)과 동일한 구분을 사용하며, 사용 중인 현장의 Supabase URL/key를 여기에 입력해야 갤러리에서 사진을 불러올 수 있습니다.</p>
+      <p class="hint">설정 값은 자동으로 저장되어 다음에 열 때도 유지됩니다. 건설현장 작업사진 앱(work-photo-manage)과 동일한 구분을 사용하며, 사용 중인 현장의 Supabase URL/key를 여기에 입력해야 갤러리에서 사진을 불러올 수 있습니다.</p>
     </div>
   </section>
 
   <section class="panel">
     <h2>갤러리(Supabase)에서 불러오기</h2>
-    <p class="hint">작업사진 앱(work-photo-manage)에서 전송된 사진을 목록에서 선택하면, 기기번호/작업구역/작업내용/날짜가 자동으로 채워진 상태로 페이지가 생성됩니다. 위 설정에서 "사진관리 구분"을 선택해두면 갤러리 불러오기가 해당 구분으로 기본 필터된 채로 열립니다.</p>
+    <p class="hint">건설현장 작업사진 앱(work-photo-manage)에서 전송된 사진을 목록에서 선택하면, 기기번호/작업구역/작업내용/날짜가 자동으로 채워진 상태로 페이지가 생성됩니다. 위 설정에서 "사진관리 구분"을 선택해두면 갤러리 불러오기가 해당 구분으로 기본 필터된 채로 열립니다.</p>
     <select id="cloudLayout" class="cloud-layout-select">
       <option value="4" selected>사진 4장 (2x2)</option>
       <option value="2">사진 2장 (세로)</option>
