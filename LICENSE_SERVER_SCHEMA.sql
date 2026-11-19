@@ -200,3 +200,10 @@ revoke all on function public._license_site_status(public.license_sites) from pu
 --    where s.plan = 'beta' and s.manual_status is null;
 --   update public.license_config set beta_open = false where id = 1;
 -- commit;
+
+-- ── 회장님 조회용(요금제는 회장님만 본다, 앱 화면에는 표시 안 함 — 2026-11-19) ──────────
+-- SQL Editor에서 이 select만 골라 실행하면 전체 현장의 요금제·상태를 볼 수 있다.
+-- select name as 현장, company as 회사, plan as 요금제, public._license_site_status(s) as 상태,
+--        trial_until as 체험종료, paid_until as 결제만료, early_discount_pct as 초기할인,
+--        seat_limit as 인원한도, created_at::date as 등록일, site_url as 주소
+--   from public.license_sites s order by created_at desc;

@@ -1,5 +1,6 @@
 # CHANGELOG.md — 변경 이력
 ## 2026-11
+- 요금제는 회장님만 보도록 현장 관리 화면의 "요금제: 무료 베타" 표시 제거(새 현장 라이선스 등록은 화면 없이 그대로 진행). LICENSE_SERVER_SCHEMA.sql 맨 아래에 회장님 조회용 SQL(전체 현장 요금제·상태 목록) 추가
 - 기본현장 회사명·프로젝트명 변경: 대선이엔씨(주) / S-OIL SHAHEEN Project 계장공사 3공구(PKG-1) → AI사이트웍스 / 건설현장 업무자동화 프로젝트 (Smart Site Automation), 현장 선택 이름 "AI사이트웍스 기본현장"(로그인 현장 선택·회사/프로젝트 표시·기본현장 회원가입 확인 박스)
 - 라이선스 1단계 앱 연결(안내만, 실패해도 그대로 진행): 현장 관리(site-setup)에서 새 현장을 만들면 기본현장의 rpc_register_site로 등록하고 받은 site_token을 이 기기 localStorage(license_tokens, 현장 주소별)에 보관. 현장 관리 화면 "현재 현장" 칸에 "요금제: 무료 베타(종료 예정일)" 등 상태 표시(rpc_license_status). 토큰은 현장을 만든 기기에만 있음(다른 기기 표시는 다음 단계). 기본현장 자체는 등록하지 않음
 - 라이선스 서버 위치를 새 프로젝트 대신 기본현장 Supabase(dteljgmdbfyxubtpogcj)로 변경(2026-11-19 결정). 기존 테이블과 겹치지 않게 테이블·내부 함수 이름에 license_ 접두사(license_sites·license_usage_monthly·license_sheet_devices·license_payments, _license_plan_defaults·_license_site_status). RPC 이름(rpc_register_site·rpc_license_status)은 그대로. PGlite로 다시 확인

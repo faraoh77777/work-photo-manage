@@ -69,7 +69,6 @@ body{background:#F0F4F8;font-family:Arial,sans-serif;color:#1A2332;min-height:10
       <div class="cur-site-badge" id="curSiteBadge">-</div>
     </div>
     <div class="hint" id="curSiteHint"></div>
-    <div class="hint" id="curSitePlan" style="display:none;font-weight:600"></div>
     <button class="btn btn-danger-outline" id="closeBtn" style="display:none;margin-top:10px;" onclick="closeSite()">이 현장 폐쇄하기 (종료 안내 띄우기)</button>
     <button class="btn btn-danger-outline" id="resetBtn" style="display:none;margin-top:8px;" onclick="resetToDefault()">이 기기의 현장 연결 해제하기</button>
   </div>
@@ -474,7 +473,6 @@ function refreshCurrentSiteUI(){
   document.getElementById('closeBtn').style.display=(isConnected&&isSiteAdmin())?'block':'none';
   document.getElementById('resetBtn').style.display=isConnected?'block':'none';
   document.getElementById('inviteCard').style.display=isConnected?'block':'none';
-  if(typeof refreshLicenseInfo==='function'&&registryClient)refreshLicenseInfo();
 }
 refreshCurrentSiteUI();
 
@@ -532,6 +530,7 @@ async function registerSiteInList(url,key,name){
 // ── 라이선스(요금제) 1단계: 안내만, 실패해도 그냥 통과(2026-11-19) ──
 // 라이선스 표·함수는 기본현장 Supabase에 있다(LICENSE_SERVER_SCHEMA.sql). 새 현장을 만들면
 // rpc_register_site로 등록하고 받은 site_token을 이 기기에 현장 주소별로 보관한다.
+// 2026-11-19: 요금제는 회장님만 본다(사용자 지시) — 앱 화면에는 표시하지 않고 등록만 조용히 한다.
 // 등록·조회가 실패해도 현장 개설·로그인은 그대로 진행한다(막는 것은 2단계).
 function normSiteUrl(u){ return (u||'').trim().toLowerCase().replace(/\/+$/,''); }
 function getLicenseTokens(){ try{ return JSON.parse(localStorage.getItem('license_tokens'))||{}; }catch(e){ return {}; } }
@@ -545,21 +544,6 @@ async function registerLicense(url,name,company){
     }
   }catch(e){ console.warn('[라이선스] 등록 실패(무시하고 진행)',e); }
 }
-async function refreshLicenseInfo(){
-  var el=document.getElementById('curSitePlan'); if(!el)return;
-  el.style.display='none';
-  var tok=getLicenseTokens()[normSiteUrl(localStorage.getItem('site_supabase_url'))];
-  if(!registryClient||!tok)return;
-  try{
-    var r=await registryClient.rpc('rpc_license_status',{p_site_token:tok});
-    var d=r&&r.data; if(!d||!d.ok)return;
-    var label={beta:'무료 베타',trial:'무료 체험',active:'사용 중',grace:'결제 유예 기간',suspended:'사용 정지',closed:'폐쇄'}[d.status]||d.status;
-    var until=d.status==='beta'?d.beta_ends:(d.status==='trial'?d.trial_until:(d.status==='active'?d.paid_until:null));
-    el.textContent='요금제: '+label+(until?' ('+until+'까지)':'');
-    el.style.display='block';
-  }catch(e){}
-}
-
 // ── 현장 폐쇄(2026-09-10) ──────────────────────────────────────────
 // Supabase 프로젝트 자체를 지우면 로그인 시도한 사람에게 그냥 "연결 실패"로만
 // 보여서 헷갈린다. 프로젝트를 지우기 전에 이걸 먼저 눌러두면, site_registry에
@@ -742,7 +726,6 @@ async function shareInviteLink(){
     await navigator.share({title:'건설현장 작업사진 - 현장 초대',text:'아래 링크로 접속하면 우리 현장 앱에 바로 연결됩니다.',url:currentInviteLink});
   }catch(e){}
 }
-refreshLicenseInfo();
 </script>
 </body>
 </html>
