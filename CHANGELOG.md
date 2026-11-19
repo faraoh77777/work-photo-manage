@@ -1,5 +1,6 @@
 # CHANGELOG.md — 변경 이력
 ## 2026-11
+- 라이선스 서버 위치를 새 프로젝트 대신 기본현장 Supabase(dteljgmdbfyxubtpogcj)로 변경(2026-11-19 결정). 기존 테이블과 겹치지 않게 테이블·내부 함수 이름에 license_ 접두사(license_sites·license_usage_monthly·license_sheet_devices·license_payments, _license_plan_defaults·_license_site_status). RPC 이름(rpc_register_site·rpc_license_status)은 그대로. PGlite로 다시 확인
 - 라이선스 서버 스키마에 무료 베타 반영(결정: 무료 베타 후 일괄 유료 전환): plan=beta(상태 beta, 기한 없음), license_config(베타 진행 여부·종료 예정일·초기 할인율), sites.early_discount_pct, 베타 중 개설 현장은 beta로 등록, 파일 맨 아래 "베타 → 유료 일괄 전환" SQL(전 현장 체험 30일 시작·이후 신규는 바로 체험). PGlite로 등록·상태·전환·재실행·익명 차단 확인
 - 설치 매뉴얼 "① 앱 설치" 탭에 "💻 사진대지생성기 (회사 PC · 관리자용)" 설치 순서 5단계 추가(내려받기·압축 풀기·license.key·실행·갤러리 버튼)
 - 사진대지생성기 내려받기 배포: 최신 소스로 exe 새로 빌드해 GitHub 릴리스(photo-sheet-2026.11.18, photo-sheet-generator.zip = exe+사용안내.txt, license.key 미포함)에 올림. PC 갤러리에 "사진대지 프로그램 받기" 버튼(모바일 숨김), 설치 매뉴얼 사진대지생성기 1단계를 내려받기·압축 풀기·license.key 넣기·exe 실행 안내로 변경
