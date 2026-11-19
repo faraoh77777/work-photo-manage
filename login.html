@@ -182,8 +182,8 @@ html.in-app .app-header{padding-top:34px;}
 
 <script>
 var LEGACY_DEFAULT_URL='https://dteljgmdbfyxubtpogcj.supabase.co';
-var DEFAULT_COMPANY='대선이엔씨(주)';
-var DEFAULT_PROJECT='S-OIL SHAHEEN Project 계장공사 3공구(PKG-1)';
+var DEFAULT_COMPANY='AI사이트웍스';
+var DEFAULT_PROJECT='건설현장 업무자동화 프로젝트 (Smart Site Automation)';
 var LEGACY_DEFAULT_KEY='sb_publishable_VC2GcwpxDg_zVbFgOnpfzg__sictyqc';
 
 // ── 이 기기가 지금까지 연결해본 현장 목록(운영자 선택 로그인용) ──────────────
@@ -323,7 +323,7 @@ async function renderSiteSelector(){
   }
   // 폐쇄된 현장은 선택 목록에서 제외한다.
   var visible=merged.filter(function(s){return !s.closed;});
-  var all=[{url:LEGACY_DEFAULT_URL,key:LEGACY_DEFAULT_KEY,name:'대선이엔씨(주) 기본현장',company:DEFAULT_COMPANY,project:DEFAULT_PROJECT}].concat(visible);
+  var all=[{url:LEGACY_DEFAULT_URL,key:LEGACY_DEFAULT_KEY,name:'AI사이트웍스 기본현장',company:DEFAULT_COMPANY,project:DEFAULT_PROJECT}].concat(visible);
   // 현장이 하나뿐이어도 어느 현장에 로그인하는지 보이도록 항상 표시한다(2026-11-18).
   var sel=document.getElementById('siteSelect');
   sel.innerHTML=all.map(function(s,i){return '<option value="'+i+'">'+escOpt(siteLabel(s))+'</option>';}).join('');
